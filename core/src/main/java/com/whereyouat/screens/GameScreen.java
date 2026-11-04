@@ -285,6 +285,7 @@ public class GameScreen extends ScreenAdapter {
                 player.randomSpawn(mapGen);
             } else if (player.dead && !showDeathScreen) {
                 showDeathScreen = true;
+                saveProgress();
             }
         }
         renderScene();

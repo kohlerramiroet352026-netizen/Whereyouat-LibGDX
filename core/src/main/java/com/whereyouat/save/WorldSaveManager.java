@@ -38,6 +38,7 @@ public class WorldSaveManager {
         public String  playerDirection = "down";
         public int     playerHealth    = 100;
         public int     playerLives     = 3;
+        public boolean isDead          = false;
 
         // Day/Night cycle state
         public boolean hasDayNightData = false;
@@ -97,10 +98,16 @@ public class WorldSaveManager {
                     info.playerDirection = p.getProperty("player.direction", "down");
                     info.playerHealth    = Integer.parseInt(p.getProperty("player.health", "100"));
                     info.playerLives     = Integer.parseInt(p.getProperty("player.lives", "3"));
+                    info.isDead          = Boolean.parseBoolean(p.getProperty("player.dead", "false"));
+                    if (info.playerLives <= 0) {
+                        info.isDead = true;
+                    }
                     info.hasPlayerData   = true;
                 } catch (Exception ex) {
                     info.hasPlayerData = false;
                 }
+            } else if (p.containsKey("player.dead")) {
+                info.isDead = Boolean.parseBoolean(p.getProperty("player.dead", "false"));
             }
 
             // Load DayNightCycle data if present
@@ -184,12 +191,13 @@ public class WorldSaveManager {
         }
         p.setProperty("world.lastPlayed", String.valueOf(System.currentTimeMillis()));
 
-        if (player != null && !player.dead) {
+        if (player != null) {
             p.setProperty("player.worldX", String.valueOf(player.worldX));
             p.setProperty("player.worldY", String.valueOf(player.worldY));
             p.setProperty("player.direction", player.direction != null ? player.direction : "down");
             p.setProperty("player.health", String.valueOf(player.health));
             p.setProperty("player.lives", String.valueOf(player.lives));
+            p.setProperty("player.dead", String.valueOf(player.dead));
         }
 
         if (dayNight != null) {

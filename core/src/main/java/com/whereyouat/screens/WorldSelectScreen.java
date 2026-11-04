@@ -194,6 +194,10 @@ public class WorldSelectScreen extends ScreenAdapter {
                         refreshWorlds();
                         return;
                     } else if (hoverSlot) {
+                        if (info.isDead) {
+                            // El jugador murio definitivamente: la unica opcion es borrar el mundo
+                            return;
+                        }
                         if (buttonSound != null) buttonSound.play(0.32f);
                         // Launch world
                         GameScreen gs = new GameScreen(game, info.seed, info.name, info.fileName);
@@ -236,8 +240,14 @@ public class WorldSelectScreen extends ScreenAdapter {
             boolean hoverSlot = (mousePos.x >= panelX && mousePos.x <= panelX + SLOT_W &&
                                  mousePos.y >= slotY && mousePos.y <= slotY + SLOT_H);
 
+            boolean isDeadWorld = (itemIndex > 0 && worldList.get(itemIndex - 1).isDead);
+
             if (slotRegion != null) {
-                game.batch.setColor(hoverSlot ? 1.15f : 1f, hoverSlot ? 1.15f : 1f, hoverSlot ? 1.15f : 1f, 1f);
+                if (isDeadWorld) {
+                    game.batch.setColor(0.6f, 0.45f, 0.45f, 0.9f);
+                } else {
+                    game.batch.setColor(hoverSlot ? 1.15f : 1f, hoverSlot ? 1.15f : 1f, hoverSlot ? 1.15f : 1f, 1f);
+                }
                 game.batch.draw(slotRegion, panelX, slotY, SLOT_W, SLOT_H);
                 game.batch.setColor(1f, 1f, 1f, 1f);
             }
@@ -253,14 +263,30 @@ public class WorldSelectScreen extends ScreenAdapter {
                 int worldIdx = itemIndex - 1;
                 WorldInfo info = worldList.get(worldIdx);
 
-                // World Name
-                fontSlot.setColor(hoverSlot ? Color.GOLD : Color.WHITE);
-                fontSlot.draw(game.batch, info.name, panelX + 24f, slotY + 14f);
+                if (info.isDead) {
+                    // World Name (dimmed)
+                    fontSlot.setColor(new Color(0.75f, 0.75f, 0.75f, 0.85f));
+                    layout.setText(fontSlot, info.name);
+                    fontSlot.draw(game.batch, info.name, panelX + 24f, slotY + 14f);
 
-                // Date & Seed
-                String sub = "Semilla: " + info.seed + " · " + WorldSaveManager.formatDate(info.lastPlayed > 0 ? info.lastPlayed : info.created);
-                fontSmall.setColor(new Color(0.7f, 0.7f, 0.7f, 0.9f));
-                fontSmall.draw(game.batch, sub, panelX + 24f, slotY + 38f);
+                    // Red "Muerto" label right next to the world name
+                    fontSlot.setColor(new Color(0.95f, 0.2f, 0.2f, 1f));
+                    fontSlot.draw(game.batch, " [Muerto]", panelX + 24f + layout.width + 6f, slotY + 14f);
+
+                    // Subtitle: Partida finalizada
+                    String sub = "Partida finalizada \u00b7 " + WorldSaveManager.formatDate(info.lastPlayed > 0 ? info.lastPlayed : info.created);
+                    fontSmall.setColor(new Color(0.65f, 0.4f, 0.4f, 0.85f));
+                    fontSmall.draw(game.batch, sub, panelX + 24f, slotY + 38f);
+                } else {
+                    // World Name
+                    fontSlot.setColor(hoverSlot ? Color.GOLD : Color.WHITE);
+                    fontSlot.draw(game.batch, info.name, panelX + 24f, slotY + 14f);
+
+                    // Date & Seed
+                    String sub = "Semilla: " + info.seed + " \u00b7 " + WorldSaveManager.formatDate(info.lastPlayed > 0 ? info.lastPlayed : info.created);
+                    fontSmall.setColor(new Color(0.7f, 0.7f, 0.7f, 0.9f));
+                    fontSmall.draw(game.batch, sub, panelX + 24f, slotY + 38f);
+                }
 
                 // Delete Button icon
                 if (deleteBtnRegion != null) {
@@ -268,8 +294,7 @@ public class WorldSelectScreen extends ScreenAdapter {
                     float delY = slotY + (SLOT_H - 24f) / 2f;
                     boolean hoverDelete = (mousePos.x >= delX && mousePos.x <= delX + 24f &&
                                            mousePos.y >= delY && mousePos.y <= delY + 24f);
-                    // Only scale up on hover — no red tint (matches original)
-                    float dScale = hoverDelete ? 1.2f : 1.0f;
+                    float dScale = hoverDelete ? 1.25f : 1.0f;
                     float dW = 24f * dScale;
                     float dH = 24f * dScale;
                     float dDrawX = delX - (dW - 24f) / 2f;
