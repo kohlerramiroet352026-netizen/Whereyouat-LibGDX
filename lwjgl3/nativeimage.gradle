@@ -1,0 +1,9 @@
+buildscript {
+  repositories {
+    mavenCentral()
+    gradlePluginPortal()
+  }
+}
+
+// GraalVM native image configuration (optional desktop packaging)
+

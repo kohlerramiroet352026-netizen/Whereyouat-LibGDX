@@ -1,0 +1,29 @@
+# Where you at
+
+A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/tommyettinger/gdx-liftoff).
+
+This project was generated with a template including simple application launchers and an empty `ApplicationListener` implementation.
+
+## Platforms
+
+- `core`: Main module with the application logic shared by all platforms.
+- `lwjgl3`: Primary desktop platform using LWJGL3; recommended for development.
+
+## Gradle
+
+This project uses [Gradle](https://gradle.org/) to manage dependencies.
+The Gradle wrapper was included, so you can run Gradle tasks using `gradlew.bat` or `./gradlew` commands.
+Useful Gradle tasks and flags:
+
+- `--continue`: when using this flag, errors will not stop the tasks from running.
+- `--daemon`: thanks to this flag, Gradle daemon will be used to run chosen tasks.
+- `--offline`: when using this flag, cached dependencies will be used.
+- `--refresh-dependencies`: this flag forces checking for newer versions of dependencies than the ones stored in the Gradle cache.
+- `run`: runs the `lwjgl3` project. Example: `./gradlew lwjgl3:run`
+- `build`: builds sources and archives of every project. Example: `./gradlew build`
+- `clean`: removes `build` folders, which store compiled classes and built archives. Example: `./gradlew clean`
+- `test`: runs unit tests. Note that tests are not currently implemented by default. Example: `./gradlew test`
+
+Note that most tasks that are not specific to a single project can be run with `name:` prefix, where the `name` should be replaced with the ID of a specific project.
+For example, `lwjgl3:run` will run the 64-bit desktop application.
+

@@ -1,0 +1,44 @@
+buildscript {
+  repositories {
+    mavenCentral()
+    maven { url 'https://s01.oss.sonatype.org' }
+    gradlePluginPortal()
+    mavenLocal()
+    google()
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+    maven { url 'https://oss.sonatype.org/content/repositories/releases/' }
+  }
+  dependencies {
+  }
+}
+
+allprojects {
+  apply plugin: 'eclipse'
+  apply plugin: 'idea'
+}
+
+configure(subprojects) {
+  apply plugin: 'java-library'
+  compileJava {
+    options.encoding = 'UTF-8'
+  }
+  compileTestJava {
+    options.encoding = 'UTF-8'
+  }
+}
+
+subprojects {
+  version = '$projectVersion'
+  ext.appName = 'Where you at'
+  repositories {
+    mavenCentral()
+    maven { url 'https://s01.oss.sonatype.org' }
+    mavenLocal()
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+    maven { url 'https://oss.sonatype.org/content/repositories/releases/' }
+    maven { url 'https://jitpack.io' }
+  }
+}
+
+eclipse.project.name = 'Where you at' + '-parent'
+
