@@ -50,47 +50,47 @@ public class TransitionRenderer {
      */
     public void load(Texture sideTex, Texture outCornerTex, Texture inCornerTex, TileManager tileMgr) {
         // Extract pixmaps from textures
-        Pixmap sidePm = extractPixmap(sideTex);
-        Pixmap outCPm = extractPixmap(outCornerTex);
-        Pixmap inCPm  = extractPixmap(inCornerTex);
+        Pixmap sidePixmap = extractPixmap(sideTex);
+        Pixmap outCornerPixmap = extractPixmap(outCornerTex);
+        Pixmap inCornerPixmap  = extractPixmap(inCornerTex);
 
-        Pixmap[] basePms = { sidePm, outCPm, inCPm };
+        Pixmap[] basePixmaps = { sidePixmap, outCornerPixmap, inCornerPixmap };
 
         for (int typeIdx = 0; typeIdx < 3; typeIdx++) {
-            Pixmap basePm = basePms[typeIdx];
-            if (basePm == null) continue;
+            Pixmap basePixmap = basePixmaps[typeIdx];
+            if (basePixmap == null) continue;
 
-            for (int r = 0; r < 4; r++) {
-                Pixmap rotPm = rotateCW(basePm, r);
+            for (int rotation = 0; rotation < 4; rotation++) {
+                Pixmap rotatedPixmap = rotateCW(basePixmap, rotation);
 
-                for (int b = 0; b <= 10; b++) {
-                    float blend = b / 10f;
+                for (int blendStep = 0; blendStep <= 10; blendStep++) {
+                    float blend = blendStep / 10f;
 
-                    if (b == 0) {
-                        rotated[typeIdx][r][b] = pmToRegion(rotPm);
-                        rotatedSwamp[typeIdx][r][b] = rotated[typeIdx][r][b]; // Same at blend 0
+                    if (blendStep == 0) {
+                        rotated[typeIdx][rotation][blendStep] = pixmapToRegion(rotatedPixmap);
+                        rotatedSwamp[typeIdx][rotation][blendStep] = rotated[typeIdx][rotation][blendStep]; // Same at blend 0
                     } else {
-                        Pixmap snowPm = TileManager.tintGrass(rotPm, blend);
-                        rotated[typeIdx][r][b] = pmToRegion(snowPm);
-                        snowPm.dispose();
+                        Pixmap snowPixmap = TileManager.tintGrass(rotatedPixmap, blend);
+                        rotated[typeIdx][rotation][blendStep] = pixmapToRegion(snowPixmap);
+                        snowPixmap.dispose();
 
-                        Pixmap swampPm = TileManager.tintSwampGrass(rotPm, blend);
-                        rotatedSwamp[typeIdx][r][b] = pmToRegion(swampPm);
-                        swampPm.dispose();
+                        Pixmap swampPixmap = TileManager.tintSwampGrass(rotatedPixmap, blend);
+                        rotatedSwamp[typeIdx][rotation][blendStep] = pixmapToRegion(swampPixmap);
+                        swampPixmap.dispose();
                     }
                 }
 
                 // Dispose rotated pixmap if it's not the original
-                if (r != 0) {
-                    rotPm.dispose();
+                if (rotation != 0) {
+                    rotatedPixmap.dispose();
                 }
             }
         }
 
         // Dispose extracted pixmaps
-        sidePm.dispose();
-        outCPm.dispose();
-        inCPm.dispose();
+        sidePixmap.dispose();
+        outCornerPixmap.dispose();
+        inCornerPixmap.dispose();
     }
 
     /**
@@ -98,30 +98,30 @@ public class TransitionRenderer {
      */
     public void load(Texture sideTex, Texture outCornerTex, Texture inCornerTex) {
         // Fallback: just store simple regions without tinting
-        Pixmap sidePm = extractPixmap(sideTex);
-        Pixmap outCPm = extractPixmap(outCornerTex);
-        Pixmap inCPm  = extractPixmap(inCornerTex);
+        Pixmap sidePixmap = extractPixmap(sideTex);
+        Pixmap outCornerPixmap = extractPixmap(outCornerTex);
+        Pixmap inCornerPixmap  = extractPixmap(inCornerTex);
 
-        Pixmap[] basePms = { sidePm, outCPm, inCPm };
+        Pixmap[] basePixmaps = { sidePixmap, outCornerPixmap, inCornerPixmap };
 
         for (int typeIdx = 0; typeIdx < 3; typeIdx++) {
-            Pixmap basePm = basePms[typeIdx];
-            if (basePm == null) continue;
+            Pixmap basePixmap = basePixmaps[typeIdx];
+            if (basePixmap == null) continue;
 
-            for (int r = 0; r < 4; r++) {
-                Pixmap rotPm = rotateCW(basePm, r);
-                TextureRegion reg = pmToRegion(rotPm);
-                for (int b = 0; b <= 10; b++) {
-                    rotated[typeIdx][r][b] = reg;
-                    rotatedSwamp[typeIdx][r][b] = reg;
+            for (int rotation = 0; rotation < 4; rotation++) {
+                Pixmap rotatedPixmap = rotateCW(basePixmap, rotation);
+                TextureRegion region = pixmapToRegion(rotatedPixmap);
+                for (int blendStep = 0; blendStep <= 10; blendStep++) {
+                    rotated[typeIdx][rotation][blendStep] = region;
+                    rotatedSwamp[typeIdx][rotation][blendStep] = region;
                 }
-                if (r != 0) rotPm.dispose();
+                if (rotation != 0) rotatedPixmap.dispose();
             }
         }
 
-        sidePm.dispose();
-        outCPm.dispose();
-        inCPm.dispose();
+        sidePixmap.dispose();
+        outCornerPixmap.dispose();
+        inCornerPixmap.dispose();
     }
 
     /** Extract a Pixmap from a Texture by reading its texture data. */
@@ -130,24 +130,24 @@ public class TransitionRenderer {
         if (!tex.getTextureData().isPrepared()) {
             tex.getTextureData().prepare();
         }
-        Pixmap pm = tex.getTextureData().consumePixmap();
+        Pixmap pixmap = tex.getTextureData().consumePixmap();
         // Make a copy since consumePixmap may return a managed pixmap
-        Pixmap copy = new Pixmap(pm.getWidth(), pm.getHeight(), Pixmap.Format.RGBA8888);
-        copy.drawPixmap(pm, 0, 0);
+        Pixmap copy = new Pixmap(pixmap.getWidth(), pixmap.getHeight(), Pixmap.Format.RGBA8888);
+        copy.drawPixmap(pixmap, 0, 0);
         if (tex.getTextureData().disposePixmap()) {
-            pm.dispose();
+            pixmap.dispose();
         }
         return copy;
     }
 
     /** Create a TextureRegion from a Pixmap, Y-flipped for Y-down camera. */
-    private TextureRegion pmToRegion(Pixmap pm) {
-        Texture tex = new Texture(pm);
+    private TextureRegion pixmapToRegion(Pixmap pixmap) {
+        Texture tex = new Texture(pixmap);
         tex.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
         generatedTextures.add(tex);
-        TextureRegion tr = new TextureRegion(tex);
-        tr.flip(false, true);
-        return tr;
+        TextureRegion region = new TextureRegion(tex);
+        region.flip(false, true);
+        return region;
     }
 
     /**
@@ -226,41 +226,41 @@ public class TransitionRenderer {
         public TransInfo(int type, int rot) { this.type = type; this.rot = rot; }
     }
 
-    public static TransInfo classify(boolean n, boolean s, boolean e, boolean w,
-                                     boolean ne, boolean se, boolean sw, boolean nw) {
-        int cardinalCount = (n ? 1 : 0) + (s ? 1 : 0) + (e ? 1 : 0) + (w ? 1 : 0);
+    public static TransInfo classify(boolean north, boolean south, boolean east, boolean west,
+                                     boolean northEast, boolean southEast, boolean southWest, boolean northWest) {
+        int cardinalCount = (north ? 1 : 0) + (south ? 1 : 0) + (east ? 1 : 0) + (west ? 1 : 0);
 
         if (cardinalCount == 1) {
-            if (s) return new TransInfo(TRANS_SIDE, ROT_0);
-            if (w) return new TransInfo(TRANS_SIDE, ROT_90);
-            if (n) return new TransInfo(TRANS_SIDE, ROT_180);
+            if (south) return new TransInfo(TRANS_SIDE, ROT_0);
+            if (west)  return new TransInfo(TRANS_SIDE, ROT_90);
+            if (north) return new TransInfo(TRANS_SIDE, ROT_180);
             return new TransInfo(TRANS_SIDE, ROT_270);
         }
 
         if (cardinalCount == 2) {
-            if (s && w) return new TransInfo(TRANS_IN_CORNER, ROT_0);
-            if (n && w) return new TransInfo(TRANS_IN_CORNER, ROT_90);
-            if (n && e) return new TransInfo(TRANS_IN_CORNER, ROT_180);
-            if (s && e) return new TransInfo(TRANS_IN_CORNER, ROT_270);
-            if (n && s) return new TransInfo(TRANS_SIDE, ROT_180);
-            if (e && w) return new TransInfo(TRANS_SIDE, ROT_90);
+            if (south && west) return new TransInfo(TRANS_IN_CORNER, ROT_0);
+            if (north && west) return new TransInfo(TRANS_IN_CORNER, ROT_90);
+            if (north && east) return new TransInfo(TRANS_IN_CORNER, ROT_180);
+            if (south && east) return new TransInfo(TRANS_IN_CORNER, ROT_270);
+            if (north && south) return new TransInfo(TRANS_SIDE, ROT_180);
+            if (east && west) return new TransInfo(TRANS_SIDE, ROT_90);
         }
 
         if (cardinalCount == 3) {
-            if (!n) return new TransInfo(TRANS_IN_CORNER, ROT_0);
-            if (!e) return new TransInfo(TRANS_IN_CORNER, ROT_90);
-            if (!s) return new TransInfo(TRANS_IN_CORNER, ROT_180);
-            if (!w) return new TransInfo(TRANS_IN_CORNER, ROT_270);
+            if (!north) return new TransInfo(TRANS_IN_CORNER, ROT_0);
+            if (!east)  return new TransInfo(TRANS_IN_CORNER, ROT_90);
+            if (!south) return new TransInfo(TRANS_IN_CORNER, ROT_180);
+            if (!west)  return new TransInfo(TRANS_IN_CORNER, ROT_270);
         }
 
         if (cardinalCount >= 4) {
             return new TransInfo(TRANS_NONE, ROT_0);
         }
 
-        if (sw) return new TransInfo(TRANS_OUT_CORNER, ROT_0);
-        if (nw) return new TransInfo(TRANS_OUT_CORNER, ROT_90);
-        if (ne) return new TransInfo(TRANS_OUT_CORNER, ROT_180);
-        if (se) return new TransInfo(TRANS_OUT_CORNER, ROT_270);
+        if (southWest) return new TransInfo(TRANS_OUT_CORNER, ROT_0);
+        if (northWest) return new TransInfo(TRANS_OUT_CORNER, ROT_90);
+        if (northEast) return new TransInfo(TRANS_OUT_CORNER, ROT_180);
+        if (southEast) return new TransInfo(TRANS_OUT_CORNER, ROT_270);
 
         return new TransInfo(TRANS_NONE, ROT_0);
     }

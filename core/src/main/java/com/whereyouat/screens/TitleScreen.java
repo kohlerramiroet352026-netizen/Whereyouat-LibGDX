@@ -97,30 +97,30 @@ public class TitleScreen extends ScreenAdapter {
 
         // Fonts
         if (Gdx.files.internal("fonts/PressStart2P-Regular.ttf").exists()) {
-            FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal("fonts/PressStart2P-Regular.ttf"));
-            FreeTypeFontParameter param = new FreeTypeFontParameter();
-            param.flip = true;
+            FreeTypeFontGenerator fontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/PressStart2P-Regular.ttf"));
+            FreeTypeFontParameter fontParameter = new FreeTypeFontParameter();
+            fontParameter.flip = true;
 
-            param.size = 20;
-            param.shadowOffsetX = 2;
-            param.shadowOffsetY = 2;
-            param.shadowColor = new Color(0f, 0f, 0f, 0.8f);
-            fontTitle = gen.generateFont(param);
+            fontParameter.size = 20;
+            fontParameter.shadowOffsetX = 2;
+            fontParameter.shadowOffsetY = 2;
+            fontParameter.shadowColor = new Color(0f, 0f, 0f, 0.8f);
+            fontTitle = fontGenerator.generateFont(fontParameter);
             fontTitle.getRegion().getTexture().setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
 
-            param.size = 14;
-            param.shadowOffsetX = 1;
-            param.shadowOffsetY = 1;
-            param.shadowColor = new Color(0f, 0f, 0f, 0.8f);
-            fontBtn = gen.generateFont(param);
+            fontParameter.size = 14;
+            fontParameter.shadowOffsetX = 1;
+            fontParameter.shadowOffsetY = 1;
+            fontParameter.shadowColor = new Color(0f, 0f, 0f, 0.8f);
+            fontBtn = fontGenerator.generateFont(fontParameter);
             fontBtn.getRegion().getTexture().setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
 
-            param.size = 10;
-            param.shadowOffsetX = 1;
-            param.shadowOffsetY = 1;
-            fontSmall = gen.generateFont(param);
+            fontParameter.size = 10;
+            fontParameter.shadowOffsetX = 1;
+            fontParameter.shadowOffsetY = 1;
+            fontSmall = fontGenerator.generateFont(fontParameter);
             fontSmall.getRegion().getTexture().setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-            gen.dispose();
+            fontGenerator.dispose();
         } else {
             fontTitle = new BitmapFont();
             fontBtn = new BitmapFont();
@@ -170,9 +170,9 @@ public class TitleScreen extends ScreenAdapter {
         float titleCenterY = 160f + bob;
 
         if (titleRegion != null) {
-            float tw = titleRegion.getRegionWidth() * 3f;
-            float th = titleRegion.getRegionHeight() * 3f;
-            game.batch.draw(titleRegion, (768f - tw) / 2f, titleCenterY - th / 2f, tw, th);
+            float titleWidth = titleRegion.getRegionWidth() * 3f;
+            float titleHeight = titleRegion.getRegionHeight() * 3f;
+            game.batch.draw(titleRegion, (768f - titleWidth) / 2f, titleCenterY - titleHeight / 2f, titleWidth, titleHeight);
         } else {
             layout.setText(fontTitle, "WHERE YOU AT?");
             fontTitle.setColor(Color.GOLD);
@@ -206,20 +206,20 @@ public class TitleScreen extends ScreenAdapter {
 
     private void drawMenuButton(String text, float x, float y, boolean hover) {
         float scale = hover ? 1.05f : 1.0f;
-        float w = BTN_WIDTH * scale;
-        float h = BTN_HEIGHT * scale;
-        float bx = x - (w - BTN_WIDTH) / 2f;
-        float by = y - (h - BTN_HEIGHT) / 2f;
+        float buttonWidth = BTN_WIDTH * scale;
+        float buttonHeight = BTN_HEIGHT * scale;
+        float buttonX = x - (buttonWidth - BTN_WIDTH) / 2f;
+        float buttonY = y - (buttonHeight - BTN_HEIGHT) / 2f;
 
         if (buttonRegion != null) {
             game.batch.setColor(hover ? 1.1f : 1f, hover ? 1.1f : 1f, hover ? 1.1f : 1f, 1f);
-            game.batch.draw(buttonRegion, bx, by, w, h);
+            game.batch.draw(buttonRegion, buttonX, buttonY, buttonWidth, buttonHeight);
             game.batch.setColor(1f, 1f, 1f, 1f);
         }
 
         layout.setText(fontBtn, text);
         fontBtn.setColor(hover ? Color.GOLD : Color.WHITE);
-        fontBtn.draw(game.batch, text, bx + (w - layout.width) / 2f, by + (h - layout.height) / 2f);
+        fontBtn.draw(game.batch, text, buttonX + (buttonWidth - layout.width) / 2f, buttonY + (buttonHeight - layout.height) / 2f);
     }
 
     @Override

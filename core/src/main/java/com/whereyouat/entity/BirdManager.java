@@ -77,79 +77,79 @@ public class BirdManager {
     public void update(float delta, MapGenerator mapGen, TileManager tileM, Player player) {
         if (mapGen == null || player == null) return;
 
-        float px = player.worldX + TileManager.TILE_SIZE / 2f;
-        float py = player.worldY + TileManager.TILE_SIZE / 2f;
+        float playerCenterX = player.worldX + TileManager.TILE_SIZE / 2f;
+        float playerCenterY = player.worldY + TileManager.TILE_SIZE / 2f;
 
-        Iterator<Bird> it = birds.iterator();
-        while (it.hasNext()) {
-            Bird b = it.next();
-            if (b.state == BirdState.PERCHED) {
-                float distPx = (float) Math.hypot(b.worldX - px, b.worldY - py);
+        Iterator<Bird> iterator = birds.iterator();
+        while (iterator.hasNext()) {
+            Bird bird = iterator.next();
+            if (bird.state == BirdState.PERCHED) {
+                float distPx = (float) Math.hypot(bird.worldX - playerCenterX, bird.worldY - playerCenterY);
                 if (distPx > DESPAWN_DIST_TILES * TileManager.TILE_SIZE) {
-                    it.remove();
+                    iterator.remove();
                     continue;
                 }
 
                 // Spooked by swaying foliage
-                long key = (((long) b.perchCol) << 32) | (b.perchRow & 0xFFFFFFFFL);
-                if ((b.perchType == PerchType.TREE_TOP || b.perchType == PerchType.BUSH_TOP)
-                        && tileM.swayingBushes.containsKey(key)) {
-                    float awayDx = (rng.nextFloat() - 0.5f);
-                    float awayDy = -0.7f + (rng.nextFloat() - 0.5f) * 0.5f;
-                    startFleeing(b, awayDx, awayDy);
+                long foliageKey = (((long) bird.perchCol) << 32) | (bird.perchRow & 0xFFFFFFFFL);
+                if ((bird.perchType == PerchType.TREE_TOP || bird.perchType == PerchType.BUSH_TOP)
+                        && tileM.swayingBushes.containsKey(foliageKey)) {
+                    float fleeDirectionX = (rng.nextFloat() - 0.5f);
+                    float fleeDirectionY = -0.7f + (rng.nextFloat() - 0.5f) * 0.5f;
+                    startFleeing(bird, fleeDirectionX, fleeDirectionY);
                     continue;
                 }
 
                 // Spooked by player approach
-                float triggerX = (b.perchType == PerchType.TREE_TOP)
-                        ? (b.perchCol * TileManager.TILE_SIZE + TileManager.TILE_SIZE)
-                        : b.worldX;
-                float triggerY = (b.perchType == PerchType.TREE_TOP)
-                        ? (b.perchRow * TileManager.TILE_SIZE + TileManager.TILE_SIZE)
-                        : b.worldY;
+                float triggerX = (bird.perchType == PerchType.TREE_TOP)
+                        ? (bird.perchCol * TileManager.TILE_SIZE + TileManager.TILE_SIZE)
+                        : bird.worldX;
+                float triggerY = (bird.perchType == PerchType.TREE_TOP)
+                        ? (bird.perchRow * TileManager.TILE_SIZE + TileManager.TILE_SIZE)
+                        : bird.worldY;
 
-                float distDx = triggerX - px;
-                float distDy = triggerY - py;
-                if (distDx * distDx + distDy * distDy < FLEE_RADIUS_PX * FLEE_RADIUS_PX) {
-                    float awayDx = b.worldX - px;
-                    float awayDy = b.worldY - py;
-                    startFleeing(b, awayDx, awayDy);
+                float distanceX = triggerX - playerCenterX;
+                float distanceY = triggerY - playerCenterY;
+                if (distanceX * distanceX + distanceY * distanceY < FLEE_RADIUS_PX * FLEE_RADIUS_PX) {
+                    float fleeDirectionX = bird.worldX - playerCenterX;
+                    float fleeDirectionY = bird.worldY - playerCenterY;
+                    startFleeing(bird, fleeDirectionX, fleeDirectionY);
                     continue;
                 }
 
                 // Ambient state
-                if (b.perchType == PerchType.GRASS) {
-                    updateGroundBirdAI(b, delta, mapGen);
+                if (bird.perchType == PerchType.GRASS) {
+                    updateGroundBirdAI(bird, delta, mapGen);
                 } else {
-                    b.idleFidgetTimer--;
-                    if (b.idleFidgetTimer <= 0) {
-                        b.idleFidgetTimer = 120 + rng.nextInt(180);
-                        b.facingLeft = !b.facingLeft;
+                    bird.idleFidgetTimer--;
+                    if (bird.idleFidgetTimer <= 0) {
+                        bird.idleFidgetTimer = 120 + rng.nextInt(180);
+                        bird.facingLeft = !bird.facingLeft;
                     }
                 }
 
             } else { // FLYING
-                b.worldX += b.velX * delta;
-                b.worldY += b.velY * delta;
+                bird.worldX += bird.velX * delta;
+                bird.worldY += bird.velY * delta;
 
-                b.flapTick++;
-                if (b.flapTick >= 7) {
-                    b.flapTick = 0;
-                    b.flapFrame = 1 - b.flapFrame;
+                bird.flapTick++;
+                if (bird.flapTick >= 7) {
+                    bird.flapTick = 0;
+                    bird.flapFrame = 1 - bird.flapFrame;
                 }
 
-                if (b.velX > 5f) {
-                    b.facingLeft = false;
-                } else if (b.velX < -5f) {
-                    b.facingLeft = true;
+                if (bird.velX > 5f) {
+                    bird.facingLeft = false;
+                } else if (bird.velX < -5f) {
+                    bird.facingLeft = true;
                 }
 
                 // Cull once far outside active gameplay area
                 float maxBoundX = mapGen.mapCols * TileManager.TILE_SIZE;
                 float maxBoundY = mapGen.mapRows * TileManager.TILE_SIZE;
-                if (b.worldX < -CULL_MARGIN_PX || b.worldX > maxBoundX + CULL_MARGIN_PX ||
-                    b.worldY < -CULL_MARGIN_PX || b.worldY > maxBoundY + CULL_MARGIN_PX) {
-                    it.remove();
+                if (bird.worldX < -CULL_MARGIN_PX || bird.worldX > maxBoundX + CULL_MARGIN_PX ||
+                    bird.worldY < -CULL_MARGIN_PX || bird.worldY > maxBoundY + CULL_MARGIN_PX) {
+                    iterator.remove();
                 }
             }
         }
@@ -162,70 +162,70 @@ public class BirdManager {
         }
     }
 
-    private void updateGroundBirdAI(Bird b, float delta, MapGenerator mapGen) {
-        if (b.isHopping) {
-            b.hopTick++;
-            float t = (float) b.hopTick / b.hopDuration;
-            if (t >= 1f) {
-                b.worldX = b.hopTargetX;
-                b.groundBaseY = b.hopTargetY;
-                b.worldY = b.groundBaseY;
-                b.isHopping = false;
-                b.perchCol = (int) (b.worldX / TileManager.TILE_SIZE);
-                b.perchRow = (int) (b.groundBaseY / TileManager.TILE_SIZE);
+    private void updateGroundBirdAI(Bird bird, float delta, MapGenerator mapGen) {
+        if (bird.isHopping) {
+            bird.hopTick++;
+            float progress = (float) bird.hopTick / bird.hopDuration;
+            if (progress >= 1f) {
+                bird.worldX = bird.hopTargetX;
+                bird.groundBaseY = bird.hopTargetY;
+                bird.worldY = bird.groundBaseY;
+                bird.isHopping = false;
+                bird.perchCol = (int) (bird.worldX / TileManager.TILE_SIZE);
+                bird.perchRow = (int) (bird.groundBaseY / TileManager.TILE_SIZE);
 
-                if (b.hopsRemaining > 0) {
-                    b.hopsRemaining--;
-                    b.aiTimer = 6 + rng.nextInt(6);
+                if (bird.hopsRemaining > 0) {
+                    bird.hopsRemaining--;
+                    bird.aiTimer = 6 + rng.nextInt(6);
                 } else {
-                    b.aiTimer = 45 + rng.nextInt(85);
+                    bird.aiTimer = 45 + rng.nextInt(85);
                 }
             } else {
-                b.worldX = b.hopStartX + (b.hopTargetX - b.hopStartX) * t;
-                float currentBaseY = b.hopStartY + (b.hopTargetY - b.hopStartY) * t;
-                float arc = (float) Math.sin(t * Math.PI) * b.hopHeight;
-                b.worldY = currentBaseY - arc;
+                bird.worldX = bird.hopStartX + (bird.hopTargetX - bird.hopStartX) * progress;
+                float currentBaseY = bird.hopStartY + (bird.hopTargetY - bird.hopStartY) * progress;
+                float arc = (float) Math.sin(progress * Math.PI) * bird.hopHeight;
+                bird.worldY = currentBaseY - arc;
             }
         } else {
-            b.aiTimer--;
-            if (b.aiTimer <= 0) {
-                int roll = rng.nextInt(100);
-                if (roll < 55) {
+            bird.aiTimer--;
+            if (bird.aiTimer <= 0) {
+                int randomRoll = rng.nextInt(100);
+                if (randomRoll < 55) {
                     if (rng.nextFloat() < 0.25f) {
-                        b.facingLeft = !b.facingLeft;
+                        bird.facingLeft = !bird.facingLeft;
                     }
 
-                    float hopDistX = (b.facingLeft ? -1f : 1f) * (10f + rng.nextFloat() * 8f);
+                    float hopDistX = (bird.facingLeft ? -1f : 1f) * (10f + rng.nextFloat() * 8f);
                     float hopDistY = (rng.nextFloat() - 0.5f) * 6f;
 
-                    float targetX = b.worldX + hopDistX;
-                    float targetY = b.groundBaseY + hopDistY;
+                    float targetX = bird.worldX + hopDistX;
+                    float targetY = bird.groundBaseY + hopDistY;
 
                     int targetCol = (int) (targetX / TileManager.TILE_SIZE);
                     int targetRow = (int) (targetY / TileManager.TILE_SIZE);
 
                     if (isWalkableGrass(mapGen, targetCol, targetRow)) {
-                        b.isHopping = true;
-                        b.hopStartX = b.worldX;
-                        b.hopStartY = b.groundBaseY;
-                        b.hopTargetX = targetX;
-                        b.hopTargetY = targetY;
-                        b.hopHeight = 5f + rng.nextFloat() * 4f;
-                        b.hopDuration = 11 + rng.nextInt(4);
-                        b.hopTick = 0;
+                        bird.isHopping = true;
+                        bird.hopStartX = bird.worldX;
+                        bird.hopStartY = bird.groundBaseY;
+                        bird.hopTargetX = targetX;
+                        bird.hopTargetY = targetY;
+                        bird.hopHeight = 5f + rng.nextFloat() * 4f;
+                        bird.hopDuration = 11 + rng.nextInt(4);
+                        bird.hopTick = 0;
 
-                        if (b.hopsRemaining == 0 && rng.nextFloat() < 0.60f) {
-                            b.hopsRemaining = 1 + rng.nextInt(2);
+                        if (bird.hopsRemaining == 0 && rng.nextFloat() < 0.60f) {
+                            bird.hopsRemaining = 1 + rng.nextInt(2);
                         }
                     } else {
-                        b.facingLeft = !b.facingLeft;
-                        b.aiTimer = 25 + rng.nextInt(35);
+                        bird.facingLeft = !bird.facingLeft;
+                        bird.aiTimer = 25 + rng.nextInt(35);
                     }
-                } else if (roll < 80) {
-                    b.facingLeft = !b.facingLeft;
-                    b.aiTimer = 35 + rng.nextInt(55);
+                } else if (randomRoll < 80) {
+                    bird.facingLeft = !bird.facingLeft;
+                    bird.aiTimer = 35 + rng.nextInt(55);
                 } else {
-                    b.aiTimer = 45 + rng.nextInt(70);
+                    bird.aiTimer = 45 + rng.nextInt(70);
                 }
             }
         }
@@ -247,24 +247,24 @@ public class BirdManager {
         return (groundIdx >= 0 && groundIdx <= 3 && treeIdx == 0);
     }
 
-    private void startFleeing(Bird b, float awayDx, float awayDy) {
-        b.state = BirdState.FLYING;
-        b.isHopping = false;
-        b.hopsRemaining = 0;
+    private void startFleeing(Bird bird, float fleeDirectionX, float fleeDirectionY) {
+        bird.state = BirdState.FLYING;
+        bird.isHopping = false;
+        bird.hopsRemaining = 0;
 
-        double angle = Math.atan2(awayDy, awayDx);
+        double angle = Math.atan2(fleeDirectionY, fleeDirectionX);
         angle += (rng.nextDouble() - 0.5) * Math.toRadians(90.0);
-        float len = (float) Math.sqrt(awayDx * awayDx + awayDy * awayDy);
-        if (len < 0.001f) {
+        float directionLength = (float) Math.sqrt(fleeDirectionX * fleeDirectionX + fleeDirectionY * fleeDirectionY);
+        if (directionLength < 0.001f) {
             angle = rng.nextDouble() * Math.PI * 2;
         }
 
-        b.velX = (float) (Math.cos(angle) * FLY_SPEED_PX_SEC);
-        b.velY = (float) (Math.sin(angle) * FLY_SPEED_PX_SEC);
+        bird.velX = (float) (Math.cos(angle) * FLY_SPEED_PX_SEC);
+        bird.velY = (float) (Math.sin(angle) * FLY_SPEED_PX_SEC);
 
-        b.facingLeft = (b.velX < 0);
-        b.flapFrame = 1;
-        b.flapTick = 0;
+        bird.facingLeft = (bird.velX < 0);
+        bird.flapFrame = 1;
+        bird.flapTick = 0;
     }
 
     private void trySpawn(MapGenerator map, float playerX, float playerY) {
@@ -276,74 +276,74 @@ public class BirdManager {
         int camCol = (int) (playerX / TileManager.TILE_SIZE);
         int camRow = (int) (playerY / TileManager.TILE_SIZE);
 
-        int visMargin = 10;
-        int r = SPAWN_RING_TILES;
+        int visibleMargin = 10;
+        int spawnRadius = SPAWN_RING_TILES;
 
-        int outerMinCol = Math.max(1, camCol - r);
-        int outerMaxCol = Math.min(map.mapCols - 2, camCol + r);
-        int outerMinRow = Math.max(1, camRow - r);
-        int outerMaxRow = Math.min(map.mapRows - 2, camRow + r);
+        int outerMinCol = Math.max(1, camCol - spawnRadius);
+        int outerMaxCol = Math.min(map.mapCols - 2, camCol + spawnRadius);
+        int outerMinRow = Math.max(1, camRow - spawnRadius);
+        int outerMaxRow = Math.min(map.mapRows - 2, camRow + spawnRadius);
 
         List<int[]> foliageCandidates = new ArrayList<>();
         List<int[]> grassCandidates = new ArrayList<>();
 
         int currentGrassBirds = 0;
-        for (Bird b : birds) {
-            if (b.perchType == PerchType.GRASS && b.state == BirdState.PERCHED) {
+        for (Bird bird : birds) {
+            if (bird.perchType == PerchType.GRASS && bird.state == BirdState.PERCHED) {
                 currentGrassBirds++;
             }
         }
 
         for (int row = outerMinRow; row <= outerMaxRow; row++) {
             for (int col = outerMinCol; col <= outerMaxCol; col++) {
-                if (Math.abs(col - camCol) <= visMargin && Math.abs(row - camRow) <= visMargin) {
+                if (Math.abs(col - camCol) <= visibleMargin && Math.abs(row - camRow) <= visibleMargin) {
                     continue; // Skip visible area
                 }
 
                 if (tileOccupied(col, row)) continue;
 
-                PerchType pt = getPerchType(map, col, row);
-                if (pt == null) continue;
+                PerchType perchType = getPerchType(map, col, row);
+                if (perchType == null) continue;
 
-                if (pt == PerchType.TREE_TOP || pt == PerchType.BUSH_TOP) {
-                    foliageCandidates.add(new int[]{ col, row, pt.ordinal() });
-                } else if (pt == PerchType.GRASS && currentGrassBirds < MAX_GRASS_BIRDS) {
-                    grassCandidates.add(new int[]{ col, row, pt.ordinal() });
+                if (perchType == PerchType.TREE_TOP || perchType == PerchType.BUSH_TOP) {
+                    foliageCandidates.add(new int[]{ col, row, perchType.ordinal() });
+                } else if (perchType == PerchType.GRASS && currentGrassBirds < MAX_GRASS_BIRDS) {
+                    grassCandidates.add(new int[]{ col, row, perchType.ordinal() });
                 }
             }
         }
 
         int toAdd = Math.min(count, MAX_BIRDS - birds.size());
         for (int i = 0; i < toAdd; i++) {
-            int[] cand = null;
+            int[] candidate = null;
             boolean pickFoliage = rng.nextFloat() < 0.85f;
             if (pickFoliage && !foliageCandidates.isEmpty()) {
-                cand = foliageCandidates.remove(rng.nextInt(foliageCandidates.size()));
+                candidate = foliageCandidates.remove(rng.nextInt(foliageCandidates.size()));
             } else if (!grassCandidates.isEmpty() && currentGrassBirds < MAX_GRASS_BIRDS) {
-                cand = grassCandidates.remove(rng.nextInt(grassCandidates.size()));
+                candidate = grassCandidates.remove(rng.nextInt(grassCandidates.size()));
                 currentGrassBirds++;
             } else if (!foliageCandidates.isEmpty()) {
-                cand = foliageCandidates.remove(rng.nextInt(foliageCandidates.size()));
+                candidate = foliageCandidates.remove(rng.nextInt(foliageCandidates.size()));
             }
 
-            if (cand == null) break;
+            if (candidate == null) break;
 
-            int col = cand[0];
-            int row = cand[1];
-            PerchType pt = PerchType.values()[cand[2]];
+            int col = candidate[0];
+            int row = candidate[1];
+            PerchType perchType = PerchType.values()[candidate[2]];
 
-            float wx = perchWorldX(col, pt);
-            float wy = perchWorldY(row, pt);
+            float worldSpawnX = perchWorldX(col, perchType);
+            float worldSpawnY = perchWorldY(row, perchType);
             int spriteIndex = rng.nextInt(3);
             boolean facingLeft = rng.nextBoolean();
 
-            birds.add(new Bird(wx, wy, spriteIndex, pt, col, row, facingLeft));
+            birds.add(new Bird(worldSpawnX, worldSpawnY, spriteIndex, perchType, col, row, facingLeft));
         }
     }
 
     private boolean tileOccupied(int col, int row) {
-        for (Bird b : birds) {
-            if (b.state == BirdState.PERCHED && b.perchCol == col && b.perchRow == row) {
+        for (Bird bird : birds) {
+            if (bird.state == BirdState.PERCHED && bird.perchCol == col && bird.perchRow == row) {
                 return true;
             }
         }
@@ -380,8 +380,8 @@ public class BirdManager {
         return null;
     }
 
-    private float perchWorldX(int col, PerchType pt) {
-        switch (pt) {
+    private float perchWorldX(int col, PerchType perchType) {
+        switch (perchType) {
             case TREE_TOP:
                 return col * TileManager.TILE_SIZE + TileManager.TILE_SIZE + (rng.nextFloat() - 0.5f) * 6f;
             case BUSH_TOP:
@@ -392,9 +392,9 @@ public class BirdManager {
         }
     }
 
-    private float perchWorldY(int row, PerchType pt) {
+    private float perchWorldY(int row, PerchType perchType) {
         int tileY = row * TileManager.TILE_SIZE;
-        switch (pt) {
+        switch (perchType) {
             case TREE_TOP:
                 int treeTopY = tileY - TileManager.TILE_SIZE * 2;
                 return treeTopY + 12f - DRAW_SIZE / 2f;
@@ -407,32 +407,32 @@ public class BirdManager {
     }
 
     public void drawBehindPlayer(SpriteBatch batch, float minX, float minY, float maxX, float maxY) {
-        for (Bird b : birds) {
-            if (b.state == BirdState.PERCHED && b.perchType == PerchType.GRASS) {
-                drawBird(batch, b, minX, minY, maxX, maxY);
+        for (Bird bird : birds) {
+            if (bird.state == BirdState.PERCHED && bird.perchType == PerchType.GRASS) {
+                drawBird(batch, bird, minX, minY, maxX, maxY);
             }
         }
     }
 
     public void drawInFrontOfPlayer(SpriteBatch batch, float minX, float minY, float maxX, float maxY) {
-        for (Bird b : birds) {
-            if (b.state == BirdState.FLYING ||
-               (b.state == BirdState.PERCHED && (b.perchType == PerchType.TREE_TOP || b.perchType == PerchType.BUSH_TOP))) {
-                drawBird(batch, b, minX, minY, maxX, maxY);
+        for (Bird bird : birds) {
+            if (bird.state == BirdState.FLYING ||
+               (bird.state == BirdState.PERCHED && (bird.perchType == PerchType.TREE_TOP || bird.perchType == PerchType.BUSH_TOP))) {
+                drawBird(batch, bird, minX, minY, maxX, maxY);
             }
         }
     }
 
-    private void drawBird(SpriteBatch batch, Bird b, float minX, float minY, float maxX, float maxY) {
-        int sIdx = Math.max(0, Math.min(2, b.spriteIndex));
-        int fIdx = (b.state == BirdState.PERCHED) ? 0 : b.flapFrame;
-        TextureRegion tr = frames[sIdx][fIdx];
-        if (tr == null) return;
+    private void drawBird(SpriteBatch batch, Bird bird, float minX, float minY, float maxX, float maxY) {
+        int spriteIndex = Math.max(0, Math.min(2, bird.spriteIndex));
+        int flapIndex = (bird.state == BirdState.PERCHED) ? 0 : bird.flapFrame;
+        TextureRegion birdFrame = frames[spriteIndex][flapIndex];
+        if (birdFrame == null) return;
 
-        float drawX = b.worldX - DRAW_SIZE / 2f;
-        float drawY = b.worldY - DRAW_SIZE / 2f;
+        float drawX = bird.worldX - DRAW_SIZE / 2f;
+        float drawY = bird.worldY - DRAW_SIZE / 2f;
 
-        if (fIdx == 1) {
+        if (flapIndex == 1) {
             drawY -= (TileManager.TILE_SIZE / 16f); // 3px vertical flap lift
         }
 
@@ -440,8 +440,8 @@ public class BirdManager {
             return;
         }
 
-        float scaleX = b.facingLeft ? 1f : -1f;
-        batch.draw(tr,
+        float scaleX = bird.facingLeft ? 1f : -1f;
+        batch.draw(birdFrame,
                    drawX, drawY,
                    DRAW_SIZE / 2f, DRAW_SIZE / 2f,
                    DRAW_SIZE, DRAW_SIZE,
@@ -450,11 +450,11 @@ public class BirdManager {
     }
 
     public void scatterAll() {
-        for (Bird b : birds) {
-            if (b.state == BirdState.PERCHED) {
-                float dx = (rng.nextFloat() - 0.5f) * 2f;
-                float dy = (rng.nextFloat() - 0.5f) * 2f;
-                startFleeing(b, dx, dy);
+        for (Bird bird : birds) {
+            if (bird.state == BirdState.PERCHED) {
+                float randomDeltaX = (rng.nextFloat() - 0.5f) * 2f;
+                float randomDeltaY = (rng.nextFloat() - 0.5f) * 2f;
+                startFleeing(bird, randomDeltaX, randomDeltaY);
             }
         }
     }

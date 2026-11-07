@@ -73,8 +73,8 @@ public abstract class Entity {
      * Computes Euclidean distance to target point in world pixels.
      */
     public float distanceTo(float targetX, float targetY) {
-        float dx = this.worldX - targetX;
-        float dy = this.worldY - targetY;
-        return (float) Math.hypot(dx, dy);
+        float deltaX = this.worldX - targetX;
+        float deltaY = this.worldY - targetY;
+        return (float) Math.hypot(deltaX, deltaY);
     }
 }

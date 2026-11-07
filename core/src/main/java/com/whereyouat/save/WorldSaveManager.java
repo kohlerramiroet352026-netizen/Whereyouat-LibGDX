@@ -47,9 +47,9 @@ public class WorldSaveManager {
         @Override
         public int compareTo(WorldInfo other) {
             // Sort newest / most recently played first
-            long tThis = this.lastPlayed > 0 ? this.lastPlayed : this.created;
-            long tOther = other.lastPlayed > 0 ? other.lastPlayed : other.created;
-            return Long.compare(tOther, tThis);
+            long timeThis = this.lastPlayed > 0 ? this.lastPlayed : this.created;
+            long timeOther = other.lastPlayed > 0 ? other.lastPlayed : other.created;
+            return Long.compare(timeOther, timeThis);
         }
     }
 
@@ -62,8 +62,8 @@ public class WorldSaveManager {
         File[] files = dir.listFiles((d, name) -> name.endsWith(".properties"));
         if (files == null) return worlds;
 
-        for (File f : files) {
-            WorldInfo info = loadInfo(f);
+        for (File file : files) {
+            WorldInfo info = loadInfo(file);
             if (info != null) worlds.add(info);
         }
         Collections.sort(worlds);
@@ -73,32 +73,32 @@ public class WorldSaveManager {
     /** Loads a world by its filename (without extension). */
     public static WorldInfo loadWorld(String fileName) {
         if (fileName == null || fileName.trim().isEmpty()) return null;
-        File f = new File(SAVES_DIR, fileName + ".properties");
-        if (!f.exists()) return null;
-        return loadInfo(f);
+        File file = new File(SAVES_DIR, fileName + ".properties");
+        if (!file.exists()) return null;
+        return loadInfo(file);
     }
 
-    private static WorldInfo loadInfo(File f) {
-        try (FileInputStream fis = new FileInputStream(f)) {
-            Properties p = new Properties();
-            p.load(fis);
+    private static WorldInfo loadInfo(File file) {
+        try (FileInputStream fis = new FileInputStream(file)) {
+            Properties properties = new Properties();
+            properties.load(fis);
             WorldInfo info   = new WorldInfo();
-            info.name        = p.getProperty("world.name",       "Unknown");
-            info.seed        = Long.parseLong(p.getProperty("world.seed",       "12345"));
-            info.created     = Long.parseLong(p.getProperty("world.created",    "0"));
-            info.lastPlayed  = Long.parseLong(p.getProperty("world.lastPlayed", "0"));
-            String fname     = f.getName();
-            info.fileName    = fname.substring(0, fname.lastIndexOf('.'));
+            info.name        = properties.getProperty("world.name",       "Unknown");
+            info.seed        = Long.parseLong(properties.getProperty("world.seed",       "12345"));
+            info.created     = Long.parseLong(properties.getProperty("world.created",    "0"));
+            info.lastPlayed  = Long.parseLong(properties.getProperty("world.lastPlayed", "0"));
+            String fileName  = file.getName();
+            info.fileName    = fileName.substring(0, fileName.lastIndexOf('.'));
 
             // Load player data if present
-            if (p.containsKey("player.worldX") && p.containsKey("player.worldY")) {
+            if (properties.containsKey("player.worldX") && properties.containsKey("player.worldY")) {
                 try {
-                    info.playerWorldX    = Float.parseFloat(p.getProperty("player.worldX"));
-                    info.playerWorldY    = Float.parseFloat(p.getProperty("player.worldY"));
-                    info.playerDirection = p.getProperty("player.direction", "down");
-                    info.playerHealth    = Integer.parseInt(p.getProperty("player.health", "100"));
-                    info.playerLives     = Integer.parseInt(p.getProperty("player.lives", "3"));
-                    info.isDead          = Boolean.parseBoolean(p.getProperty("player.dead", "false"));
+                    info.playerWorldX    = Float.parseFloat(properties.getProperty("player.worldX"));
+                    info.playerWorldY    = Float.parseFloat(properties.getProperty("player.worldY"));
+                    info.playerDirection = properties.getProperty("player.direction", "down");
+                    info.playerHealth    = Integer.parseInt(properties.getProperty("player.health", "100"));
+                    info.playerLives     = Integer.parseInt(properties.getProperty("player.lives", "3"));
+                    info.isDead          = Boolean.parseBoolean(properties.getProperty("player.dead", "false"));
                     if (info.playerLives <= 0) {
                         info.isDead = true;
                     }
@@ -106,14 +106,14 @@ public class WorldSaveManager {
                 } catch (Exception ex) {
                     info.hasPlayerData = false;
                 }
-            } else if (p.containsKey("player.dead")) {
-                info.isDead = Boolean.parseBoolean(p.getProperty("player.dead", "false"));
+            } else if (properties.containsKey("player.dead")) {
+                info.isDead = Boolean.parseBoolean(properties.getProperty("player.dead", "false"));
             }
 
             // Load DayNightCycle data if present
-            if (p.containsKey("daynight.ticks")) {
+            if (properties.containsKey("daynight.ticks")) {
                 try {
-                    info.dayNightTicks   = Long.parseLong(p.getProperty("daynight.ticks"));
+                    info.dayNightTicks   = Long.parseLong(properties.getProperty("daynight.ticks"));
                     info.hasDayNightData = true;
                 } catch (Exception ex) {
                     info.hasDayNightData = false;
@@ -144,14 +144,14 @@ public class WorldSaveManager {
         String fileName = safeName + "_" + now;
         File file = new File(dir, fileName + ".properties");
 
-        Properties p = new Properties();
-        p.setProperty("world.name",       name);
-        p.setProperty("world.seed",       String.valueOf(seed));
-        p.setProperty("world.created",    String.valueOf(now));
-        p.setProperty("world.lastPlayed", String.valueOf(now));
+        Properties properties = new Properties();
+        properties.setProperty("world.name",       name);
+        properties.setProperty("world.seed",       String.valueOf(seed));
+        properties.setProperty("world.created",    String.valueOf(now));
+        properties.setProperty("world.lastPlayed", String.valueOf(now));
 
         try (FileOutputStream fos = new FileOutputStream(file)) {
-            p.store(fos, "WhereYouAt - World Save");
+            properties.store(fos, "WhereYouAt - World Save");
             WorldInfo info = new WorldInfo();
             info.name       = name;
             info.seed       = seed;
@@ -177,35 +177,35 @@ public class WorldSaveManager {
         }
         File file = new File(dir, fileName + ".properties");
 
-        Properties p = new Properties();
+        Properties properties = new Properties();
         if (file.exists()) {
             try (FileInputStream fis = new FileInputStream(file)) {
-                p.load(fis);
+                properties.load(fis);
             } catch (Exception ignored) {}
         }
 
-        p.setProperty("world.name", worldName);
-        p.setProperty("world.seed", String.valueOf(seed));
-        if (!p.containsKey("world.created")) {
-            p.setProperty("world.created", String.valueOf(created > 0 ? created : System.currentTimeMillis()));
+        properties.setProperty("world.name", worldName);
+        properties.setProperty("world.seed", String.valueOf(seed));
+        if (!properties.containsKey("world.created")) {
+            properties.setProperty("world.created", String.valueOf(created > 0 ? created : System.currentTimeMillis()));
         }
-        p.setProperty("world.lastPlayed", String.valueOf(System.currentTimeMillis()));
+        properties.setProperty("world.lastPlayed", String.valueOf(System.currentTimeMillis()));
 
         if (player != null) {
-            p.setProperty("player.worldX", String.valueOf(player.worldX));
-            p.setProperty("player.worldY", String.valueOf(player.worldY));
-            p.setProperty("player.direction", player.direction != null ? player.direction : "down");
-            p.setProperty("player.health", String.valueOf(player.health));
-            p.setProperty("player.lives", String.valueOf(player.lives));
-            p.setProperty("player.dead", String.valueOf(player.dead));
+            properties.setProperty("player.worldX", String.valueOf(player.worldX));
+            properties.setProperty("player.worldY", String.valueOf(player.worldY));
+            properties.setProperty("player.direction", player.direction != null ? player.direction : "down");
+            properties.setProperty("player.health", String.valueOf(player.health));
+            properties.setProperty("player.lives", String.valueOf(player.lives));
+            properties.setProperty("player.dead", String.valueOf(player.dead));
         }
 
         if (dayNight != null) {
-            p.setProperty("daynight.ticks", String.valueOf(dayNight.getTimeTicks()));
+            properties.setProperty("daynight.ticks", String.valueOf(dayNight.getTimeTicks()));
         }
 
         try (FileOutputStream fos = new FileOutputStream(file)) {
-            p.store(fos, "WhereYouAt - World Save");
+            properties.store(fos, "WhereYouAt - World Save");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -215,15 +215,15 @@ public class WorldSaveManager {
      * Deletes a saved world by its fileName (without extension).
      */
     public static void deleteWorld(String fileName) {
-        File f = new File(SAVES_DIR, fileName + ".properties");
-        if (f.exists() && !f.delete()) {
-            System.err.println("WorldSaveManager: could not delete " + f.getAbsolutePath());
+        File file = new File(SAVES_DIR, fileName + ".properties");
+        if (file.exists() && !file.delete()) {
+            System.err.println("WorldSaveManager: could not delete " + file.getAbsolutePath());
         }
     }
 
     /** Formats a timestamp nicely for display. */
     public static String formatDate(long millis) {
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yy HH:mm");
-        return sdf.format(new Date(millis));
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yy HH:mm");
+        return dateFormat.format(new Date(millis));
     }
 }

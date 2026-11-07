@@ -6,7 +6,7 @@ package com.whereyouat.map;
  */
 public class PerlinNoise {
 
-    private final int[] p;
+    private final int[] permutation;
 
     public PerlinNoise(long seed) {
         // Use seed to build a deterministic permutation table
@@ -17,12 +17,12 @@ public class PerlinNoise {
             int j = rand.nextInt(i + 1);
             int tmp = source[i]; source[i] = source[j]; source[j] = tmp;
         }
-        p = new int[512];
-        for (int i = 0; i < 512; i++) p[i] = source[i & 255];
+        permutation = new int[512];
+        for (int i = 0; i < 512; i++) permutation[i] = source[i & 255];
     }
 
-    private double fade(double t) { return t * t * t * (t * (t * 6 - 15) + 10); }
-    private double lerp(double t, double a, double b) { return a + t * (b - a); }
+    private double fade(double progress) { return progress * progress * progress * (progress * (progress * 6 - 15) + 10); }
+    private double lerp(double progress, double startVal, double endVal) { return startVal + progress * (endVal - startVal); }
     private double grad(int hash, double x, double y) {
         switch (hash & 3) {
             case 0:  return  x + y;
@@ -33,21 +33,21 @@ public class PerlinNoise {
     }
 
     public double noise(double x, double y) {
-        int xi = (int) Math.floor(x) & 255;
-        int yi = (int) Math.floor(y) & 255;
-        double xf = x - Math.floor(x);
-        double yf = y - Math.floor(y);
-        double u = fade(xf);
-        double v = fade(yf);
+        int gridX = (int) Math.floor(x) & 255;
+        int gridY = (int) Math.floor(y) & 255;
+        double fracX = x - Math.floor(x);
+        double fracY = y - Math.floor(y);
+        double fadeX = fade(fracX);
+        double fadeY = fade(fracY);
 
-        int aa = p[p[xi]     + yi];
-        int ab = p[p[xi]     + yi + 1];
-        int ba = p[p[xi + 1] + yi];
-        int bb = p[p[xi + 1] + yi + 1];
+        int cornerAA = permutation[permutation[gridX]     + gridY];
+        int cornerAB = permutation[permutation[gridX]     + gridY + 1];
+        int cornerBA = permutation[permutation[gridX + 1] + gridY];
+        int cornerBB = permutation[permutation[gridX + 1] + gridY + 1];
 
-        return lerp(v,
-            lerp(u, grad(aa, xf,     yf),     grad(ba, xf - 1, yf)),
-            lerp(u, grad(ab, xf,     yf - 1), grad(bb, xf - 1, yf - 1))
+        return lerp(fadeY,
+            lerp(fadeX, grad(cornerAA, fracX,     fracY),     grad(cornerBA, fracX - 1, fracY)),
+            lerp(fadeX, grad(cornerAB, fracX,     fracY - 1), grad(cornerBB, fracX - 1, fracY - 1))
         );
     }
 

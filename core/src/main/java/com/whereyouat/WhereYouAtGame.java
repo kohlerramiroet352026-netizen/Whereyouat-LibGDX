@@ -126,10 +126,10 @@ public class WhereYouAtGame extends Game {
 
     public void startMenuMusic(boolean fadeIn) {
         try {
-            java.util.Random r = new java.util.Random();
-            int idx = r.nextInt(MENU_OST_TRACKS.length);
-            if (Gdx.files.internal(MENU_OST_TRACKS[idx]).exists()) {
-                menuMusic = Gdx.audio.newMusic(Gdx.files.internal(MENU_OST_TRACKS[idx]));
+            java.util.Random random = new java.util.Random();
+            int trackIndex = random.nextInt(MENU_OST_TRACKS.length);
+            if (Gdx.files.internal(MENU_OST_TRACKS[trackIndex]).exists()) {
+                menuMusic = Gdx.audio.newMusic(Gdx.files.internal(MENU_OST_TRACKS[trackIndex]));
                 menuMusic.setLooping(false);
                 if (fadeIn) {
                     menuMusic.setVolume(0.001f);
@@ -155,13 +155,13 @@ public class WhereYouAtGame extends Game {
 
         super.render();
 
-        float dt = Gdx.graphics.getDeltaTime();
+        float deltaTime = Gdx.graphics.getDeltaTime();
 
         // 1. Fade out outgoing world music
         if (outgoingWorldMusic != null) {
-            worldMusicFadeTimer += dt;
-            float vol = Math.max(0f, 0.12f * (1f - worldMusicFadeTimer / WORLD_FADE_OUT_DURATION));
-            outgoingWorldMusic.setVolume(vol);
+            worldMusicFadeTimer += deltaTime;
+            float volume = Math.max(0f, 0.12f * (1f - worldMusicFadeTimer / WORLD_FADE_OUT_DURATION));
+            outgoingWorldMusic.setVolume(volume);
             if (worldMusicFadeTimer >= WORLD_FADE_OUT_DURATION) {
                 outgoingWorldMusic.stop();
                 outgoingWorldMusic.dispose();
@@ -171,7 +171,7 @@ public class WhereYouAtGame extends Game {
 
         // 2. Countdown 5-second silence delay before starting menu music
         if (menuMusicDelayTimer > 0f) {
-            menuMusicDelayTimer -= dt;
+            menuMusicDelayTimer -= deltaTime;
             if (menuMusicDelayTimer <= 0f) {
                 menuMusicDelayTimer = 0f;
                 if (!(getScreen() instanceof com.whereyouat.screens.GameScreen)) {
@@ -182,9 +182,9 @@ public class WhereYouAtGame extends Game {
 
         // 3. Fade in menu music
         if (menuMusicFadeIn && menuMusic != null) {
-            menuMusicFadeInTimer += dt;
-            float inVol = Math.min(0.12f, 0.12f * (menuMusicFadeInTimer / MENU_FADE_IN_DURATION));
-            menuMusic.setVolume(inVol);
+            menuMusicFadeInTimer += deltaTime;
+            float fadeInVolume = Math.min(0.12f, 0.12f * (menuMusicFadeInTimer / MENU_FADE_IN_DURATION));
+            menuMusic.setVolume(fadeInVolume);
             if (menuMusicFadeInTimer >= MENU_FADE_IN_DURATION) {
                 menuMusic.setVolume(0.12f);
                 menuMusicFadeIn = false;
@@ -193,9 +193,9 @@ public class WhereYouAtGame extends Game {
 
         // 4. Update menu music fade-out (when entering world)
         if (menuMusicFading && menuMusic != null) {
-            menuMusicFadeTimer += dt;
-            float vol = Math.max(0f, 0.12f * (1f - menuMusicFadeTimer / MENU_FADE_DURATION));
-            menuMusic.setVolume(vol);
+            menuMusicFadeTimer += deltaTime;
+            float volume = Math.max(0f, 0.12f * (1f - menuMusicFadeTimer / MENU_FADE_DURATION));
+            menuMusic.setVolume(volume);
             if (menuMusicFadeTimer >= MENU_FADE_DURATION) {
                 stopMenuMusic();
             }
@@ -220,8 +220,6 @@ public class WhereYouAtGame extends Game {
         }
 
         // Automated screenshot sequence for testing & verification
-
-
         if (autoCapture) {
             autoFrame++;
             if (autoFrame == 20) {
@@ -240,62 +238,61 @@ public class WhereYouAtGame extends Game {
         }
     }
 
-
     /**
      * Renders the entire world map to a PNG file, matching the original F12 behavior.
      * Renders in chunks to avoid exceeding GPU max texture size.
      * Final output: 512*16 = 8192 x 8192 pixels.
      */
-    public void takeFullMapScreenshot(GameScreen gs) {
+    public void takeFullMapScreenshot(GameScreen gameScreen) {
         Gdx.app.log("WhereYouAtGame", "Generating full map screenshot, please wait...");
         try {
-            MapGenerator map = gs.mapGen;
-            TileManager tileM = gs.tileM;
+            MapGenerator map = gameScreen.mapGen;
+            TileManager tileM = gameScreen.tileM;
             int tileSize = TileManager.TILE_SIZE; // 48 px (world coords)
             int origTileSize = TileManager.ORIGINAL_TILE_SIZE; // 16 px (1:1 output)
             int scale = tileSize / origTileSize; // 3
-            int outW = map.mapCols * origTileSize; // 512 * 16 = 8192
-            int outH = map.mapRows * origTileSize; // 512 * 16 = 8192
+            int outputWidth = map.mapCols * origTileSize; // 512 * 16 = 8192
+            int outputHeight = map.mapRows * origTileSize; // 512 * 16 = 8192
 
             // Safe, universally supported FBO chunk size (1024x1024)
             int fboSize = 1024;
-            int chunkW = fboSize * scale; // 1024 * 3 = 3072 world px per chunk
-            int chunkH = fboSize * scale; // 3072 world px
-            int worldW = map.mapCols * tileSize; // 24576 px
-            int worldH = map.mapRows * tileSize; // 24576 px
+            int chunkWidth = fboSize * scale; // 1024 * 3 = 3072 world px per chunk
+            int chunkHeight = fboSize * scale; // 3072 world px
+            int worldWidth = map.mapCols * tileSize; // 24576 px
+            int worldHeight = map.mapRows * tileSize; // 24576 px
 
             // Final output pixmap at authentic 1:1 tile scale (8192 x 8192)
-            Pixmap fullMap = new Pixmap(outW, outH, Pixmap.Format.RGBA8888);
+            Pixmap fullMap = new Pixmap(outputWidth, outputHeight, Pixmap.Format.RGBA8888);
             fullMap.setColor(0.04f, 0.04f, 0.06f, 1f);
             fullMap.fill();
 
             FrameBuffer fbo = new FrameBuffer(Pixmap.Format.RGBA8888, fboSize, fboSize, false);
             OrthographicCamera mapCam = new OrthographicCamera();
 
-            for (int cy = 0; cy < worldH; cy += chunkH) {
-                for (int cx = 0; cx < worldW; cx += chunkW) {
-                    int curChunkW = Math.min(chunkW, worldW - cx);
-                    int curChunkH = Math.min(chunkH, worldH - cy);
-                    int curFboW = curChunkW / scale;
-                    int curFboH = curChunkH / scale;
+            for (int currentY = 0; currentY < worldHeight; currentY += chunkHeight) {
+                for (int currentX = 0; currentX < worldWidth; currentX += chunkWidth) {
+                    int currentChunkWidth = Math.min(chunkWidth, worldWidth - currentX);
+                    int currentChunkHeight = Math.min(chunkHeight, worldHeight - currentY);
+                    int currentFboWidth = currentChunkWidth / scale;
+                    int currentFboHeight = currentChunkHeight / scale;
 
                     fbo.begin();
-                    Gdx.gl.glViewport(0, 0, curFboW, curFboH);
+                    Gdx.gl.glViewport(0, 0, currentFboWidth, currentFboHeight);
                     Gdx.gl.glClearColor(0.04f, 0.04f, 0.06f, 1f);
                     Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
                     // Camera covers chunk world bounds, rendered into FBO
-                    mapCam.setToOrtho(true, curChunkW, curChunkH);
-                    mapCam.position.set(cx + curChunkW / 2f, cy + curChunkH / 2f, 0);
+                    mapCam.setToOrtho(true, currentChunkWidth, currentChunkHeight);
+                    mapCam.position.set(currentX + currentChunkWidth / 2f, currentY + currentChunkHeight / 2f, 0);
                     mapCam.update();
 
                     batch.setProjectionMatrix(mapCam.combined);
                     batch.begin();
 
-                    float minX = cx;
-                    float minY = cy;
-                    float maxX = cx + curChunkW;
-                    float maxY = cy + curChunkH;
+                    float minX = currentX;
+                    float minY = currentY;
+                    float maxX = currentX + currentChunkWidth;
+                    float maxY = currentY + currentChunkHeight;
 
                     // Pass 1: Ground tiles, cliff depth borders, foam, and biome transitions
                     tileM.drawGround(batch, map, minX, minY, maxX, maxY);
@@ -307,15 +304,15 @@ public class WhereYouAtGame extends Game {
 
                     // Read FBO pixels into chunk pixmap
                     // glReadPixels returns pixels bottom-up; flip Y to get top-down map orientation
-                    Pixmap chunk = Pixmap.createFromFrameBuffer(0, 0, curFboW, curFboH);
+                    Pixmap chunk = Pixmap.createFromFrameBuffer(0, 0, currentFboWidth, currentFboHeight);
                     fbo.end();
 
-                    int destX = cx / scale;
-                    int destY = cy / scale;
-                    for (int y = 0; y < curFboH; y++) {
+                    int destX = currentX / scale;
+                    int destY = currentY / scale;
+                    for (int y = 0; y < currentFboHeight; y++) {
                         // srcY: flip Y because OpenGL framebuffer is bottom-up
-                        int srcY = curFboH - 1 - y;
-                        for (int x = 0; x < curFboW; x++) {
+                        int srcY = currentFboHeight - 1 - y;
+                        for (int x = 0; x < currentFboWidth; x++) {
                             int pixel = chunk.getPixel(x, srcY);
                             fullMap.drawPixel(destX + x, destY + y, pixel);
                         }
@@ -327,13 +324,13 @@ public class WhereYouAtGame extends Game {
 
             // Save output to screenshots folder
             String path = "screenshots/full_map_" + System.currentTimeMillis() + ".png";
-            File f = new File(path);
-            File parent = f.getParentFile();
+            File outputFile = new File(path);
+            File parent = outputFile.getParentFile();
             if (parent != null && !parent.exists()) parent.mkdirs();
             PixmapIO.writePNG(Gdx.files.local(path), fullMap, 5, true);
             fullMap.dispose();
 
-            Gdx.app.log("WhereYouAtGame", "Full map screenshot saved: " + path + " (" + outW + "x" + outH + ")");
+            Gdx.app.log("WhereYouAtGame", "Full map screenshot saved: " + path + " (" + outputWidth + "x" + outputHeight + ")");
         } catch (Exception e) {
             Gdx.app.error("WhereYouAtGame", "Failed to capture full map screenshot", e);
         }
@@ -341,11 +338,11 @@ public class WhereYouAtGame extends Game {
 
     public void takeScreenshot(String relativePath) {
         try {
-            int w = Gdx.graphics.getWidth();
-            int h = Gdx.graphics.getHeight();
-            Pixmap pixmap = Pixmap.createFromFrameBuffer(0, 0, w, h);
-            File f = new File(relativePath);
-            File parent = f.getParentFile();
+            int width = Gdx.graphics.getWidth();
+            int height = Gdx.graphics.getHeight();
+            Pixmap pixmap = Pixmap.createFromFrameBuffer(0, 0, width, height);
+            File screenshotFile = new File(relativePath);
+            File parent = screenshotFile.getParentFile();
             if (parent != null && !parent.exists()) {
                 parent.mkdirs();
             }

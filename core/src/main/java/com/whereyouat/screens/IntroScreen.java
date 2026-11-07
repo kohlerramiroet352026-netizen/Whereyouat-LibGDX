@@ -80,10 +80,10 @@ public class IntroScreen extends ScreenAdapter {
         titleScreen.resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
         // 1x1 white pixel for fade curtain
-        Pixmap p = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        p.drawPixel(0, 0, Color.rgba8888(1f, 1f, 1f, 1f));
-        whiteTex = new Texture(p);
-        p.dispose();
+        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pixmap.drawPixel(0, 0, Color.rgba8888(1f, 1f, 1f, 1f));
+        whiteTex = new Texture(pixmap);
+        pixmap.dispose();
         whitePixel = new TextureRegion(whiteTex);
 
         // Load RAZVN logo texture
@@ -96,16 +96,16 @@ public class IntroScreen extends ScreenAdapter {
 
         // Load font for "Presenta..."
         if (Gdx.files.internal("fonts/PressStart2P-Regular.ttf").exists()) {
-            FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal("fonts/PressStart2P-Regular.ttf"));
-            FreeTypeFontParameter param = new FreeTypeFontParameter();
-            param.flip = true;
-            param.size = 14;
-            param.shadowOffsetX = 1;
-            param.shadowOffsetY = 1;
-            param.shadowColor = new Color(0f, 0f, 0f, 0.85f);
-            font = gen.generateFont(param);
+            FreeTypeFontGenerator fontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/PressStart2P-Regular.ttf"));
+            FreeTypeFontParameter fontParameter = new FreeTypeFontParameter();
+            fontParameter.flip = true;
+            fontParameter.size = 14;
+            fontParameter.shadowOffsetX = 1;
+            fontParameter.shadowOffsetY = 1;
+            fontParameter.shadowColor = new Color(0f, 0f, 0f, 0.85f);
+            font = fontGenerator.generateFont(fontParameter);
             font.getRegion().getTexture().setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-            gen.dispose();
+            fontGenerator.dispose();
         } else {
             font = new BitmapFont();
         }
@@ -113,8 +113,8 @@ public class IntroScreen extends ScreenAdapter {
 
     @Override
     public void render(float delta) {
-        float dt = Math.min(delta, 0.1f);
-        timer += dt;
+        float deltaTime = Math.min(delta, 0.1f);
+        timer += deltaTime;
 
         // Start menu music right as RAZVN begins fading in
         if (timer >= T_LOGO_START && !musicStarted) {
@@ -171,7 +171,7 @@ public class IntroScreen extends ScreenAdapter {
         if (timer >= T_FADE_OUT && titleScreen != null) {
             float fadeProgress = Math.min(1f, (timer - T_FADE_OUT) / FADE_OUT);
             titleScreen.bgAlpha = fadeProgress;
-            titleScreen.render(dt);
+            titleScreen.render(deltaTime);
         } else {
             Gdx.gl.glClearColor(0f, 0f, 0f, 1f);
             Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -191,17 +191,17 @@ public class IntroScreen extends ScreenAdapter {
         }
 
         // Logo positioning
-        float logoH = 0f;
+        float logoHeight = 0f;
         float logoY = 0f;
         if (razvnRegion != null && logoAlpha > 0f) {
             float scale = 3.0f;
-            float logoW = razvnRegion.getRegionWidth() * scale;
-            logoH = razvnRegion.getRegionHeight() * scale;
-            float logoX = (768f - logoW) / 2f;
-            logoY = (576f - logoH) / 2f - 20f;
+            float logoWidth = razvnRegion.getRegionWidth() * scale;
+            logoHeight = razvnRegion.getRegionHeight() * scale;
+            float logoX = (768f - logoWidth) / 2f;
+            logoY = (576f - logoHeight) / 2f - 20f;
 
             game.batch.setColor(1f, 1f, 1f, logoAlpha);
-            game.batch.draw(razvnRegion, logoX, logoY, logoW, logoH);
+            game.batch.draw(razvnRegion, logoX, logoY, logoWidth, logoHeight);
             game.batch.setColor(1f, 1f, 1f, 1f);
         }
 
@@ -210,7 +210,7 @@ public class IntroScreen extends ScreenAdapter {
             String text = "Presenta...";
             glyphLayout.setText(font, text);
             float textX = (768f - glyphLayout.width) / 2f;
-            float textY = logoY + logoH + 22f;
+            float textY = logoY + logoHeight + 22f;
 
             font.setColor(1f, 1f, 1f, textAlpha);
             font.draw(game.batch, text, textX, textY);

@@ -24,6 +24,7 @@ def os = System.getProperty('os.name').toLowerCase(Locale.ROOT)
 run {
   workingDir = rootProject.projectDir
   setIgnoreExitValue(true)
+  systemProperties System.properties
 
   if (os.contains('mac')) {
     jvmArgs += "-XstartOnFirstThread"

@@ -32,25 +32,25 @@ public class LightingEngine {
 
     private void generateLightCircle() {
         int size = 256;
-        Pixmap p = new Pixmap(size, size, Format.RGBA8888);
+        Pixmap pixmap = new Pixmap(size, size, Format.RGBA8888);
         float center = size / 2f;
         float radius = size / 2f;
 
         for (int x = 0; x < size; x++) {
             for (int y = 0; y < size; y++) {
-                float dx = x - center;
-                float dy = y - center;
-                float dist = (float) Math.hypot(dx, dy);
-                float falloff = Math.max(0f, 1f - dist / radius);
+                float deltaX = x - center;
+                float deltaY = y - center;
+                float distance = (float) Math.hypot(deltaX, deltaY);
+                float falloff = Math.max(0f, 1f - distance / radius);
                 // Cubic Hermite smoothstep curve
                 falloff = falloff * falloff * (3f - 2f * falloff);
-                p.drawPixel(x, y, Color.rgba8888(1f, 0.90f, 0.70f, falloff));
+                pixmap.drawPixel(x, y, Color.rgba8888(1f, 0.90f, 0.70f, falloff));
             }
         }
 
-        lightCircleTex = new Texture(p);
+        lightCircleTex = new Texture(pixmap);
         lightCircleTex.setFilter(TextureFilter.Linear, TextureFilter.Linear);
-        p.dispose();
+        pixmap.dispose();
     }
 
     public final void resize(int newWidth, int newHeight) {
@@ -69,9 +69,9 @@ public class LightingEngine {
         }
 
         lightFbo = new FrameBuffer(Format.RGBA8888, width, height, false);
-        Texture fboTex = lightFbo.getColorBufferTexture();
-        fboTex.setFilter(TextureFilter.Linear, TextureFilter.Linear);
-        lightFboRegion = new TextureRegion(fboTex);
+        Texture fboTexture = lightFbo.getColorBufferTexture();
+        fboTexture.setFilter(TextureFilter.Linear, TextureFilter.Linear);
+        lightFboRegion = new TextureRegion(fboTexture);
         lightFboRegion.flip(false, true); // OpenGL FBOs have inverted Y
     }
 
@@ -83,11 +83,11 @@ public class LightingEngine {
 
         lightFbo.begin();
 
-        float ambR = cycle.getAmbientR() * cycle.getAmbientIntensity();
-        float ambG = cycle.getAmbientG() * cycle.getAmbientIntensity();
-        float ambB = cycle.getAmbientB() * cycle.getAmbientIntensity();
+        float ambientRed = cycle.getAmbientR() * cycle.getAmbientIntensity();
+        float ambientGreen = cycle.getAmbientG() * cycle.getAmbientIntensity();
+        float ambientBlue = cycle.getAmbientB() * cycle.getAmbientIntensity();
 
-        Gdx.gl.glClearColor(ambR, ambG, ambB, 1f);
+        Gdx.gl.glClearColor(ambientRed, ambientGreen, ambientBlue, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         // Player nighttime aura
@@ -108,12 +108,12 @@ public class LightingEngine {
     /**
      * Multiplies the lightmap onto the rendered world scene.
      */
-    public void drawLightmap(SpriteBatch batch, float minX, float minY, float viewportW, float viewportH) {
+    public void drawLightmap(SpriteBatch batch, float minX, float minY, float viewportWidth, float viewportHeight) {
         if (lightFboRegion == null) return;
 
         batch.setBlendFunction(GL20.GL_DST_COLOR, GL20.GL_ZERO); // Hardware multiplicative blend
         batch.setColor(1f, 1f, 1f, 1f);
-        batch.draw(lightFboRegion, minX, minY, viewportW, viewportH);
+        batch.draw(lightFboRegion, minX, minY, viewportWidth, viewportHeight);
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA); // Restore normal blend
     }
 

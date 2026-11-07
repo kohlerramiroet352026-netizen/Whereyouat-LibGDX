@@ -1,5 +1,8 @@
 package com.whereyouat.entity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.graphics.Texture;
@@ -8,9 +11,6 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.whereyouat.map.MapGenerator;
 import com.whereyouat.map.TileManager;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Player entity for Where you at (LibGDX Edition).
@@ -129,15 +129,15 @@ public class Player extends Entity {
         int startCol = 40 + rand.nextInt(mapGen.mapCols - 80);
         int startRow = 40 + rand.nextInt(mapGen.mapRows - 80);
 
-        for (int r = 0; r < 50; r++) {
-            for (int dc = -r; dc <= r; dc++) {
-                for (int dr = -r; dr <= r; dr++) {
-                    int c = startCol + dc;
-                    int row = startRow + dr;
-                    if (c >= 10 && c < mapGen.mapCols - 10 && row >= 10 && row < mapGen.mapRows - 10) {
-                        if (!mapGen.isDeepWater[c][row] && !mapGen.isShallowWater[c][row] && mapGen.mapTreeNum[c][row] == 0) {
-                            worldX = c * TileManager.TILE_SIZE;
-                            worldY = row * TileManager.TILE_SIZE;
+        for (int radius = 0; radius < 50; radius++) {
+            for (int deltaCol = -radius; deltaCol <= radius; deltaCol++) {
+                for (int deltaRow = -radius; deltaRow <= radius; deltaRow++) {
+                    int checkCol = startCol + deltaCol;
+                    int checkRow = startRow + deltaRow;
+                    if (checkCol >= 10 && checkCol < mapGen.mapCols - 10 && checkRow >= 10 && checkRow < mapGen.mapRows - 10) {
+                        if (!mapGen.isDeepWater[checkCol][checkRow] && !mapGen.isShallowWater[checkCol][checkRow] && mapGen.mapTreeNum[checkCol][checkRow] == 0) {
+                            worldX = checkCol * TileManager.TILE_SIZE;
+                            worldY = checkRow * TileManager.TILE_SIZE;
                             return;
                         }
                     }
@@ -168,13 +168,13 @@ public class Player extends Entity {
             int row = 35 + rand.nextInt(mapGen.mapRows - 70);
             if (!mapGen.isDeepWater[col][row] && !mapGen.isShallowWater[col][row]
                     && mapGen.mapTileNum[col][row] != MapGenerator.TILE_STONE) {
-                int treeVal = mapGen.mapTreeNum[col][row];
-                if (((treeVal < 12 || treeVal > 22)
-                        && (treeVal < MapGenerator.TILE_WILLOW1 || treeVal > MapGenerator.TILE_MANGROVE))
-                        && treeVal != MapGenerator.TILE_ROCK1
-                        && treeVal != MapGenerator.TILE_SNOWY_ROCK1
-                        && treeVal != MapGenerator.TILE_SANDSTONE_ROCK
-                        && treeVal != MapGenerator.TILE_LOG1 && treeVal != MapGenerator.TILE_LOG2) {
+                int treeTile = mapGen.mapTreeNum[col][row];
+                if (((treeTile < 12 || treeTile > 22)
+                        && (treeTile < MapGenerator.TILE_WILLOW1 || treeTile > MapGenerator.TILE_MANGROVE))
+                        && treeTile != MapGenerator.TILE_ROCK1
+                        && treeTile != MapGenerator.TILE_SNOWY_ROCK1
+                        && treeTile != MapGenerator.TILE_SANDSTONE_ROCK
+                        && treeTile != MapGenerator.TILE_LOG1 && treeTile != MapGenerator.TILE_LOG2) {
                     worldX = col * TileManager.TILE_SIZE;
                     worldY = row * TileManager.TILE_SIZE;
                     return;
@@ -267,9 +267,9 @@ public class Player extends Entity {
             }
 
             // Diagonal normalization
-            float len = (float) Math.hypot(inputX, inputY);
-            float moveX = (inputX / len) * speed * delta;
-            float moveY = (inputY / len) * speed * delta;
+            float inputLength = (float) Math.hypot(inputX, inputY);
+            float moveX = (inputX / inputLength) * speed * delta;
+            float moveY = (inputY / inputLength) * speed * delta;
 
             float prevX = worldX;
             float prevY = worldY;
@@ -277,9 +277,9 @@ public class Player extends Entity {
             // X axis movement with collision check
             if (inputX != 0f) {
                 float targetX = worldX + moveX;
-                float hx = targetX + HIT_OFFSET_X;
-                float hy = worldY + HIT_OFFSET_Y;
-                if (!tileM.collidesWithTree(mapGen, hx, hy, HIT_W, HIT_H)) {
+                float hitBoxX = targetX + HIT_OFFSET_X;
+                float hitBoxY = worldY + HIT_OFFSET_Y;
+                if (!tileM.collidesWithTree(mapGen, hitBoxX, hitBoxY, HIT_W, HIT_H)) {
                     worldX = targetX;
                 }
             }
@@ -287,9 +287,9 @@ public class Player extends Entity {
             // Y axis movement with collision check
             if (inputY != 0f) {
                 float targetY = worldY + moveY;
-                float hx = worldX + HIT_OFFSET_X;
-                float hy = targetY + HIT_OFFSET_Y;
-                if (!tileM.collidesWithTree(mapGen, hx, hy, HIT_W, HIT_H)) {
+                float hitBoxX = worldX + HIT_OFFSET_X;
+                float hitBoxY = targetY + HIT_OFFSET_Y;
+                if (!tileM.collidesWithTree(mapGen, hitBoxX, hitBoxY, HIT_W, HIT_H)) {
                     worldY = targetY;
                 }
             }
@@ -308,7 +308,7 @@ public class Player extends Entity {
             float movedY = worldY - prevY;
 
             if (movedX != 0f || movedY != 0f) {
-                long nowMs = System.currentTimeMillis();
+                long currentTimeMs = System.currentTimeMillis();
                 long stepInterval = STEP_INTERVAL_MS;
                 if (waterLevel == 2) {
                     stepInterval = STEP_INTERVAL_DEEP_WATER_MS;
@@ -316,8 +316,8 @@ public class Player extends Entity {
                     stepInterval = STEP_INTERVAL_SHALLOW_WATER_MS;
                 }
 
-                if (nowMs - lastStepMs >= stepInterval) {
-                    lastStepMs = nowMs;
+                if (currentTimeMs - lastStepMs >= stepInterval) {
+                    lastStepMs = currentTimeMs;
                     triggerStep(movedX, movedY, waterLevel);
                 }
 
@@ -380,17 +380,17 @@ public class Player extends Entity {
         float footCenterX = worldX + HIT_OFFSET_X + HIT_W / 2f;
         float footCenterY = worldY + HIT_OFFSET_Y + HIT_H / 2f;
 
-        float len = (float) Math.hypot(moveDx, moveDy);
-        float perpX = 0f;
-        float perpY = 0f;
-        if (len > 0.0001f) {
-            perpX = -moveDy / len;
-            perpY = moveDx / len;
+        float moveDistance = (float) Math.hypot(moveDx, moveDy);
+        float perpendicularX = 0f;
+        float perpendicularY = 0f;
+        if (moveDistance > 0.0001f) {
+            perpendicularX = -moveDy / moveDistance;
+            perpendicularY = moveDx / moveDistance;
         }
 
         float footSideOffset = isLeftFootStep ? -4.5f : 4.5f;
-        float footX = footCenterX + perpX * footSideOffset;
-        float footY = footCenterY + perpY * footSideOffset;
+        float footX = footCenterX + perpendicularX * footSideOffset;
+        float footY = footCenterY + perpendicularY * footSideOffset;
 
         double angle = Math.atan2(moveDy, moveDx);
         int footCol = (int) (footX / TileManager.TILE_SIZE);
@@ -446,22 +446,22 @@ public class Player extends Entity {
     public TextureRegion getCurrentSprite() {
         switch (direction) {
             case "up":
-                int uIdx = Math.max(0, Math.min(12, spriteNum - 1));
-                return upWalk[uIdx];
+                int upFrameIndex = Math.max(0, Math.min(12, spriteNum - 1));
+                return upWalk[upFrameIndex];
             case "left":
-                int lIdx = Math.max(0, Math.min(7, spriteNum - 1));
-                return leftWalk[lIdx];
+                int leftFrameIndex = Math.max(0, Math.min(7, spriteNum - 1));
+                return leftWalk[leftFrameIndex];
             case "right":
-                int rIdx = Math.max(0, Math.min(7, spriteNum - 1));
-                return rightWalk[rIdx];
+                int rightFrameIndex = Math.max(0, Math.min(7, spriteNum - 1));
+                return rightWalk[rightFrameIndex];
             case "down":
             default:
                 if (!moving) {
-                    int iIdx = Math.max(0, Math.min(8, spriteNum - 1));
-                    return idleAnim[iIdx];
+                    int idleFrameIndex = Math.max(0, Math.min(8, spriteNum - 1));
+                    return idleAnim[idleFrameIndex];
                 } else {
-                    int dIdx = Math.max(0, Math.min(12, spriteNum - 1));
-                    return downWalk[dIdx];
+                    int downFrameIndex = Math.max(0, Math.min(12, spriteNum - 1));
+                    return downWalk[downFrameIndex];
                 }
         }
     }

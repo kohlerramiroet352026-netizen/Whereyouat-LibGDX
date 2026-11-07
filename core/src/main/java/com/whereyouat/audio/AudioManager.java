@@ -229,9 +229,9 @@ public class AudioManager {
      * so it can be smoothly faded out by WhereYouAtGame during screen transitions.
      */
     public Music releaseCurrentMusic() {
-        Music m = currentMusic;
+        Music releasedMusic = currentMusic;
         currentMusic = null;
-        return m;
+        return releasedMusic;
     }
     private void updateAmbience(float delta, DayNightCycle cycle) {
         if (cycle == null) return;
@@ -272,39 +272,39 @@ public class AudioManager {
      */
     public void playFootstep(MapGenerator map, TileManager tileM, int col, int row) {
         int waterLevel = tileM.getWaterLevel(map, col, row);
-        Sound toPlay = grassStep;
-        float vol = 0.048f; // Default grass volume from SoundManager
+        Sound stepSound = grassStep;
+        float volume = 0.048f; // Default grass volume from SoundManager
 
         if (waterLevel > 0) {
-            toPlay = waterStep;
-            vol = 0.045f;
+            stepSound = waterStep;
+            volume = 0.045f;
         } else if (col >= 0 && col < map.mapCols && row >= 0 && row < map.mapRows) {
-            int ground = map.mapTileNum[col][row];
+            int groundTile = map.mapTileNum[col][row];
             // Check tile type first (before biome) — matches original SoundManager logic
-            if (ground == MapGenerator.TILE_SAND1 || ground == MapGenerator.TILE_SAND2 ||
-                       ground == 24 || ground == 25 || ground == 26) {
-                toPlay = sandStep;
-                vol = 0.220f;
-            } else if (ground == MapGenerator.TILE_DIRT1 || ground == MapGenerator.TILE_MUD) {
-                toPlay = (dirtStep != null) ? dirtStep : grassStep;
-                vol = 0.052f;
+            if (groundTile == MapGenerator.TILE_SAND1 || groundTile == MapGenerator.TILE_SAND2 ||
+                       groundTile == 24 || groundTile == 25 || groundTile == 26) {
+                stepSound = sandStep;
+                volume = 0.220f;
+            } else if (groundTile == MapGenerator.TILE_DIRT1 || groundTile == MapGenerator.TILE_MUD) {
+                stepSound = (dirtStep != null) ? dirtStep : grassStep;
+                volume = 0.052f;
             } else if (map.isSwampBiome[col][row]) {
                 // Swamp grass/mud tiles play dirt/mud sound
-                toPlay = (dirtStep != null) ? dirtStep : grassStep;
-                vol = 0.052f;
+                stepSound = (dirtStep != null) ? dirtStep : grassStep;
+                volume = 0.052f;
             } else if (map.isSnowBiome[col][row]) {
-                toPlay = snowStep;
-                vol = 0.044f;
+                stepSound = snowStep;
+                volume = 0.044f;
             } else {
-                toPlay = grassStep;
-                vol = 0.048f;
+                stepSound = grassStep;
+                volume = 0.048f;
             }
         }
 
-        if (toPlay != null) {
+        if (stepSound != null) {
             // Subtle pitch modulation (0.96 .. 1.04)
             float pitch = 0.96f + rand.nextFloat() * 0.08f;
-            toPlay.play(vol * sfxVolume * masterVolume, pitch, 0f);
+            stepSound.play(volume * sfxVolume * masterVolume, pitch, 0f);
         }
     }
 
@@ -335,8 +335,8 @@ public class AudioManager {
         if (cricketsAmbience != null) cricketsAmbience.dispose();
 
         Sound[] sounds = { grassStep, sandStep, snowStep, dirtStep, waterStep, bushRustle, buttonClick, owlSound, birdShortChirp };
-        for (Sound s : sounds) {
-            if (s != null) s.dispose();
+        for (Sound sound : sounds) {
+            if (sound != null) sound.dispose();
         }
     }
 }

@@ -96,29 +96,29 @@ public class WorldSelectScreen extends ScreenAdapter {
 
         // Fonts
         if (Gdx.files.internal("fonts/PressStart2P-Regular.ttf").exists()) {
-            FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal("fonts/PressStart2P-Regular.ttf"));
-            FreeTypeFontParameter param = new FreeTypeFontParameter();
-            param.flip = true;
+            FreeTypeFontGenerator fontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/PressStart2P-Regular.ttf"));
+            FreeTypeFontParameter fontParameter = new FreeTypeFontParameter();
+            fontParameter.flip = true;
 
-            param.size = 18;
-            param.shadowOffsetX = 2;
-            param.shadowOffsetY = 2;
-            param.shadowColor = new Color(0f, 0f, 0f, 0.8f);
-            fontTitle = gen.generateFont(param);
+            fontParameter.size = 18;
+            fontParameter.shadowOffsetX = 2;
+            fontParameter.shadowOffsetY = 2;
+            fontParameter.shadowColor = new Color(0f, 0f, 0f, 0.8f);
+            fontTitle = fontGenerator.generateFont(fontParameter);
             fontTitle.getRegion().getTexture().setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
 
-            param.size = 12;
-            param.shadowOffsetX = 1;
-            param.shadowOffsetY = 1;
-            fontSlot = gen.generateFont(param);
+            fontParameter.size = 12;
+            fontParameter.shadowOffsetX = 1;
+            fontParameter.shadowOffsetY = 1;
+            fontSlot = fontGenerator.generateFont(fontParameter);
             fontSlot.getRegion().getTexture().setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
 
-            param.size = 10;
-            param.shadowOffsetX = 1;
-            param.shadowOffsetY = 1;
-            fontSmall = gen.generateFont(param);
+            fontParameter.size = 10;
+            fontParameter.shadowOffsetX = 1;
+            fontParameter.shadowOffsetY = 1;
+            fontSmall = fontGenerator.generateFont(fontParameter);
             fontSmall.getRegion().getTexture().setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-            gen.dispose();
+            fontGenerator.dispose();
         } else {
             fontTitle = new BitmapFont();
             fontSlot = new BitmapFont();
@@ -144,12 +144,12 @@ public class WorldSelectScreen extends ScreenAdapter {
         }
 
         float panelX = (768f - SLOT_W) / 2f;
-        float backX = panelX;
-        float backY = 500f;
-        float backW = 140f;
-        float backH = 40f;
-        boolean hoverBack = (mousePos.x >= backX && mousePos.x <= backX + backW &&
-                             mousePos.y >= backY && mousePos.y <= backY + backH);
+        float backButtonX = panelX;
+        float backButtonY = 500f;
+        float backButtonWidth = 140f;
+        float backButtonHeight = 40f;
+        boolean hoverBack = (mousePos.x >= backButtonX && mousePos.x <= backButtonX + backButtonWidth &&
+                             mousePos.y >= backButtonY && mousePos.y <= backButtonY + backButtonHeight);
 
         boolean clicked = Gdx.input.isButtonJustPressed(0);
 
@@ -200,18 +200,18 @@ public class WorldSelectScreen extends ScreenAdapter {
                         }
                         if (buttonSound != null) buttonSound.play(0.32f);
                         // Launch world
-                        GameScreen gs = new GameScreen(game, info.seed, info.name, info.fileName);
+                        GameScreen gameScreen = new GameScreen(game, info.seed, info.name, info.fileName);
                         if (info.hasPlayerData) {
-                            gs.player.worldX = info.playerWorldX;
-                            gs.player.worldY = info.playerWorldY;
-                            gs.player.direction = info.playerDirection;
-                            gs.player.health = info.playerHealth;
-                            gs.player.lives = info.playerLives;
+                            gameScreen.player.worldX = info.playerWorldX;
+                            gameScreen.player.worldY = info.playerWorldY;
+                            gameScreen.player.direction = info.playerDirection;
+                            gameScreen.player.health = info.playerHealth;
+                            gameScreen.player.lives = info.playerLives;
                         }
                         if (info.hasDayNightData && info.dayNightTicks >= 0) {
-                            gs.dayNight.setTimeTicks(info.dayNightTicks);
+                            gameScreen.dayNight.setTimeTicks(info.dayNightTicks);
                         }
-                        game.setScreen(gs);
+                        game.setScreen(gameScreen);
                         return;
                     }
                 }
@@ -274,33 +274,33 @@ public class WorldSelectScreen extends ScreenAdapter {
                     fontSlot.draw(game.batch, " [Muerto]", panelX + 24f + layout.width + 6f, slotY + 14f);
 
                     // Subtitle: Partida finalizada
-                    String sub = "Partida finalizada \u00b7 " + WorldSaveManager.formatDate(info.lastPlayed > 0 ? info.lastPlayed : info.created);
+                    String subtitle = "Partida finalizada \u00b7 " + WorldSaveManager.formatDate(info.lastPlayed > 0 ? info.lastPlayed : info.created);
                     fontSmall.setColor(new Color(0.65f, 0.4f, 0.4f, 0.85f));
-                    fontSmall.draw(game.batch, sub, panelX + 24f, slotY + 38f);
+                    fontSmall.draw(game.batch, subtitle, panelX + 24f, slotY + 38f);
                 } else {
                     // World Name
                     fontSlot.setColor(hoverSlot ? Color.GOLD : Color.WHITE);
                     fontSlot.draw(game.batch, info.name, panelX + 24f, slotY + 14f);
 
                     // Date & Seed
-                    String sub = "Semilla: " + info.seed + " \u00b7 " + WorldSaveManager.formatDate(info.lastPlayed > 0 ? info.lastPlayed : info.created);
+                    String subtitle = "Semilla: " + info.seed + " \u00b7 " + WorldSaveManager.formatDate(info.lastPlayed > 0 ? info.lastPlayed : info.created);
                     fontSmall.setColor(new Color(0.7f, 0.7f, 0.7f, 0.9f));
-                    fontSmall.draw(game.batch, sub, panelX + 24f, slotY + 38f);
+                    fontSmall.draw(game.batch, subtitle, panelX + 24f, slotY + 38f);
                 }
 
                 // Delete Button icon
                 if (deleteBtnRegion != null) {
-                    float delX = panelX + SLOT_W - 40f;
-                    float delY = slotY + (SLOT_H - 24f) / 2f;
-                    boolean hoverDelete = (mousePos.x >= delX && mousePos.x <= delX + 24f &&
-                                           mousePos.y >= delY && mousePos.y <= delY + 24f);
-                    float dScale = hoverDelete ? 1.25f : 1.0f;
-                    float dW = 24f * dScale;
-                    float dH = 24f * dScale;
-                    float dDrawX = delX - (dW - 24f) / 2f;
-                    float dDrawY = delY - (dH - 24f) / 2f;
+                    float deleteX = panelX + SLOT_W - 40f;
+                    float deleteY = slotY + (SLOT_H - 24f) / 2f;
+                    boolean hoverDelete = (mousePos.x >= deleteX && mousePos.x <= deleteX + 24f &&
+                                           mousePos.y >= deleteY && mousePos.y <= deleteY + 24f);
+                    float deleteScale = hoverDelete ? 1.25f : 1.0f;
+                    float deleteWidth = 24f * deleteScale;
+                    float deleteHeight = 24f * deleteScale;
+                    float deleteDrawX = deleteX - (deleteWidth - 24f) / 2f;
+                    float deleteDrawY = deleteY - (deleteHeight - 24f) / 2f;
                     game.batch.setColor(1f, 1f, 1f, 1f);
-                    game.batch.draw(deleteBtnRegion, dDrawX, dDrawY, dW, dH);
+                    game.batch.draw(deleteBtnRegion, deleteDrawX, deleteDrawY, deleteWidth, deleteHeight);
                 }
             }
         }
@@ -308,12 +308,12 @@ public class WorldSelectScreen extends ScreenAdapter {
         // 3. Back Button
         if (backBtnRegion != null) {
             game.batch.setColor(hoverBack ? 1.15f : 1f, hoverBack ? 1.15f : 1f, hoverBack ? 1.15f : 1f, 1f);
-            game.batch.draw(backBtnRegion, backX, backY, backW, backH);
+            game.batch.draw(backBtnRegion, backButtonX, backButtonY, backButtonWidth, backButtonHeight);
             game.batch.setColor(1f, 1f, 1f, 1f);
         }
         layout.setText(fontSlot, "VOLVER");
         fontSlot.setColor(hoverBack ? Color.GOLD : Color.WHITE);
-        fontSlot.draw(game.batch, "VOLVER", backX + (backW - layout.width) / 2f, backY + (backH - layout.height) / 2f);
+        fontSlot.draw(game.batch, "VOLVER", backButtonX + (backButtonWidth - layout.width) / 2f, backButtonY + (backButtonHeight - layout.height) / 2f);
 
         game.batch.end();
     }

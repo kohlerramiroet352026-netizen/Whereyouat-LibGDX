@@ -46,7 +46,7 @@ public class SnowParticleSystem {
 
     private static class LeafParticle {
         float worldX, worldY;
-        float vx, vy;
+        float velocityX, velocityY;
         float targetFallSpeed;
         float swayPhase;
         float swayFreq;
@@ -86,20 +86,20 @@ public class SnowParticleSystem {
     }
 
     private Snowflake createFlake(boolean randomY) {
-        Snowflake f = new Snowflake();
-        f.screenX = rand.nextFloat() * 768f;
-        f.screenY = randomY ? rand.nextFloat() * 576f : -10f;
-        f.speed = MIN_SPEED + rand.nextFloat() * (MAX_SPEED - MIN_SPEED);
-        f.drift = MIN_DRIFT + rand.nextFloat() * (MAX_DRIFT - MIN_DRIFT);
-        f.alpha = 0.5f + rand.nextFloat() * 0.5f;
-        f.wobbleOffset = rand.nextFloat() * (float) (Math.PI * 2);
-        f.wobbleSpeed  = 1.0f + rand.nextFloat() * 1.5f;
-        f.wobbleAmp    = 12f + rand.nextFloat() * 24f;
-        f.time = 0f;
-        return f;
+        Snowflake flake = new Snowflake();
+        flake.screenX = rand.nextFloat() * 768f;
+        flake.screenY = randomY ? rand.nextFloat() * 576f : -10f;
+        flake.speed = MIN_SPEED + rand.nextFloat() * (MAX_SPEED - MIN_SPEED);
+        flake.drift = MIN_DRIFT + rand.nextFloat() * (MAX_DRIFT - MIN_DRIFT);
+        flake.alpha = 0.5f + rand.nextFloat() * 0.5f;
+        flake.wobbleOffset = rand.nextFloat() * (float) (Math.PI * 2);
+        flake.wobbleSpeed  = 1.0f + rand.nextFloat() * 1.5f;
+        flake.wobbleAmp    = 12f + rand.nextFloat() * 24f;
+        flake.time = 0f;
+        return flake;
     }
 
-    public void update(float delta, boolean inSnowBiome, float blendFactor, float viewW, float viewH) {
+    public void update(float delta, boolean inSnowBiome, float blendFactor, float viewportWidth, float viewportHeight) {
         updateLeaves(delta);
 
         targetIntensity = inSnowBiome ? Math.min(1f, blendFactor * 1.5f) : 0f;
@@ -114,52 +114,52 @@ public class SnowParticleSystem {
 
         int activeCount = Math.max(1, (int) (intensity * MAX_FLAKES));
         for (int i = 0; i < flakes.size(); i++) {
-            Snowflake f = flakes.get(i);
+            Snowflake flake = flakes.get(i);
             if (i >= activeCount) {
-                f.screenY = -20f;
+                flake.screenY = -20f;
                 continue;
             }
-            f.time += delta;
-            float wobble = f.wobbleAmp * (float) Math.sin(f.wobbleOffset + f.time * f.wobbleSpeed);
-            f.screenX += (f.drift + wobble) * delta;
-            f.screenY += f.speed * delta;
+            flake.time += delta;
+            float wobble = flake.wobbleAmp * (float) Math.sin(flake.wobbleOffset + flake.time * flake.wobbleSpeed);
+            flake.screenX += (flake.drift + wobble) * delta;
+            flake.screenY += flake.speed * delta;
 
-            if (f.screenY > viewH + 10f) {
-                f.screenY = -15f;
-                f.screenX = rand.nextFloat() * viewW;
+            if (flake.screenY > viewportHeight + 10f) {
+                flake.screenY = -15f;
+                flake.screenX = rand.nextFloat() * viewportWidth;
             }
-            if (f.screenX < -15f) f.screenX = viewW + 10f;
-            if (f.screenX > viewW + 15f) f.screenX = -10f;
+            if (flake.screenX < -15f) flake.screenX = viewportWidth + 10f;
+            if (flake.screenX > viewportWidth + 15f) flake.screenX = -10f;
         }
     }
 
-    public void spawnLeafParticles(int tc, int tr, int tileSize) {
+    public void spawnLeafParticles(int tileCol, int tileRow, int tileSize) {
         int count = 4 + rand.nextInt(2);
-        float centerX = tc * tileSize + tileSize / 2f;
-        float groundLevel = tr * tileSize + tileSize - 4f;
+        float centerX = tileCol * tileSize + tileSize / 2f;
+        float groundLevel = tileRow * tileSize + tileSize - 4f;
 
         for (int i = 0; i < count; i++) {
             if (leaves.size() >= MAX_LEAVES) {
                 leaves.remove(0);
             }
-            LeafParticle lp = new LeafParticle();
+            LeafParticle leaf = new LeafParticle();
             boolean onLeft = (i % 2 == 0);
             float sideOffset = 12f + rand.nextFloat() * 14f;
-            lp.worldX = centerX + (onLeft ? -sideOffset : sideOffset);
-            lp.worldY = (tr * tileSize + 10f) + rand.nextFloat() * 16f;
+            leaf.worldX = centerX + (onLeft ? -sideOffset : sideOffset);
+            leaf.worldY = (tileRow * tileSize + 10f) + rand.nextFloat() * 16f;
 
-            lp.vx = (onLeft ? -1f : 1f) * (24f + rand.nextFloat() * 48f);
-            lp.vy = -48f - rand.nextFloat() * 60f;
+            leaf.velocityX = (onLeft ? -1f : 1f) * (24f + rand.nextFloat() * 48f);
+            leaf.velocityY = -48f - rand.nextFloat() * 60f;
 
-            lp.targetFallSpeed = 48f + rand.nextFloat() * 30f;
-            lp.swayPhase = rand.nextFloat() * (float) (Math.PI * 2);
-            lp.swayFreq = 3.0f + rand.nextFloat() * 2.0f;
-            lp.swayAmp = 60f + rand.nextFloat() * 40f;
-            lp.groundY = groundLevel + (rand.nextFloat() * 8f - 4f);
-            lp.groundTimer = 2.0f + rand.nextFloat() * 1.0f;
-            lp.facingRight = (lp.vx >= 0);
+            leaf.targetFallSpeed = 48f + rand.nextFloat() * 30f;
+            leaf.swayPhase = rand.nextFloat() * (float) (Math.PI * 2);
+            leaf.swayFreq = 3.0f + rand.nextFloat() * 2.0f;
+            leaf.swayAmp = 60f + rand.nextFloat() * 40f;
+            leaf.groundY = groundLevel + (rand.nextFloat() * 8f - 4f);
+            leaf.groundTimer = 2.0f + rand.nextFloat() * 1.0f;
+            leaf.facingRight = (leaf.velocityX >= 0);
 
-            leaves.add(lp);
+            leaves.add(leaf);
         }
     }
 
@@ -181,59 +181,59 @@ public class SnowParticleSystem {
                 }
                 if (!removed) continue;
             }
-            LeafParticle lp = new LeafParticle();
-            lp.worldX = spawnX + (rand.nextFloat() * 24f - 12f);
-            lp.worldY = spawnY + (rand.nextFloat() * 16f - 8f);
+            LeafParticle leaf = new LeafParticle();
+            leaf.worldX = spawnX + (rand.nextFloat() * 24f - 12f);
+            leaf.worldY = spawnY + (rand.nextFloat() * 16f - 8f);
 
             float baseWindSpeed = 132f + rand.nextFloat() * 90f; // pixels/sec
-            lp.vx = windDirX * baseWindSpeed + (rand.nextFloat() * 24f - 12f);
-            lp.vy = -15f - rand.nextFloat() * 21f;
-            lp.windDir = windDirX;
+            leaf.velocityX = windDirX * baseWindSpeed + (rand.nextFloat() * 24f - 12f);
+            leaf.velocityY = -15f - rand.nextFloat() * 21f;
+            leaf.windDir = windDirX;
 
-            lp.targetFallSpeed = 30f + rand.nextFloat() * 18f;
-            lp.swayPhase = rand.nextFloat() * (float) (Math.PI * 2);
-            lp.swayFreq = 2.7f + rand.nextFloat() * 1.8f;
-            lp.swayAmp = 90f + rand.nextFloat() * 42f;
-            lp.groundY = groundY + (rand.nextFloat() * 8f - 4f);
-            lp.groundTimer = 2.5f + rand.nextFloat() * 1.0f;
-            lp.facingRight = (lp.vx >= 0);
+            leaf.targetFallSpeed = 30f + rand.nextFloat() * 18f;
+            leaf.swayPhase = rand.nextFloat() * (float) (Math.PI * 2);
+            leaf.swayFreq = 2.7f + rand.nextFloat() * 1.8f;
+            leaf.swayAmp = 90f + rand.nextFloat() * 42f;
+            leaf.groundY = groundY + (rand.nextFloat() * 8f - 4f);
+            leaf.groundTimer = 2.5f + rand.nextFloat() * 1.0f;
+            leaf.facingRight = (leaf.velocityX >= 0);
 
-            leaves.add(lp);
+            leaves.add(leaf);
         }
     }
 
     private void updateLeaves(float delta) {
         if (leaves.isEmpty()) return;
-        Iterator<LeafParticle> it = leaves.iterator();
-        while (it.hasNext()) {
-            LeafParticle lp = it.next();
-            if (!lp.onGround) {
-                lp.vy += (lp.targetFallSpeed - lp.vy) * 3.6f * delta;
-                lp.vx = lp.vx * (1f - 0.9f * delta) + (lp.windDir * 2.0f * delta);
+        Iterator<LeafParticle> iterator = leaves.iterator();
+        while (iterator.hasNext()) {
+            LeafParticle leaf = iterator.next();
+            if (!leaf.onGround) {
+                leaf.velocityY += (leaf.targetFallSpeed - leaf.velocityY) * 3.6f * delta;
+                leaf.velocityX = leaf.velocityX * (1f - 0.9f * delta) + (leaf.windDir * 2.0f * delta);
 
-                lp.swayPhase += lp.swayFreq * delta;
-                float swayDelta = (float) Math.cos(lp.swayPhase) * lp.swayAmp;
+                leaf.swayPhase += leaf.swayFreq * delta;
+                float swayDelta = (float) Math.cos(leaf.swayPhase) * leaf.swayAmp;
 
-                float totalDx = lp.vx + swayDelta;
-                lp.worldX += totalDx * delta;
-                lp.worldY += lp.vy * delta;
+                float totalDeltaX = leaf.velocityX + swayDelta;
+                leaf.worldX += totalDeltaX * delta;
+                leaf.worldY += leaf.velocityY * delta;
 
-                if (totalDx > 1f) {
-                    lp.facingRight = true;
-                } else if (totalDx < -1f) {
-                    lp.facingRight = false;
+                if (totalDeltaX > 1f) {
+                    leaf.facingRight = true;
+                } else if (totalDeltaX < -1f) {
+                    leaf.facingRight = false;
                 }
 
-                if (lp.worldY >= lp.groundY) {
-                    lp.worldY = lp.groundY;
-                    lp.onGround = true;
+                if (leaf.worldY >= leaf.groundY) {
+                    leaf.worldY = leaf.groundY;
+                    leaf.onGround = true;
                 }
             } else {
-                lp.groundTimer -= delta;
-                if (lp.groundTimer <= 0f) {
-                    it.remove();
-                } else if (lp.groundTimer < 0.75f) {
-                    lp.alpha = lp.groundTimer / 0.75f;
+                leaf.groundTimer -= delta;
+                if (leaf.groundTimer <= 0f) {
+                    iterator.remove();
+                } else if (leaf.groundTimer < 0.75f) {
+                    leaf.alpha = leaf.groundTimer / 0.75f;
                 }
             }
         }
@@ -242,14 +242,14 @@ public class SnowParticleSystem {
     public void drawWorldLeaves(SpriteBatch batch, float minX, float minY, float maxX, float maxY) {
         if (leaves.isEmpty() || leafRight == null) return;
 
-        for (LeafParticle lp : leaves) {
-            if (lp.worldX < minX - 16 || lp.worldX > maxX + 16 ||
-                lp.worldY < minY - 16 || lp.worldY > maxY + 16) {
+        for (LeafParticle leaf : leaves) {
+            if (leaf.worldX < minX - 16 || leaf.worldX > maxX + 16 ||
+                leaf.worldY < minY - 16 || leaf.worldY > maxY + 16) {
                 continue;
             }
-            TextureRegion reg = lp.facingRight ? leafRight : leafLeft;
-            batch.setColor(1f, 1f, 1f, lp.alpha);
-            batch.draw(reg, lp.worldX - 4f, lp.worldY - 4f, 8f, 8f);
+            TextureRegion region = leaf.facingRight ? leafRight : leafLeft;
+            batch.setColor(1f, 1f, 1f, leaf.alpha);
+            batch.draw(region, leaf.worldX - 4f, leaf.worldY - 4f, 8f, 8f);
         }
         batch.setColor(1f, 1f, 1f, 1f);
     }
@@ -259,13 +259,13 @@ public class SnowParticleSystem {
 
         int activeCount = Math.max(1, (int) (intensity * MAX_FLAKES));
         for (int i = 0; i < activeCount && i < flakes.size(); i++) {
-            Snowflake f = flakes.get(i);
-            if (f.screenY < -8f) continue;
+            Snowflake flake = flakes.get(i);
+            if (flake.screenY < -8f) continue;
 
-            float drawAlpha = f.alpha * intensity;
+            float drawAlpha = flake.alpha * intensity;
             batch.setColor(1f, 1f, 1f, drawAlpha);
             // Drawn relative to camera frustum top-left
-            batch.draw(snowRegion, camMinX + f.screenX, camMinY + f.screenY, 5f, 5f);
+            batch.draw(snowRegion, camMinX + flake.screenX, camMinY + flake.screenY, 5f, 5f);
         }
         batch.setColor(1f, 1f, 1f, 1f);
     }

@@ -253,7 +253,7 @@ public class MenuBackgroundPlayer implements Runnable {
      * Renders video frame center-cropped across screen and applies a soft transparent black tint (120 alpha).
      * Must be called on LibGDX render thread while batch is begun.
      */
-    public boolean draw(SpriteBatch batch, float screenW, float screenH, float tintAlpha) {
+    public boolean draw(SpriteBatch batch, float screenWidth, float screenHeight, float tintAlpha) {
         // Upload new frame if ready
         byte[] dataToUpload = null;
         int sizeToUpload = 0;
@@ -275,18 +275,18 @@ public class MenuBackgroundPlayer implements Runnable {
                 try {
                     java.awt.image.BufferedImage img = ImageIO.read(new ByteArrayInputStream(dataToUpload, 0, sizeToUpload));
                     if (img != null) {
-                        int w = img.getWidth();
-                        int h = img.getHeight();
-                        framePixmap = new Pixmap(w, h, Pixmap.Format.RGBA8888);
-                        int[] rgb = img.getRGB(0, 0, w, h, null, 0, w);
-                        for (int y = 0; y < h; y++) {
-                            int rowOff = y * w;
-                            for (int x = 0; x < w; x++) {
-                                int c = rgb[rowOff + x];
-                                int r = (c >> 16) & 0xff;
-                                int g = (c >> 8) & 0xff;
-                                int b = c & 0xff;
-                                framePixmap.drawPixel(x, y, (r << 24) | (g << 16) | (b << 8) | 0xff);
+                        int imageWidth = img.getWidth();
+                        int imageHeight = img.getHeight();
+                        framePixmap = new Pixmap(imageWidth, imageHeight, Pixmap.Format.RGBA8888);
+                        int[] rgb = img.getRGB(0, 0, imageWidth, imageHeight, null, 0, imageWidth);
+                        for (int y = 0; y < imageHeight; y++) {
+                            int rowOff = y * imageWidth;
+                            for (int x = 0; x < imageWidth; x++) {
+                                int pixelColor = rgb[rowOff + x];
+                                int red = (pixelColor >> 16) & 0xff;
+                                int green = (pixelColor >> 8) & 0xff;
+                                int blue = pixelColor & 0xff;
+                                framePixmap.drawPixel(x, y, (red << 24) | (green << 16) | (blue << 8) | 0xff);
                             }
                         }
                     }
@@ -313,37 +313,37 @@ public class MenuBackgroundPlayer implements Runnable {
 
         if (videoRegion == null) return false;
 
-        float fw = videoRegion.getRegionWidth();
-        float fh = videoRegion.getRegionHeight();
-        if (fw <= 0 || fh <= 0) return false;
+        float frameWidth = videoRegion.getRegionWidth();
+        float frameHeight = videoRegion.getRegionHeight();
+        if (frameWidth <= 0 || frameHeight <= 0) return false;
 
-        float screenAspect = screenW / screenH;
-        float videoAspect = fw / fh;
-        float drawX = 0f, drawY = 0f, drawW = screenW, drawH = screenH;
+        float screenAspect = screenWidth / screenHeight;
+        float videoAspect = frameWidth / frameHeight;
+        float drawX = 0f, drawY = 0f, drawWidth = screenWidth, drawHeight = screenHeight;
 
         if (screenAspect > videoAspect) {
-            drawW = screenW;
-            drawH = screenW / videoAspect;
-            drawY = (screenH - drawH) / 2f;
+            drawWidth = screenWidth;
+            drawHeight = screenWidth / videoAspect;
+            drawY = (screenHeight - drawHeight) / 2f;
         } else {
-            drawH = screenH;
-            drawW = screenH * videoAspect;
-            drawX = (screenW - drawW) / 2f;
+            drawHeight = screenHeight;
+            drawWidth = screenHeight * videoAspect;
+            drawX = (screenWidth - drawWidth) / 2f;
         }
 
         // Draw video frame
         batch.setColor(1f, 1f, 1f, 1f);
-        batch.draw(videoRegion, drawX, drawY, drawW, drawH);
+        batch.draw(videoRegion, drawX, drawY, drawWidth, drawHeight);
 
         // Soft transparent black tint overlay (alpha 120/255 = ~0.47f)
         if (overlayTexture == null) {
-            Pixmap p = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-            p.drawPixel(0, 0, Color.rgba8888(1f, 1f, 1f, 1f));
-            overlayTexture = new Texture(p);
-            p.dispose();
+            Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+            pixmap.drawPixel(0, 0, Color.rgba8888(1f, 1f, 1f, 1f));
+            overlayTexture = new Texture(pixmap);
+            pixmap.dispose();
         }
         batch.setColor(0f, 0f, 0f, Math.min(1f, Math.max(0f, tintAlpha)));
-        batch.draw(overlayTexture, 0f, 0f, screenW, screenH);
+        batch.draw(overlayTexture, 0f, 0f, screenWidth, screenHeight);
         batch.setColor(1f, 1f, 1f, 1f);
 
         return true;

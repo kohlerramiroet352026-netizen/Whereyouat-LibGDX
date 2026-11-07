@@ -100,42 +100,42 @@ public class WorldCreateScreen extends ScreenAdapter {
         }
 
         // White pixel for drawing plain input field backgrounds (fallback if slot texture missing)
-        Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        pm.drawPixel(0, 0, Color.rgba8888(1f, 1f, 1f, 1f));
-        whiteTex = new Texture(pm);
-        pm.dispose();
+        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pixmap.drawPixel(0, 0, Color.rgba8888(1f, 1f, 1f, 1f));
+        whiteTex = new Texture(pixmap);
+        pixmap.dispose();
         whitePixel = new TextureRegion(whiteTex);
 
         if (Gdx.files.internal("fonts/PressStart2P-Regular.ttf").exists()) {
-            FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal("fonts/PressStart2P-Regular.ttf"));
-            FreeTypeFontParameter param = new FreeTypeFontParameter();
-            param.flip = true;
+            FreeTypeFontGenerator fontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/PressStart2P-Regular.ttf"));
+            FreeTypeFontParameter fontParameter = new FreeTypeFontParameter();
+            fontParameter.flip = true;
 
-            param.size = 18;
-            param.shadowOffsetX = 2;
-            param.shadowOffsetY = 2;
-            param.shadowColor = new Color(0f, 0f, 0f, 0.8f);
-            fontTitle = gen.generateFont(param);
+            fontParameter.size = 18;
+            fontParameter.shadowOffsetX = 2;
+            fontParameter.shadowOffsetY = 2;
+            fontParameter.shadowColor = new Color(0f, 0f, 0f, 0.8f);
+            fontTitle = fontGenerator.generateFont(fontParameter);
             fontTitle.getRegion().getTexture().setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
 
-            param.size = 12;
-            param.shadowOffsetX = 1;
-            param.shadowOffsetY = 1;
-            fontLabel = gen.generateFont(param);
+            fontParameter.size = 12;
+            fontParameter.shadowOffsetX = 1;
+            fontParameter.shadowOffsetY = 1;
+            fontLabel = fontGenerator.generateFont(fontParameter);
             fontLabel.getRegion().getTexture().setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
 
-            param.size = 14;
-            param.shadowOffsetX = 1;
-            param.shadowOffsetY = 1;
-            fontInput = gen.generateFont(param);
+            fontParameter.size = 14;
+            fontParameter.shadowOffsetX = 1;
+            fontParameter.shadowOffsetY = 1;
+            fontInput = fontGenerator.generateFont(fontParameter);
             fontInput.getRegion().getTexture().setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
 
-            param.size = 12;
-            param.shadowOffsetX = 1;
-            param.shadowOffsetY = 1;
-            fontBtn = gen.generateFont(param);
+            fontParameter.size = 12;
+            fontParameter.shadowOffsetX = 1;
+            fontParameter.shadowOffsetY = 1;
+            fontBtn = fontGenerator.generateFont(fontParameter);
             fontBtn.getRegion().getTexture().setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-            gen.dispose();
+            fontGenerator.dispose();
         } else {
             fontTitle = new BitmapFont();
             fontLabel = new BitmapFont();
@@ -182,36 +182,36 @@ public class WorldCreateScreen extends ScreenAdapter {
         float formX = (768f - 480f) / 2f;
         float nameBoxY = 140f;
         float seedBoxY = 240f;
-        float boxW = 480f;
-        float boxH = 44f;
+        float boxWidth = 480f;
+        float boxHeight = 44f;
 
         // Button dimensions
-        float randBtnX = formX + boxW - 140f;
-        float randBtnY = seedBoxY + 54f;
-        float randBtnW = 140f;
-        float randBtnH = 34f;
+        float randomButtonX = formX + boxWidth - 140f;
+        float randomButtonY = seedBoxY + 54f;
+        float randomButtonWidth = 140f;
+        float randomButtonHeight = 34f;
 
-        float createBtnX = (768f - 240f) / 2f;
-        float createBtnY = 380f;
-        float createBtnW = 240f;
-        float createBtnH = 48f;
+        float createButtonX = (768f - 240f) / 2f;
+        float createButtonY = 380f;
+        float createButtonWidth = 240f;
+        float createButtonHeight = 48f;
 
-        float backX = formX;
-        float backY = 500f;
-        float backW = 140f;
-        float backH = 40f;
+        float backButtonX = formX;
+        float backButtonY = 500f;
+        float backButtonWidth = 140f;
+        float backButtonHeight = 40f;
 
-        boolean hoverName = (mousePos.x >= formX && mousePos.x <= formX + boxW &&
-                             mousePos.y >= nameBoxY && mousePos.y <= nameBoxY + boxH);
-        boolean hoverSeed = (mousePos.x >= formX && mousePos.x <= formX + boxW &&
-                             mousePos.y >= seedBoxY && mousePos.y <= seedBoxY + boxH);
+        boolean hoverName = (mousePos.x >= formX && mousePos.x <= formX + boxWidth &&
+                             mousePos.y >= nameBoxY && mousePos.y <= nameBoxY + boxHeight);
+        boolean hoverSeed = (mousePos.x >= formX && mousePos.x <= formX + boxWidth &&
+                             mousePos.y >= seedBoxY && mousePos.y <= seedBoxY + boxHeight);
 
-        boolean hoverRandom = (mousePos.x >= randBtnX && mousePos.x <= randBtnX + randBtnW &&
-                               mousePos.y >= randBtnY && mousePos.y <= randBtnY + randBtnH);
-        boolean hoverCreate = (mousePos.x >= createBtnX && mousePos.x <= createBtnX + createBtnW &&
-                               mousePos.y >= createBtnY && mousePos.y <= createBtnY + createBtnH);
-        boolean hoverBack = (mousePos.x >= backX && mousePos.x <= backX + backW &&
-                             mousePos.y >= backY && mousePos.y <= backY + backH);
+        boolean hoverRandom = (mousePos.x >= randomButtonX && mousePos.x <= randomButtonX + randomButtonWidth &&
+                               mousePos.y >= randomButtonY && mousePos.y <= randomButtonY + randomButtonHeight);
+        boolean hoverCreate = (mousePos.x >= createButtonX && mousePos.x <= createButtonX + createButtonWidth &&
+                               mousePos.y >= createButtonY && mousePos.y <= createButtonY + createButtonHeight);
+        boolean hoverBack = (mousePos.x >= backButtonX && mousePos.x <= backButtonX + backButtonWidth &&
+                             mousePos.y >= backButtonY && mousePos.y <= backButtonY + backButtonHeight);
 
         if (Gdx.input.isButtonJustPressed(0)) {
             if (hoverName) {
@@ -250,82 +250,82 @@ public class WorldCreateScreen extends ScreenAdapter {
         fontLabel.setColor(new Color(0.85f, 0.85f, 0.85f, 1f));
         fontLabel.draw(game.batch, "Nombre del Mundo:", formX, nameBoxY - 20f);
 
-        drawInputBox(formX, nameBoxY, boxW, boxH, nameInput, activeField == 0);
+        drawInputBox(formX, nameBoxY, boxWidth, boxHeight, nameInput, activeField == 0);
 
         // 3. Seed field
         fontLabel.draw(game.batch, "Semilla (Texto o Número):", formX, seedBoxY - 20f);
-        drawInputBox(formX, seedBoxY, boxW, boxH, seedInput, activeField == 1);
+        drawInputBox(formX, seedBoxY, boxWidth, boxHeight, seedInput, activeField == 1);
 
         // Random Seed button
-        drawSmallButton("ALEATORIO", randBtnX, randBtnY, randBtnW, randBtnH, hoverRandom);
+        drawSmallButton("ALEATORIO", randomButtonX, randomButtonY, randomButtonWidth, randomButtonHeight, hoverRandom);
 
         // 4. Create World Button
-        drawLargeButton("CREAR MUNDO", createBtnX, createBtnY, createBtnW, createBtnH, hoverCreate);
+        drawLargeButton("CREAR MUNDO", createButtonX, createButtonY, createButtonWidth, createButtonHeight, hoverCreate);
 
         // 5. Back Button
         if (backBtnRegion != null) {
             game.batch.setColor(hoverBack ? 1.15f : 1f, hoverBack ? 1.15f : 1f, hoverBack ? 1.15f : 1f, 1f);
-            game.batch.draw(backBtnRegion, backX, backY, backW, backH);
+            game.batch.draw(backBtnRegion, backButtonX, backButtonY, backButtonWidth, backButtonHeight);
             game.batch.setColor(1f, 1f, 1f, 1f);
         }
         layout.setText(fontBtn, "VOLVER");
         fontBtn.setColor(hoverBack ? Color.GOLD : Color.WHITE);
-        fontBtn.draw(game.batch, "VOLVER", backX + (backW - layout.width) / 2f, backY + (backH - layout.height) / 2f);
+        fontBtn.draw(game.batch, "VOLVER", backButtonX + (backButtonWidth - layout.width) / 2f, backButtonY + (backButtonHeight - layout.height) / 2f);
 
         game.batch.end();
     }
 
-    private void drawInputBox(float x, float y, float w, float h, String text, boolean focused) {
+    private void drawInputBox(float x, float y, float width, float height, String text, boolean focused) {
         // Draw button_slot.png at its native pixel dimensions, centered over the hitbox.
         // The texture is 576x48 — no stretching to preserve pixel art quality.
         // If the texture is unavailable, fall back to a plain dark rectangle.
         if (slotRegion != null) {
-            float slotW = slotRegion.getRegionWidth();
-            float slotH = slotRegion.getRegionHeight();
-            float drawX = x + (w - slotW) / 2f;
-            float drawY = y + (h - slotH) / 2f;
+            float slotWidth = slotRegion.getRegionWidth();
+            float slotHeight = slotRegion.getRegionHeight();
+            float drawX = x + (width - slotWidth) / 2f;
+            float drawY = y + (height - slotHeight) / 2f;
             game.batch.setColor(focused ? new Color(1.1f, 1.1f, 1.1f, 1f) : new Color(1f, 1f, 1f, 1f));
-            game.batch.draw(slotRegion, drawX, drawY, slotW, slotH);
+            game.batch.draw(slotRegion, drawX, drawY, slotWidth, slotHeight);
             game.batch.setColor(1f, 1f, 1f, 1f);
         } else if (whitePixel != null) {
             game.batch.setColor(focused ? new Color(0.55f, 0.55f, 0.60f, 1f) : new Color(0.35f, 0.35f, 0.38f, 1f));
-            game.batch.draw(whitePixel, x - 1f, y - 1f, w + 2f, h + 2f);
+            game.batch.draw(whitePixel, x - 1f, y - 1f, width + 2f, height + 2f);
             game.batch.setColor(focused ? new Color(0.20f, 0.20f, 0.24f, 1f) : new Color(0.12f, 0.12f, 0.14f, 1f));
-            game.batch.draw(whitePixel, x, y, w, h);
+            game.batch.draw(whitePixel, x, y, width, height);
             game.batch.setColor(1f, 1f, 1f, 1f);
         }
 
-        String disp = text + (focused && (System.currentTimeMillis() / 450) % 2 == 0 ? "_" : "");
-        layout.setText(fontInput, disp.isEmpty() ? " " : disp);
+        String displayText = text + (focused && (System.currentTimeMillis() / 450) % 2 == 0 ? "_" : "");
+        layout.setText(fontInput, displayText.isEmpty() ? " " : displayText);
         fontInput.setColor(focused ? Color.WHITE : new Color(0.8f, 0.8f, 0.8f, 1f));
-        fontInput.draw(game.batch, disp, x + 16f, y + (h - layout.height) / 2f);
+        fontInput.draw(game.batch, displayText, x + 16f, y + (height - layout.height) / 2f);
     }
 
-    private void drawSmallButton(String text, float x, float y, float w, float h, boolean hover) {
+    private void drawSmallButton(String text, float x, float y, float width, float height, boolean hover) {
         if (buttonRegion != null) {
             game.batch.setColor(hover ? 1.15f : 1f, hover ? 1.15f : 1f, hover ? 1.15f : 1f, 1f);
-            game.batch.draw(buttonRegion, x, y, w, h);
+            game.batch.draw(buttonRegion, x, y, width, height);
             game.batch.setColor(1f, 1f, 1f, 1f);
         }
         layout.setText(fontBtn, text);
         fontBtn.setColor(hover ? Color.GOLD : Color.WHITE);
-        fontBtn.draw(game.batch, text, x + (w - layout.width) / 2f, y + (h - layout.height) / 2f);
+        fontBtn.draw(game.batch, text, x + (width - layout.width) / 2f, y + (height - layout.height) / 2f);
     }
 
-    private void drawLargeButton(String text, float x, float y, float w, float h, boolean hover) {
+    private void drawLargeButton(String text, float x, float y, float width, float height, boolean hover) {
         float hoverScale = hover ? 1.05f : 1.0f;
-        float bw = w * hoverScale;
-        float bh = h * hoverScale;
-        float bx = x - (bw - w) / 2f;
-        float by = y - (bh - h) / 2f;
+        float buttonWidth = width * hoverScale;
+        float buttonHeight = height * hoverScale;
+        float buttonX = x - (buttonWidth - width) / 2f;
+        float buttonY = y - (buttonHeight - height) / 2f;
         if (buttonRegion != null) {
             game.batch.setColor(hover ? 1.15f : 1f, hover ? 1.15f : 1f, hover ? 1.15f : 1f, 1f);
-            game.batch.draw(buttonRegion, bx, by, bw, bh);
+            game.batch.draw(buttonRegion, buttonX, buttonY, buttonWidth, buttonHeight);
             game.batch.setColor(1f, 1f, 1f, 1f);
         }
         layout.setText(fontBtn, text);
         fontBtn.setColor(hover ? Color.GOLD : Color.WHITE);
-        fontBtn.draw(game.batch, text, bx + (bw - layout.width) / 2f, by + (bh - layout.height) / 2f);
+        fontBtn.draw(game.batch, text, buttonX + (buttonWidth - layout.width) / 2f, buttonY + (buttonHeight - layout.height) / 2f);
     }
 
     private void createWorldAndPlay() {

@@ -55,17 +55,17 @@ public class DayNightCycle {
         float shadowAlpha; // Shadow darkness factor (0.0 .. 1.0)
         String phase;
 
-        Keyframe(float min, int r255, int g255, int b255, float inten,
-                 float sdx, float sdy, float slen, float salpha, String phase) {
-            this.minute = min;
-            this.r = r255 / 255.0f;
-            this.g = g255 / 255.0f;
-            this.b = b255 / 255.0f;
-            this.intensity = inten;
-            this.shadowDirX = sdx;
-            this.shadowDirY = sdy;
-            this.shadowLen = slen;
-            this.shadowAlpha = salpha;
+        Keyframe(float minute, int red255, int green255, int blue255, float intensity,
+                 float shadowDirX, float shadowDirY, float shadowLen, float shadowAlpha, String phase) {
+            this.minute = minute;
+            this.r = red255 / 255.0f;
+            this.g = green255 / 255.0f;
+            this.b = blue255 / 255.0f;
+            this.intensity = intensity;
+            this.shadowDirX = shadowDirX;
+            this.shadowDirY = shadowDirY;
+            this.shadowLen = shadowLen;
+            this.shadowAlpha = shadowAlpha;
             this.phase = phase;
         }
     }
@@ -108,33 +108,33 @@ public class DayNightCycle {
         float currentMinute = (timeTicks / (float) TICKS_PER_SEC) / 60.0f; // 0.0 .. 24.0
 
         // Find surrounding keyframes
-        Keyframe k1 = KEYFRAMES[0];
-        Keyframe k2 = KEYFRAMES[KEYFRAMES.length - 1];
+        Keyframe startFrame = KEYFRAMES[0];
+        Keyframe endFrame = KEYFRAMES[KEYFRAMES.length - 1];
 
         for (int i = 0; i < KEYFRAMES.length - 1; i++) {
             if (currentMinute >= KEYFRAMES[i].minute && currentMinute <= KEYFRAMES[i + 1].minute) {
-                k1 = KEYFRAMES[i];
-                k2 = KEYFRAMES[i + 1];
+                startFrame = KEYFRAMES[i];
+                endFrame = KEYFRAMES[i + 1];
                 break;
             }
         }
 
         // Smooth cosine interpolation factor between keyframes
-        float span = k2.minute - k1.minute;
-        float progress = (span <= 0.0001f) ? 0f : (currentMinute - k1.minute) / span;
-        float smoothT = (float) ((1.0 - Math.cos(progress * Math.PI)) * 0.5);
+        float span = endFrame.minute - startFrame.minute;
+        float progress = (span <= 0.0001f) ? 0f : (currentMinute - startFrame.minute) / span;
+        float smoothProgress = (float) ((1.0 - Math.cos(progress * Math.PI)) * 0.5);
 
-        ambientR = lerp(k1.r, k2.r, smoothT);
-        ambientG = lerp(k1.g, k2.g, smoothT);
-        ambientB = lerp(k1.b, k2.b, smoothT);
-        ambientIntensity = lerp(k1.intensity, k2.intensity, smoothT);
+        ambientR = lerp(startFrame.r, endFrame.r, smoothProgress);
+        ambientG = lerp(startFrame.g, endFrame.g, smoothProgress);
+        ambientB = lerp(startFrame.b, endFrame.b, smoothProgress);
+        ambientIntensity = lerp(startFrame.intensity, endFrame.intensity, smoothProgress);
 
-        shadowDirX = lerp(k1.shadowDirX, k2.shadowDirX, smoothT);
-        shadowDirY = lerp(k1.shadowDirY, k2.shadowDirY, smoothT);
-        shadowLength = lerp(k1.shadowLen, k2.shadowLen, smoothT);
-        shadowOpacity = lerp(k1.shadowAlpha, k2.shadowAlpha, smoothT);
+        shadowDirX = lerp(startFrame.shadowDirX, endFrame.shadowDirX, smoothProgress);
+        shadowDirY = lerp(startFrame.shadowDirY, endFrame.shadowDirY, smoothProgress);
+        shadowLength = lerp(startFrame.shadowLen, endFrame.shadowLen, smoothProgress);
+        shadowOpacity = lerp(startFrame.shadowAlpha, endFrame.shadowAlpha, smoothProgress);
 
-        phaseName = (progress < 0.5f) ? k1.phase : k2.phase;
+        phaseName = (progress < 0.5f) ? startFrame.phase : endFrame.phase;
 
         // Virtual 24-hour clock (mapped across 24 minutes real-time):
         // 0m = 06:00 (dawn), 12m = 18:00 (evening), 15m = 21:00 (night), etc.
@@ -144,8 +144,8 @@ public class DayNightCycle {
         clockMinute = (int) ((virtualHour - clockHour) * 60);
     }
 
-    private static float lerp(float a, float b, float t) {
-        return a + (b - a) * t;
+    private static float lerp(float startValue, float endValue, float progress) {
+        return startValue + (endValue - startValue) * progress;
     }
 
     // --- Getters for LightingEngine and UI ---
@@ -163,10 +163,10 @@ public class DayNightCycle {
     public String getPhaseName() { return phaseName; }
 
     public String getClockString() {
-        String ampm = (clockHour >= 12) ? "PM" : "AM";
-        int dispHour = clockHour % 12;
-        if (dispHour == 0) dispHour = 12;
-        return String.format("%02d:%02d %s · %s", dispHour, clockMinute, ampm, phaseName);
+        String amPm = (clockHour >= 12) ? "PM" : "AM";
+        int displayHour = clockHour % 12;
+        if (displayHour == 0) displayHour = 12;
+        return String.format("%02d:%02d %s · %s", displayHour, clockMinute, amPm, phaseName);
     }
 
     public boolean isNight() {

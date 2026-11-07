@@ -68,10 +68,10 @@ public class FootprintManager {
 
     public void addFootprint(float worldX, float worldY, double angleRadians, boolean isLeftFoot) {
         float minDistanceSq = 12f * 12f;
-        for (Footprint fp : footprints) {
-            float dx = fp.worldX - worldX;
-            float dy = fp.worldY - worldY;
-            if (dx * dx + dy * dy < minDistanceSq) {
+        for (Footprint footprint : footprints) {
+            float deltaX = footprint.worldX - worldX;
+            float deltaY = footprint.worldY - worldY;
+            if (deltaX * deltaX + deltaY * deltaY < minDistanceSq) {
                 return;
             }
         }
@@ -79,18 +79,18 @@ public class FootprintManager {
         if (footprints.size() > 150) {
             footprints.remove(0);
         }
-        float deg = (float) Math.toDegrees(angleRadians);
-        footprints.add(new Footprint(worldX, worldY, deg, isLeftFoot));
+        float angleDegrees = (float) Math.toDegrees(angleRadians);
+        footprints.add(new Footprint(worldX, worldY, angleDegrees, isLeftFoot));
     }
 
     public void update(float delta) {
         if (footprints.isEmpty()) return;
-        Iterator<Footprint> it = footprints.iterator();
-        while (it.hasNext()) {
-            Footprint fp = it.next();
-            fp.life -= delta;
-            if (fp.life <= 0f) {
-                it.remove();
+        Iterator<Footprint> iterator = footprints.iterator();
+        while (iterator.hasNext()) {
+            Footprint footprint = iterator.next();
+            footprint.life -= delta;
+            if (footprint.life <= 0f) {
+                iterator.remove();
             }
         }
     }
@@ -98,25 +98,25 @@ public class FootprintManager {
     public void draw(SpriteBatch batch, float minX, float minY, float maxX, float maxY) {
         if (footprintRegion == null || footprints.isEmpty()) return;
 
-        float halfW = DRAW_WIDTH / 2f;
-        float halfH = DRAW_HEIGHT / 2f;
+        float halfWidth = DRAW_WIDTH / 2f;
+        float halfHeight = DRAW_HEIGHT / 2f;
 
-        for (Footprint fp : footprints) {
-            if (fp.worldX + halfW < minX || fp.worldX - halfW > maxX ||
-                fp.worldY + halfH < minY || fp.worldY - halfH > maxY) {
+        for (Footprint footprint : footprints) {
+            if (footprint.worldX + halfWidth < minX || footprint.worldX - halfWidth > maxX ||
+                footprint.worldY + halfHeight < minY || footprint.worldY - halfHeight > maxY) {
                 continue;
             }
 
-            float alpha = fp.getAlpha();
+            float alpha = footprint.getAlpha();
             if (alpha <= 0.01f) continue;
 
             batch.setColor(1f, 1f, 1f, alpha);
             batch.draw(footprintRegion,
-                       fp.worldX - halfW, fp.worldY - halfH,
-                       halfW, halfH,
+                       footprint.worldX - halfWidth, footprint.worldY - halfHeight,
+                       halfWidth, halfHeight,
                        DRAW_WIDTH, DRAW_HEIGHT,
                        1f, 1f,
-                       fp.angleDegrees);
+                       footprint.angleDegrees);
         }
         batch.setColor(1f, 1f, 1f, 1f);
     }
