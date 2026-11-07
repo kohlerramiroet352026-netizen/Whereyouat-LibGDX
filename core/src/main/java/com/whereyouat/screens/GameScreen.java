@@ -12,17 +12,23 @@ import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.whereyouat.WhereYouAtGame;
+import com.whereyouat.AssetSetter;
 import com.whereyouat.audio.AudioManager;
 import com.whereyouat.effects.FootprintManager;
 import com.whereyouat.effects.SnowParticleSystem;
 import com.whereyouat.entity.BirdManager;
+import com.whereyouat.entity.Entity;
 import com.whereyouat.entity.Player;
 import com.whereyouat.lighting.DayNightCycle;
+import com.whereyouat.monster.MON_frogger;
 import com.whereyouat.lighting.LightingEngine;
 import com.whereyouat.map.MapGenerator;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.save.WorldSaveManager;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 /**
  * GameScreen - Pantalla principal de juego activo para Where you at (LibGDX Edition).
  *
@@ -53,6 +59,15 @@ public class GameScreen extends ScreenAdapter {
 
     // Delegado de interfaz de usuario
     private final GameHUD hud;
+
+    // Monsters
+    public Entity monster[] = new Entity[20];
+    public final AssetSetter assetSetter;
+    public final int tileSize = TileManager.TILE_SIZE;
+
+    // Entity list for depth sorting
+    public final ArrayList<Entity> entityList = new ArrayList<>();
+    private final Comparator<Entity> entitySorter = (e1, e2) -> Float.compare(e1.worldY, e2.worldY);
 
     // Metadatos del mundo
     public final String worldFileName;
@@ -101,6 +116,10 @@ public class GameScreen extends ScreenAdapter {
         birdM = new BirdManager(seed);
         birdM.initForWorld(seed, mapGen, player);
         tileM.setSnowPS(snowPS);
+
+        // Asset setter & initial game setup
+        assetSetter = new AssetSetter(this);
+        setupGame();
 
         lighting = new LightingEngine(768, 576);
         audio = new AudioManager();
@@ -181,7 +200,10 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void updateGame(float delta) {
-        player.update(delta, mapGen, tileM);
+        // 1. Actualizar física del jugador, colisiones e interacción con monstruos
+        player.update(delta, mapGen, tileM, monster);
+
+        // 2. Actualizar tiles (animación de agua y balanceo de arbustos)
         tileM.update(delta, mapGen, dayNight);
         dayNight.update();
         footprintM.update(delta);
@@ -192,6 +214,14 @@ public class GameScreen extends ScreenAdapter {
         snowPS.update(delta, inSnow, 1.0f, hudCamera.viewportWidth, hudCamera.viewportHeight);
 
         birdM.update(delta, mapGen, tileM, player);
+
+        // Actualizar IA de monstruos
+        for (int i = 0; i < monster.length; i++) {
+            if (monster[i] != null) {
+                monster[i].update(delta);
+            }
+        }
+
         audio.update(delta, dayNight);
 
         autoSaveTimer -= delta;
@@ -249,45 +279,29 @@ public class GameScreen extends ScreenAdapter {
         // 6. Decoraciones detrás del jugador
         tileM.drawDecorations(game.batch, mapGen, minX, minY, maxX, maxY, player.worldY, false, camera);
 
-        // 7. Jugador: recorte de sumersión en agua con GL Scissor Test
-        int footCol = (int) ((player.worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
-        int footRow = (int) ((player.worldY + Player.HIT_OFFSET_Y + Player.HIT_H / 2f) / TileManager.TILE_SIZE);
-        int waterLevel = tileM.getWaterLevel(mapGen, footCol, footRow);
+        // 7. Entidades (Jugador y Monstruos) con ordenamiento por profundidad (worldY)
+        entityList.add(player);
 
-        if (waterLevel > 0) {
-            int cutOff = player.getWaterCutOff(waterLevel);
-            float visibleWorldH = TileManager.TILE_SIZE - cutOff;
-            float clipWorldY = player.worldY;
-
-            Vector3 topLeft     = camera.project(new Vector3(player.worldX, clipWorldY, 0));
-            Vector3 bottomRight = camera.project(new Vector3(player.worldX + TileManager.TILE_SIZE, clipWorldY + visibleWorldH, 0));
-
-            int scissorX = (int) Math.min(topLeft.x, bottomRight.x);
-            int scissorY = (int) Math.min(topLeft.y, bottomRight.y);
-            int scissorWidth = (int) Math.abs(bottomRight.x - topLeft.x);
-            int scissorHeight = (int) Math.abs(bottomRight.y - topLeft.y);
-
-            game.batch.flush();
-            Gdx.gl.glEnable(GL20.GL_SCISSOR_TEST);
-            Gdx.gl.glScissor(scissorX, scissorY, Math.max(1, scissorWidth), Math.max(1, scissorHeight));
-
-            player.draw(game.batch, waterLevel, null);
-
-            game.batch.flush();
-            Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
-
-            // Espuma en la línea de agua (fuera del scissor)
-            TextureRegion playerFoam = tileM.getFoamRegion();
-            if (playerFoam != null) {
-                float foamY = player.worldY + player.getWaterYShift(waterLevel)
-                              + TileManager.TILE_SIZE - player.getWaterCutOff(waterLevel) - 3f;
-                game.batch.setColor(1f, 1f, 1f, 0.9f);
-                game.batch.draw(playerFoam, player.worldX, foamY, TileManager.TILE_SIZE, TileManager.TILE_SIZE);
-                game.batch.setColor(1f, 1f, 1f, 1f);
+        for (int i = 0; i < monster.length; i++) {
+            if (monster[i] != null) {
+                entityList.add(monster[i]);
             }
-        } else {
-            player.draw(game.batch, waterLevel, null);
         }
+
+        // Ordenamiento por profundidad según coordenada Y
+        entityList.sort(entitySorter);
+
+        // Dibujar entidades en orden de profundidad
+        for (int i = 0; i < entityList.size(); i++) {
+            Entity e = entityList.get(i);
+            if (e == player) {
+                drawPlayer();
+            } else {
+                e.draw(game.batch);
+            }
+        }
+
+        entityList.clear();
 
         // 8. Decoraciones frente al jugador (copas de árboles, rocas altas)
         tileM.drawDecorations(game.batch, mapGen, minX, minY, maxX, maxY, player.worldY, true, camera);
@@ -322,6 +336,77 @@ public class GameScreen extends ScreenAdapter {
         hud.render(game.batch, player, isPaused, showDeathScreen, showRespawnScreen, saveFeedbackTimer, animTime);
     }
 
+    /**
+     * Initializes world entities and assets.
+     * Equivalent to RyiSnow setupGame().
+     */
+    public void setupGame() {
+        assetSetter.setMonster();
+    }
+
+    /**
+     * Updates world entities, game systems, and audio.
+     */
+    public void update() {
+        updateGame(Gdx.graphics != null ? Gdx.graphics.getDeltaTime() : 1f / 60f);
+    }
+
+    public void update(float delta) {
+        updateGame(delta);
+    }
+
+    /**
+     * Renders player entity with water submersion via OpenGL scissor test.
+     */
+    private void drawPlayer() {
+        int footCol = (int) ((player.worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
+        int footRow = (int) ((player.worldY + Player.HIT_OFFSET_Y + Player.HIT_H / 2f) / TileManager.TILE_SIZE);
+        int waterLevel = tileM.getWaterLevel(mapGen, footCol, footRow);
+
+        if (waterLevel > 0) {
+            int cutOff = player.getWaterCutOff(waterLevel);
+            int yShift = player.getWaterYShift(waterLevel);
+            // Visible world-pixel height: full tile minus the submerged cutOff portion
+            float visibleWorldH = TileManager.TILE_SIZE - cutOff;
+            // Top-left of the visible area in world coords
+            float clipWorldY = player.worldY; // clip starts at sprite top (not shifted — we clip fixed to screen top)
+
+            // Project the clip rectangle corners from world space to GL window pixels.
+            // camera.project() returns GL coords (Y-up, origin bottom-left of window).
+            Vector3 topLeft     = camera.project(new Vector3(player.worldX,                       clipWorldY,                    0));
+            Vector3 bottomRight = camera.project(new Vector3(player.worldX + TileManager.TILE_SIZE, clipWorldY + visibleWorldH, 0));
+
+            int sx = (int) Math.min(topLeft.x, bottomRight.x);
+            int sy = (int) Math.min(topLeft.y, bottomRight.y);
+            int sw = (int) Math.abs(bottomRight.x - topLeft.x);
+            int sh = (int) Math.abs(bottomRight.y - topLeft.y);
+
+            // Flush all pending draw calls BEFORE changing GL state
+            game.batch.flush();
+            Gdx.gl.glEnable(GL20.GL_SCISSOR_TEST);
+            Gdx.gl.glScissor(sx, sy, Math.max(1, sw), Math.max(1, sh));
+
+            // Draw player without foam inside the scissor (sprite only)
+            player.draw(game.batch, waterLevel, null);
+
+            // Flush and restore GL state AFTER drawing
+            game.batch.flush();
+            Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
+
+            // Draw foam OUTSIDE scissor at the waterline, mirroring original g2.setClip restore
+            TextureRegion playerFoam = tileM.getFoamRegion();
+            if (playerFoam != null) {
+                float foamY = player.worldY + player.getWaterYShift(waterLevel)
+                              + TileManager.TILE_SIZE - player.getWaterCutOff(waterLevel) - 3f;
+                game.batch.setColor(1f, 1f, 1f, 0.9f);
+                game.batch.draw(playerFoam, player.worldX, foamY, TileManager.TILE_SIZE, TileManager.TILE_SIZE);
+                game.batch.setColor(1f, 1f, 1f, 1f);
+            }
+        } else {
+            player.draw(game.batch, waterLevel, null);
+        }
+    }
+
     private void returnToTitle() {
         saveProgress();
         Music music = audio.releaseCurrentMusic();
@@ -350,6 +435,12 @@ public class GameScreen extends ScreenAdapter {
         saveProgress();
         tileM.dispose();
         player.dispose();
+        for (int i = 0; i < monster.length; i++) {
+            if (monster[i] != null) {
+                monster[i].dispose();
+                monster[i] = null;
+            }
+        }
         footprintM.dispose();
         snowPS.dispose();
         birdM.dispose();
