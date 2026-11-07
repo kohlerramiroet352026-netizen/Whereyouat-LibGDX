@@ -38,6 +38,14 @@ public abstract class Entity {
     public boolean invincible = false;
     public int invincibleCounter = 0;
 
+    /**
+     * Determines whether touching this entity deals contact damage to the player.
+     * Entities that deal damage via attack animations can override to return false.
+     */
+    public boolean dealsContactDamage() {
+        return true;
+    }
+
     public Entity() {
     }
 

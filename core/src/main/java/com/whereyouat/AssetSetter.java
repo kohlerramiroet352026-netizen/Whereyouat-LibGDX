@@ -62,10 +62,23 @@ public class AssetSetter {
                 Gdx.app.log("AssetSetter", "Spawned Mushroom [" + index + "] at forest tile: (" + tile[0] + ", " + tile[1] + ")");
             }
         } else {
-            // Fallback forest coordinates if search finds none
+            // Fallback en bosque asegurando que no haya arboles ni obstaculos
+            int safeCol = 150;
+            int safeRow = 150;
+            if (gp.mapGen != null && gp.mapGen.mapTreeNum != null) {
+                for (int ox = 0; ox <= 3; ox++) {
+                    for (int oy = 0; oy <= 3; oy++) {
+                        int tc = safeCol + ox;
+                        int tr = safeRow + oy;
+                        if (tc < gp.mapGen.mapCols && tr < gp.mapGen.mapRows) {
+                            gp.mapGen.mapTreeNum[tc][tr] = 0;
+                        }
+                    }
+                }
+            }
             gp.monster[2] = new MON_mushroom(gp);
-            gp.monster[2].worldX = gp.tileSize * 150;
-            gp.monster[2].worldY = gp.tileSize * 150;
+            gp.monster[2].worldX = gp.tileSize * safeCol;
+            gp.monster[2].worldY = gp.tileSize * safeRow;
         }
     }
 
@@ -167,9 +180,31 @@ public class AssetSetter {
                             if (nearCoastOrWater) break;
                         }
 
-                        if (!nearCoastOrWater) {
-                            tiles.add(new int[]{c, r});
+                        if (nearCoastOrWater) continue;
+
+                        // Verificar que no haya arboles ni rocas en el area de spawn
+                        boolean hasObstacle = false;
+                        for (int ox = 0; ox <= 3; ox++) {
+                            for (int oy = 0; oy <= 3; oy++) {
+                                int tc = c + ox;
+                                int tr = r + oy;
+                                if (tc >= gp.mapGen.mapCols || tr >= gp.mapGen.mapRows
+                                        || gp.mapGen.mapTreeNum[tc][tr] != 0) {
+                                    hasObstacle = true;
+                                    break;
+                                }
+                            }
+                            if (hasObstacle) break;
                         }
+                        if (hasObstacle) continue;
+
+                        float hitX = c * gp.tileSize + 155f;
+                        float hitY = r * gp.tileSize + 246f;
+                        if (gp.tileM != null && gp.tileM.collidesWithTree(gp.mapGen, hitX, hitY, 40f, 26f)) {
+                            continue;
+                        }
+
+                        tiles.add(new int[]{c, r});
                     }
                 }
             }

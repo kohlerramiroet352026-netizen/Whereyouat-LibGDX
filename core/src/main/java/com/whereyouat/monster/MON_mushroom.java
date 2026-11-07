@@ -1,153 +1,329 @@
 package com.whereyouat.monster;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Vector3;
 import com.whereyouat.entity.Entity;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 
+/**
+ * Entidad del Jefe Hongo Gigante (Mushroom Boss).
+ * 
+ * Implementa máquina de estados simple (Reposo, Persecución, Ataque),
+ * animación de sprites con orientación horizontal y evasión de obstáculos.
+ */
 public class MON_mushroom extends Entity {
 
     public GameScreen gp;
     public String name;
 
-    // Tamaño de dibujado aumentado (80px en lugar de 48px para que se vea más grande e imponente)
-    public static final float DRAW_SIZE = 80f;
+    // Dimensiones proporcionales 80:64 (5:4). Tamaño de jefe (~tamaño de un árbol)
+    public static final float DRAW_WIDTH = 350f;
+    public static final float DRAW_HEIGHT = 280f;
 
+    // Constantes de estados de animación e IA
+    public static final int STATE_IDLE = 0;
+    public static final int STATE_RUN = 1;
+    public static final int STATE_ATTACK = 2;
+
+    // Constantes de orientación horizontal
+    private static final int SIDE_LEFT = 0;
+    private static final int SIDE_RIGHT = 1;
+
+    public int state = STATE_IDLE;
+    private int previousState = STATE_IDLE;
+
+    // Control del ciclo de ataque
+    private boolean isAttacking = false;
+    private boolean attackDamageDealt = false;
+
+    // Colección de texturas para liberar recursos en dispose()
     private final List<Texture> textures = new ArrayList<>();
-    private final TextureRegion[][] walkFrames = new TextureRegion[4][4];
-    private static final int DIR_UP    = 0;
-    private static final int DIR_DOWN  = 1;
-    private static final int DIR_LEFT  = 2;
-    private static final int DIR_RIGHT = 3;
+    private TextureRegion[][] idleFrames;
+    private TextureRegion[][] runFrames;
+    private TextureRegion[][] attackFrames;
 
-    private String lastHorizontal = "right";
-
-    private int actionLockCounter = 0;
-    private final Random random = new Random();
+    private String lastHorizontal = "left";
 
     public MON_mushroom(GameScreen gp) {
-        super(0, 0, 40f); // Velocidad: 40 px/segundo
+        super(0, 0, 50f);
         this.gp = gp;
-        
-        name = "Mushroom";
-        maxLife = 3;
+
+        name = "Giant Mushroom Boss";
+        maxLife = 12;
         life = maxLife;
 
-        // Hitbox de colisión proporcional al nuevo tamaño (80px)
-        solidArea.set(19f, 37f, 39f, 40f);
+        // Hitbox compacta en la base de los pies (40x26 px) para permitir pasar entre árboles
+        solidArea.set(155f, 246f, 40f, 26f);
         solidAreaDefaultX = solidArea.x;
         solidAreaDefaultY = solidArea.y;
 
         loadSprites();
     }
+
+    @Override
+    public boolean dealsContactDamage() {
+        // El hongo no daña por mero roce, daña mediante su ataque en el frame 7
+        return false;
+    }
+
     private void loadSprites() {
-        // Right-facing movement frames (1 to 4)
-        TextureRegion frame1 = loadRegion("monster/Mushroom-Run5.png");
-        TextureRegion frame2 = loadRegion("monster/Mushroom-Run6.png");
-        TextureRegion frame3 = loadRegion("monster/Mushroom-Run7.png");
-        TextureRegion frame4 = loadRegion("monster/Mushroom-Run8.png");
-
-        // Left-facing movement frames (5 to 8)
-        TextureRegion frame5 = loadRegion("monster/Mushroom-Run1.png");
-        TextureRegion frame6 = loadRegion("monster/Mushroom-Run2.png");
-        TextureRegion frame7 = loadRegion("monster/Mushroom-Run3.png");
-        TextureRegion frame8 = loadRegion("monster/Mushroom-Run4.png");
-
-        // DIR_RIGHT (3): frames 1-4
-        walkFrames[DIR_RIGHT][0] = frame1;
-        walkFrames[DIR_RIGHT][1] = frame2;
-        walkFrames[DIR_RIGHT][2] = frame3;
-        walkFrames[DIR_RIGHT][3] = frame4;
-
-        // DIR_LEFT (2): frames 3-4
-        walkFrames[DIR_LEFT][0] = frame5;
-        walkFrames[DIR_LEFT][1] = frame6;
-        walkFrames[DIR_LEFT][2] = frame7;
-        walkFrames[DIR_LEFT][3] = frame8;
-
-        // DIR_UP (0) and DIR_DOWN (1): default right frames
-        walkFrames[DIR_UP][0] = frame1;
-        walkFrames[DIR_UP][1] = frame2;
-        walkFrames[DIR_UP][2] = frame3;
-        walkFrames[DIR_UP][3] = frame4;
-
-        walkFrames[DIR_DOWN][0] = frame1;
-        walkFrames[DIR_DOWN][1] = frame2;
-        walkFrames[DIR_DOWN][2] = frame3;
-        walkFrames[DIR_DOWN][3] = frame4;
+        idleFrames = loadFrames("monster/Mushroom-Idle.png", 7);
+        runFrames = loadFrames("monster/Mushroom-Run.png", 8);
+        attackFrames = loadFrames("monster/Mushroom-Attack.png", 10);
     }
-    private TextureRegion loadRegion(String path) {
-        Texture tex = new Texture(Gdx.files.internal(path));
-        tex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-        textures.add(tex);
-        TextureRegion tr = new TextureRegion(tex);
-        tr.flip(false, true); // Y-down para LibGDX
-        return tr;
+
+    private TextureRegion[][] loadFrames(String path, int count) {
+        Texture texture = new Texture(Gdx.files.internal(path));
+        texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        textures.add(texture);
+
+        TextureRegion[][] sheet = TextureRegion.split(texture, 80, 64);
+        TextureRegion[][] frames = new TextureRegion[2][count];
+        for (int i = 0; i < count; i++) {
+            TextureRegion left = new TextureRegion(sheet[0][i]);
+            left.flip(false, true);
+
+            TextureRegion right = new TextureRegion(sheet[0][i]);
+            right.flip(true, true);
+
+            frames[SIDE_LEFT][i] = left;   // Mirando a la izquierda
+            frames[SIDE_RIGHT][i] = right; // Mirando a la derecha
+        }
+        return frames;
     }
+
     @Override
     public void update(float delta) {
-        // IA simple: cambia de dirección cada ~2 segundos
-        actionLockCounter++;
-        if (actionLockCounter >= 120) {
-            int r = random.nextInt(4);
-            if (r == 0) direction = "up";
-            else if (r == 1) direction = "down";
-            else if (r == 2) direction = "left";
-            else direction = "right";
-            actionLockCounter = 0;
+        if (gp == null || gp.player == null || gp.player.dead) {
+            state = STATE_IDLE;
+            isAttacking = false;
+        } else {
+            // Posición de los pies del hongo y del jugador en coordenadas del mundo
+            float mushroomFootX = worldX + solidArea.x + solidArea.width / 2f;
+            float mushroomFootY = worldY + solidArea.y + solidArea.height / 2f;
+            float playerFootX = gp.player.worldX + gp.player.solidArea.x + gp.player.solidArea.width / 2f;
+            float playerFootY = gp.player.worldY + gp.player.solidArea.y + gp.player.solidArea.height / 2f;
+
+            // Vector de distancia hacia el jugador
+            float deltaX = playerFootX - mushroomFootX;
+            float deltaY = playerFootY - mushroomFootY;
+            float distanceToPlayer = (float) Math.hypot(deltaX, deltaY);
+
+            // Orientación visual según la posición del jugador
+            if (!isAttacking && deltaX != 0) {
+                lastHorizontal = (deltaX < 0) ? "left" : "right";
+            }
+
+            // Máquina de estados: Ataque, Persecución o Reposo
+            if (isAttacking) {
+                state = STATE_ATTACK;
+
+                // El daño ocurre exactamente en el frame 7 de la animación de ataque
+                if (spriteNum >= 7 && !attackDamageDealt) {
+                    if (distanceToPlayer <= 125f || intersects(gp.player)) {
+                        gp.player.contactMonster();
+                    }
+                    attackDamageDealt = true;
+                }
+            } else {
+                // Si está a rango de golpe, inicia ataque
+                if (distanceToPlayer <= 110f || intersects(gp.player)) {
+                    isAttacking = true;
+                    attackDamageDealt = false;
+                    state = STATE_ATTACK;
+                    spriteNum = 1;
+                    spriteCounter = 0;
+                } else if (distanceToPlayer <= 650f) {
+                    // Si el jugador está dentro del rango de detección, lo persigue
+                    state = STATE_RUN;
+
+                    float currentSpeed = speed;
+                    if (gp.tileM != null && gp.mapGen != null) {
+                        int col = (int) (mushroomFootX / TileManager.TILE_SIZE);
+                        int row = (int) (mushroomFootY / TileManager.TILE_SIZE);
+                        int waterLevel = gp.tileM.getWaterLevel(gp.mapGen, col, row);
+                        if (waterLevel == 2) currentSpeed = speed * 0.45f;
+                        else if (waterLevel == 1) currentSpeed = speed * 0.75f;
+                    }
+
+                    float moveX = (deltaX / distanceToPlayer) * currentSpeed * delta;
+                    float moveY = (deltaY / distanceToPlayer) * currentSpeed * delta;
+
+                    boolean movedX = false;
+                    boolean movedY = false;
+
+                    // Moverse en X si no colisiona con un árbol o roca
+                    float nextX = worldX + moveX;
+                    if (!collides(nextX, worldY)) {
+                        worldX = nextX;
+                        movedX = true;
+                    }
+
+                    // Moverse en Y si no colisiona con un árbol o roca
+                    float nextY = worldY + moveY;
+                    if (!collides(worldX, nextY)) {
+                        worldY = nextY;
+                        movedY = true;
+                    }
+
+                    // Evasión: si se frena contra un árbol de frente, se desvía al costado
+                    if (!movedX && !movedY) {
+                        float slideStep = currentSpeed * delta;
+                        if (Math.abs(deltaY) >= Math.abs(deltaX)) {
+                            // Si intentaba moverse verticalmente, intenta deslizarse en horizontal
+                            if (!collides(worldX + slideStep, worldY)) {
+                                worldX += slideStep;
+                            } else if (!collides(worldX - slideStep, worldY)) {
+                                worldX -= slideStep;
+                            }
+                        } else {
+                            // Si intentaba moverse horizontalmente, intenta deslizarse en vertical
+                            if (!collides(worldX, worldY + slideStep)) {
+                                worldY += slideStep;
+                            } else if (!collides(worldX, worldY - slideStep)) {
+                                worldY -= slideStep;
+                            }
+                        }
+                    }
+
+                    clampToBounds();
+                } else {
+                    // Si el jugador está fuera de rango, queda en reposo
+                    state = STATE_IDLE;
+                }
+            }
         }
-        // Movimiento
-        switch (direction) {
-            case "up":    worldY -= speed * delta; break;
-            case "down":  worldY += speed * delta; break;
-            case "left":  worldX -= speed * delta; lastHorizontal = "left"; break;
-            case "right": worldX += speed * delta; lastHorizontal = "right"; break;
+
+        updateAnimation(delta);
+    }
+
+    private boolean collides(float x, float y) {
+        if (gp == null || gp.tileM == null || gp.mapGen == null) return false;
+        return gp.tileM.collidesWithTree(gp.mapGen, x + solidArea.x, y + solidArea.y,
+                solidArea.width, solidArea.height);
+    }
+
+    private void clampToBounds() {
+        if (gp == null || gp.mapGen == null) return;
+        int margin = 30;
+        float minX = margin * TileManager.TILE_SIZE;
+        float minY = margin * TileManager.TILE_SIZE;
+        float maxX = (gp.mapGen.mapCols - margin) * TileManager.TILE_SIZE - DRAW_WIDTH;
+        float maxY = (gp.mapGen.mapRows - margin) * TileManager.TILE_SIZE - DRAW_HEIGHT;
+        worldX = Math.max(minX, Math.min(maxX, worldX));
+        worldY = Math.max(minY, Math.min(maxY, worldY));
+    }
+
+    private void updateAnimation(float delta) {
+        if (state != previousState) {
+            previousState = state;
+            spriteNum = 1;
+            spriteCounter = 0;
         }
-        // Animación de 4 frames
+
+        int maxFrames = (state == STATE_ATTACK) ? 10 : (state == STATE_RUN ? 8 : 7);
+        float animSpeed = (state == STATE_ATTACK) ? 7f : 6f;
+
         spriteCounter += delta * 60f;
-        if (spriteCounter >= 12f) {
+        if (spriteCounter >= animSpeed) {
             spriteNum++;
-            if (spriteNum > 4) {
+            if (spriteNum > maxFrames) {
+                if (isAttacking) {
+                    isAttacking = false;
+                    attackDamageDealt = false;
+                }
                 spriteNum = 1;
             }
             spriteCounter = 0;
         }
     }
+
     @Override
     public void draw(SpriteBatch batch) {
-        int dirIndex;
-        switch (direction) {
-            case "left":
-                dirIndex = DIR_LEFT;
+        int side = "right".equals(lastHorizontal) ? SIDE_RIGHT : SIDE_LEFT;
+        TextureRegion[][] sheet;
+        int maxFrames;
+
+        switch (state) {
+            case STATE_ATTACK:
+                sheet = attackFrames;
+                maxFrames = 10;
                 break;
-            case "right":
-                dirIndex = DIR_RIGHT;
+            case STATE_RUN:
+                sheet = runFrames;
+                maxFrames = 8;
                 break;
-            case "up":
-            case "down":
             default:
-                // Keep the last horizontal direction (left or right) when moving vertically
-                dirIndex = "left".equals(lastHorizontal) ? DIR_LEFT : DIR_RIGHT;
+                sheet = idleFrames;
+                maxFrames = 7;
                 break;
         }
 
-        int frameIndex = Math.max(0, Math.min(3, spriteNum - 1));
-        TextureRegion region = walkFrames[dirIndex][frameIndex];
+        int frameIndex = Math.max(0, Math.min(maxFrames - 1, spriteNum - 1));
+        TextureRegion region = sheet[side][frameIndex];
+        if (region == null) return;
 
-        if (region != null) {
-            batch.draw(region, worldX, worldY, DRAW_SIZE, DRAW_SIZE);
+        // Detección de nivel de agua para sumersión
+        int waterLevel = 0;
+        if (gp != null && gp.tileM != null && gp.mapGen != null) {
+            float footX = worldX + solidArea.x + solidArea.width / 2f;
+            float footY = worldY + solidArea.y + solidArea.height / 2f;
+            int col = (int) (footX / TileManager.TILE_SIZE);
+            int row = (int) (footY / TileManager.TILE_SIZE);
+            waterLevel = gp.tileM.getWaterLevel(gp.mapGen, col, row);
+        }
+
+        // Sumersión en agua con OpenGL Scissor Test
+        if (waterLevel > 0 && gp != null && gp.camera != null) {
+            float cutOff = (waterLevel == 1) ? 28f : 56f;
+            float yShift = (waterLevel == 1) ? 10f : 20f;
+            float drawY = worldY + yShift;
+            float visibleH = DRAW_HEIGHT - cutOff;
+
+            Vector3 topLeft = gp.camera.project(new Vector3(worldX, drawY, 0));
+            Vector3 bottomRight = gp.camera.project(new Vector3(worldX + DRAW_WIDTH, drawY + visibleH, 0));
+
+            int sx = (int) Math.min(topLeft.x, bottomRight.x);
+            int sy = (int) Math.min(topLeft.y, bottomRight.y);
+            int sw = (int) Math.abs(bottomRight.x - topLeft.x);
+            int sh = (int) Math.abs(bottomRight.y - topLeft.y);
+
+            batch.flush();
+            Gdx.gl.glEnable(GL20.GL_SCISSOR_TEST);
+            Gdx.gl.glScissor(sx, sy, Math.max(1, sw), Math.max(1, sh));
+
+            batch.draw(region, worldX, drawY, DRAW_WIDTH, DRAW_HEIGHT);
+
+            batch.flush();
+            Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
+
+            // Espuma en la línea de agua
+            TextureRegion foam = gp.tileM.getFoamRegion();
+            if (foam != null) {
+                float foamY = drawY + DRAW_HEIGHT - cutOff - 4f;
+                float foamX = worldX + (DRAW_WIDTH - TileManager.TILE_SIZE) / 2f;
+                batch.setColor(1f, 1f, 1f, 0.9f);
+                batch.draw(foam, foamX, foamY, TileManager.TILE_SIZE, TileManager.TILE_SIZE);
+                batch.setColor(1f, 1f, 1f, 1f);
+            }
+        } else {
+            batch.draw(region, worldX, worldY, DRAW_WIDTH, DRAW_HEIGHT);
         }
     }
+
     @Override
     public void dispose() {
-        for (Texture tex : textures) {
-            tex.dispose();
+        for (Texture texture : textures) {
+            texture.dispose();
         }
         textures.clear();
     }

@@ -502,6 +502,16 @@ public class TileManager {
                 tiles, illuminatedTreeCache, tintPipeline, foliageSway);
     }
 
+    public void drawDecorationsRow(SpriteBatch batch, MapGenerator map, int startCol, int endCol, int row,
+                                  OrthographicCamera camera) {
+        decorationRenderer.drawDecorationsRow(batch, map, startCol, endCol, row, camera,
+                tiles, illuminatedTreeCache, tintPipeline, foliageSway);
+    }
+
+    public void drawLilipads(SpriteBatch batch, MapGenerator map, int startCol, int endCol, int startRow, int endRow) {
+        decorationRenderer.drawLilipads(batch, map, startCol, endCol, startRow, endRow, tiles);
+    }
+
     public void drawAllDecorations(SpriteBatch batch, MapGenerator map, float minX, float minY, float maxX, float maxY) {
         decorationRenderer.drawAllDecorations(batch, map, minX, minY, maxX, maxY,
                 tiles, illuminatedTreeCache, tintPipeline);

@@ -436,7 +436,7 @@ public class Player extends Entity {
     public int checkMonster(Entity[] monsters) {
         if (monsters == null) return 999;
         for (int i = 0; i < monsters.length; i++) {
-            if (monsters[i] != null && intersects(monsters[i])) {
+            if (monsters[i] != null && monsters[i].dealsContactDamage() && intersects(monsters[i])) {
                 return i;
             }
         }

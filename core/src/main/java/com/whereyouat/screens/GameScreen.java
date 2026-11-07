@@ -65,9 +65,12 @@ public class GameScreen extends ScreenAdapter {
     public final AssetSetter assetSetter;
     public final int tileSize = TileManager.TILE_SIZE;
 
-    // Entity list for depth sorting
+    // Entity list for depth sorting (ordenamiento por la base/pies de la hitbox física)
     public final ArrayList<Entity> entityList = new ArrayList<>();
-    private final Comparator<Entity> entitySorter = (e1, e2) -> Float.compare(e1.worldY, e2.worldY);
+    private final Comparator<Entity> entitySorter = (e1, e2) -> Float.compare(
+            e1.worldY + e1.solidArea.y + e1.solidArea.height,
+            e2.worldY + e2.solidArea.y + e2.solidArea.height
+    );
 
     // Metadatos del mundo
     public final String worldFileName;
@@ -276,35 +279,53 @@ public class GameScreen extends ScreenAdapter {
         // 5. Aves en el suelo (detrás del jugador)
         birdM.drawBehindPlayer(game.batch, minX, minY, maxX, maxY);
 
-        // 6. Decoraciones detrás del jugador
-        tileM.drawDecorations(game.batch, mapGen, minX, minY, maxX, maxY, player.worldY, false, camera);
-
-        // 7. Entidades (Jugador y Monstruos) con ordenamiento por profundidad (worldY)
+        // 6. Entidades y Decoraciones con ordenamiento unificado por profundidad Y (evita oclusiones prematuras)
         entityList.add(player);
-
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] != null) {
                 entityList.add(monster[i]);
             }
         }
-
-        // Ordenamiento por profundidad según coordenada Y
         entityList.sort(entitySorter);
 
-        // Dibujar entidades en orden de profundidad
-        for (int i = 0; i < entityList.size(); i++) {
-            Entity e = entityList.get(i);
-            if (e == player) {
-                drawPlayer();
-            } else {
-                e.draw(game.batch);
+        int startCol = Math.max(0, (int) (minX / TileManager.TILE_SIZE) - 2);
+        int startRow = Math.max(0, (int) (minY / TileManager.TILE_SIZE) - 2);
+        int endCol = Math.min(mapGen.mapCols - 1, (int) (maxX / TileManager.TILE_SIZE) + 4);
+        int endRow = Math.min(mapGen.mapRows - 1, (int) (maxY / TileManager.TILE_SIZE) + 4);
+
+        // Nenúfares en la superficie del agua (bajo todas las entidades)
+        tileM.drawLilipads(game.batch, mapGen, startCol, endCol, startRow, endRow);
+
+        int entityIndex = 0;
+        for (int row = startRow; row <= endRow; row++) {
+            float rowFootY = (row + 1) * TileManager.TILE_SIZE;
+
+            // Dibuja entidades situadas detrás de las decoraciones de esta fila
+            while (entityIndex < entityList.size()) {
+                Entity e = entityList.get(entityIndex);
+                float eFootY = e.worldY + e.solidArea.y + e.solidArea.height;
+                if (eFootY < rowFootY) {
+                    if (e == player) drawPlayer();
+                    else e.draw(game.batch);
+                    entityIndex++;
+                } else {
+                    break;
+                }
             }
+
+            // Dibuja decoraciones (árboles, rocas, arbustos) de la fila actual
+            tileM.drawDecorationsRow(game.batch, mapGen, startCol, endCol, row, camera);
+        }
+
+        // Dibuja entidades restantes por delante de las filas visibles
+        while (entityIndex < entityList.size()) {
+            Entity e = entityList.get(entityIndex);
+            if (e == player) drawPlayer();
+            else e.draw(game.batch);
+            entityIndex++;
         }
 
         entityList.clear();
-
-        // 8. Decoraciones frente al jugador (copas de árboles, rocas altas)
-        tileM.drawDecorations(game.batch, mapGen, minX, minY, maxX, maxY, player.worldY, true, camera);
 
         // 9. Aves elevadas y en vuelo
         birdM.drawInFrontOfPlayer(game.batch, minX, minY, maxX, maxY);
