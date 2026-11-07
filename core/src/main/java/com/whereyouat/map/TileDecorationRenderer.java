@@ -35,7 +35,6 @@ public class TileDecorationRenderer {
                 int treeIdx = map.mapTreeNum[col][row];
                 if (treeIdx == 0) continue;
 
-                float scale = SCALE;
                 int sinkOffset = 0;
                 if (treeIdx == MapGenerator.TILE_MANGROVE) {
                     sinkOffset = (((col * 31 + row * 17) & 1) == 0 ? 2 : 3) * SCALE;
@@ -50,9 +49,61 @@ public class TileDecorationRenderer {
                 boolean treeInFront = !isLilipad && (treeFootY > playerFootY);
                 if (treeInFront != inFront) continue;
 
-                float screenX = col * TILE_SIZE, screenY = row * TILE_SIZE;
-                TextureRegion tileRegion = tiles[treeIdx];
-                if (tileRegion == null) continue;
+                drawSingleDecoration(batch, map, col, row, camera, tiles, illuminatedTreeCache, tintPipeline, foliageSway);
+            }
+        }
+        batch.setColor(1f, 1f, 1f, 1f);
+    }
+
+    public void drawDecorationsRow(SpriteBatch batch, MapGenerator map,
+                                  int startCol, int endCol, int row, OrthographicCamera camera,
+                                  TextureRegion[] tiles, TextureRegion[] illuminatedTreeCache,
+                                  TileTintPipeline tintPipeline, FoliageSwayManager foliageSway) {
+        batch.setColor(1f, 1f, 1f, 1f);
+        for (int col = startCol; col <= endCol; col++) {
+            int treeIdx = map.mapTreeNum[col][row];
+            if (treeIdx == 0) continue;
+            if (treeIdx >= MapGenerator.TILE_LILIPAD1 && treeIdx <= MapGenerator.TILE_LILIPAD3) continue;
+            drawSingleDecoration(batch, map, col, row, camera, tiles, illuminatedTreeCache, tintPipeline, foliageSway);
+        }
+    }
+
+    public void drawLilipads(SpriteBatch batch, MapGenerator map,
+                             int startCol, int endCol, int startRow, int endRow,
+                             TextureRegion[] tiles) {
+        batch.setColor(1f, 1f, 1f, 1f);
+        float scale = SCALE;
+        for (int row = startRow; row <= endRow; row++) {
+            for (int col = startCol; col <= endCol; col++) {
+                int treeIdx = map.mapTreeNum[col][row];
+                if (treeIdx >= MapGenerator.TILE_LILIPAD1 && treeIdx <= MapGenerator.TILE_LILIPAD3) {
+                    TextureRegion tileRegion = tiles[treeIdx];
+                    if (tileRegion == null) continue;
+                    float drawWidth = tileRegion.getRegionWidth() * scale;
+                    float drawHeight = tileRegion.getRegionHeight() * scale;
+                    int jitterX = (Math.abs(col * 13 + row * 7) % 7) - 3;
+                    int jitterY = (Math.abs(col * 17 + row * 11) % 7) - 3;
+                    float drawX = col * TILE_SIZE + (TILE_SIZE - drawWidth) / 2f + jitterX;
+                    float drawY = row * TILE_SIZE + (TILE_SIZE - drawHeight) / 2f + jitterY;
+                    batch.draw(tileRegion, drawX, drawY, drawWidth, drawHeight);
+                }
+            }
+        }
+    }
+
+    public void drawSingleDecoration(SpriteBatch batch, MapGenerator map,
+                                     int col, int row, OrthographicCamera camera,
+                                     TextureRegion[] tiles, TextureRegion[] illuminatedTreeCache,
+                                     TileTintPipeline tintPipeline, FoliageSwayManager foliageSway) {
+        int treeIdx = map.mapTreeNum[col][row];
+        if (treeIdx == 0) return;
+
+        float scale = SCALE;
+        float screenX = col * TILE_SIZE, screenY = row * TILE_SIZE;
+        TextureRegion tileRegion = tiles[treeIdx];
+        if (tileRegion == null) return;
+
+        boolean isLilipad = (treeIdx >= MapGenerator.TILE_LILIPAD1 && treeIdx <= MapGenerator.TILE_LILIPAD3);
 
                 if (treeIdx == MapGenerator.TILE_MANGROVE) {
                     int sinkTexels = (((col * 31 + row * 17) & 1) == 0 ? 2 : 3);
@@ -178,7 +229,7 @@ public class TileDecorationRenderer {
                     if ((tileIsShallow || tileIsDeep) && camera != null) {
                         float waterSurfaceY = tileIsDeep ? screenY : (screenY + TILE_SIZE / 2f);
                         float visibleHeight = waterSurfaceY - drawY;
-                        if (visibleHeight <= 0) continue;
+                        if (visibleHeight <= 0) return;
 
                         long swayKey = (((long) col) << 32) | (row & 0xFFFFFFFFL);
                         TileManager.BushSway bushSway = isSwayingPlant ? foliageSway.swayingBushes.get(swayKey) : null;
@@ -215,7 +266,7 @@ public class TileDecorationRenderer {
                             batch.draw(decorationFoam, screenX, waterSurfaceY - 3f, TILE_SIZE, TILE_SIZE);
                             batch.setColor(1f, 1f, 1f, 1f);
                         }
-                        continue;
+                        return;
                     }
 
                     if (isSwayingPlant && !foliageSway.swayingBushes.isEmpty()) {
@@ -231,9 +282,6 @@ public class TileDecorationRenderer {
                         batch.draw(spriteImage, drawX, drawY, drawWidth, drawHeight);
                     }
                 }
-            }
-        }
-        batch.setColor(1f, 1f, 1f, 1f);
     }
 
     public void drawAllDecorations(SpriteBatch batch, MapGenerator map,

@@ -20,3 +20,6 @@ bin/
 Thumbs.db
 *.log
 
+# Game saves
+saves/
+

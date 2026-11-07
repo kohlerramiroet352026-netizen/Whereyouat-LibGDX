@@ -70,8 +70,10 @@ public class Player extends Entity {
     public static final int DROWN_TICKS_DEEP = 180; // 3 seconds at 60fps
 
     // Invincibility
-    private int invincibleCounter = 0;
     public static final int INVINCIBLE_DURATION = 120; // 2 seconds at 60fps
+
+    // Monster contact damage
+    public static final int MONSTER_DAMAGE = 20;
 
     // Movement speeds (pixels per second)
     private static final float BASE_SPEED = 240f;
@@ -87,6 +89,11 @@ public class Player extends Entity {
 
     public Player() {
         super(0, 0, BASE_SPEED);
+
+        solidArea.set(HIT_OFFSET_X, HIT_OFFSET_Y, HIT_W, HIT_H);
+        solidAreaDefaultX = solidArea.x;
+        solidAreaDefaultY = solidArea.y;
+
         loadSprites();
     }
 
@@ -123,6 +130,7 @@ public class Player extends Entity {
         dead = false;
         drownCounter = 0;
         invincibleCounter = 0;
+        invincible = false;
         direction = "down";
 
         java.util.Random rand = new java.util.Random(mapGen.seed);
@@ -158,6 +166,7 @@ public class Player extends Entity {
         healCooldown = 0;
         regenTick = 0;
         invincibleCounter = INVINCIBLE_DURATION;
+        invincible = true;
         direction = "down";
         speed = BASE_SPEED;
         moving = false;
@@ -192,8 +201,16 @@ public class Player extends Entity {
 
     /**
      * Main tick update with world map collision, water depth, and foliage reaction.
+     * Backwards compatible overload without monster array.
      */
     public void update(float delta, MapGenerator mapGen, TileManager tileM) {
+        update(delta, mapGen, tileM, null);
+    }
+
+    /**
+     * Main tick update with world map collision, monster contact checking, water depth, and foliage reaction.
+     */
+    public void update(float delta, MapGenerator mapGen, TileManager tileM, Entity[] monsters) {
         if (dead) return;
 
         // Current tile under player feet
@@ -243,6 +260,13 @@ public class Player extends Entity {
 
         if (invincibleCounter > 0) {
             invincibleCounter--;
+        }
+        invincible = (invincibleCounter > 0);
+
+        // Check collision with monsters
+        if (monsters != null) {
+            int monsterIndex = checkMonster(monsters);
+            contactMonster(monsterIndex);
         }
 
         // Read movement input
@@ -403,6 +427,60 @@ public class Player extends Entity {
         isLeftFootStep = !isLeftFootStep;
     }
 
+    /**
+     * Checks collision with an array of monster entities using solidArea hitboxes.
+     *
+     * @param monsters Array of monsters
+     * @return Index of contacted monster, or 999 if no collision
+     */
+    public int checkMonster(Entity[] monsters) {
+        if (monsters == null) return 999;
+        for (int i = 0; i < monsters.length; i++) {
+            if (monsters[i] != null && monsters[i].dealsContactDamage() && intersects(monsters[i])) {
+                return i;
+            }
+        }
+        return 999;
+    }
+
+    /**
+     * Handles contact damage with a monster by index.
+     *
+     * @param i Index of contacted monster in monsters array
+     */
+    public void contactMonster(int i) {
+        if (i != 999 && i != -1) {
+            contactMonster();
+        }
+    }
+
+    /**
+     * Handles contact damage with a specific monster entity.
+     *
+     * @param monster Monster entity
+     */
+    public void contactMonster(Entity monster) {
+        if (monster != null) {
+            contactMonster();
+        }
+    }
+
+    /**
+     * Handles contact damage from monsters using the player's health system.
+     * Activates invincibility to prevent taking damage repeatedly or from
+     * multiple monsters in the same instant.
+     */
+    public void contactMonster() {
+        if (invincibleCounter > 0 || dead) return;
+
+        damage(MONSTER_DAMAGE);
+
+        if (!dead) {
+            invincibleCounter = INVINCIBLE_DURATION;
+            invincible = true;
+        }
+    }
+
     public void damage(int amount) {
         if (invincibleCounter > 0 || dead) return;
         health -= amount;
@@ -427,9 +505,12 @@ public class Player extends Entity {
             lives = 0;
             health = 0;
             dead = true;
+            invincible = false;
+            invincibleCounter = 0;
         } else {
             health = maxHealth;
             invincibleCounter = INVINCIBLE_DURATION;
+            invincible = true;
         }
     }
 
