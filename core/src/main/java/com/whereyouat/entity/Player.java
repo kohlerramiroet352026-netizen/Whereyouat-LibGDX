@@ -9,8 +9,13 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.whereyouat.items.Item;
+import com.whereyouat.items.ItemPotion;
+import com.whereyouat.items.Sword;
 import com.whereyouat.map.MapGenerator;
 import com.whereyouat.map.TileManager;
+import com.whereyouat.monster.MON_mushroom;
+
 
 /**
  * Player entity for Where you at (LibGDX Edition).
@@ -76,7 +81,7 @@ public class Player extends Entity {
     public static final int MONSTER_DAMAGE = 20;
 
     // Movement speeds (pixels per second)
-    private static final float BASE_SPEED = 240f;
+    private static final float BASE_SPEED = 1000f; //240
     private static final float BUSH_SPEED = 180f;
     private static final float SHALLOW_SPEED = 120f;
     private static final float DEEP_SPEED = 60f;
@@ -87,6 +92,16 @@ public class Player extends Entity {
     public static final float HIT_W = 20f;
     public static final float HIT_H = 12f;
 
+    //deteción de ataque y mounstros
+    public Entity[] currentMonsters;
+    public boolean attacking = false;
+    public float attackTimer = 0f;
+    public static final float ATTACK_DURATION = 0.2f;
+    private TextureRegion attackUp;
+    private TextureRegion attackDown;
+    private TextureRegion attackRight;
+    private TextureRegion attackLeft;
+
     public Player() {
         super(0, 0, BASE_SPEED);
 
@@ -95,6 +110,69 @@ public class Player extends Entity {
         solidAreaDefaultY = solidArea.y;
 
         loadSprites();
+
+        canObtainItem(new Sword(null));
+        canObtainItem(new ItemPotion(null));
+
+    }
+
+    public void attack(String targetDir, int damage){
+        this.direction = targetDir;
+        this.attacking = true;
+        this.attackTimer = ATTACK_DURATION;
+
+        if (currentMonsters == null) return;
+
+        //area de impacto (40x40px en frente del jugador);
+        float attackW = 40f;
+        float attackH = 40f;
+        float attackX = worldX;
+        float attackY = worldY;
+
+        switch (direction){
+            case "up":
+                attackX = worldX + (TileManager.TILE_SIZE - attackW) / 2f;
+                attackY = worldY - attackH;
+                break;
+            case "down":
+                attackX = worldX + (TileManager.TILE_SIZE - attackW) / 2f;
+                attackY = worldY + TileManager.TILE_SIZE;
+                break;
+            case "left":
+                attackX = worldX - attackW;
+                attackY = worldY + (TileManager.TILE_SIZE - attackH) / 2f;
+                break;
+            case "right":
+                attackX = worldX + TileManager.TILE_SIZE;
+                attackY = worldY + (TileManager.TILE_SIZE - attackH) / 2f;
+                break;
+        }
+
+        //revisar si le pega a algun mounstro
+
+        for (int i = 0; i < currentMonsters.length; i++){
+            Entity m = currentMonsters[i];
+            if (m != null && m.life > 0){
+                //hitbox del mounstro
+                float mX = (m instanceof MON_mushroom) ? m.worldX + 50f : m.worldX + m.solidArea.x;
+                float mY = (m instanceof MON_mushroom) ? m.worldY + 40f : m.worldY + m.solidArea.y;
+                float mW = (m instanceof MON_mushroom) ? 250f : m.solidArea.width;
+                float mH = (m instanceof MON_mushroom) ? 230f : m.solidArea.height;
+
+                //colision entre el ataque y el mounstro
+                if (attackX < mX + mW && attackX + attackW > mX && attackY < mY + mH && attackY + attackH > mY){
+                    if (m instanceof MON_mushroom) {
+                        ((MON_mushroom) m).takeDamage(damage, worldX, worldY);
+                    } else {
+                        m.life -= damage;
+                        if (m.life <=0){
+                            currentMonsters[i] = null;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     public void setStepListener(PlayerStepListener listener) {
@@ -122,6 +200,12 @@ public class Player extends Entity {
         for (int i = 0; i <= 8; i++) {
             idleAnim[i] = loadRegion("player/idle" + i + ".png");
         }
+
+        //cargar sprites de ataque
+        attackUp = loadRegion("player/attack_up.png");
+        attackDown = loadRegion("player/attack_down.png");
+        attackLeft = loadRegion("player/attack_left.png");
+        attackRight = loadRegion("player/attack_right.png");
     }
 
     public void initSpawn(MapGenerator mapGen) {
@@ -213,6 +297,14 @@ public class Player extends Entity {
     public void update(float delta, MapGenerator mapGen, TileManager tileM, Entity[] monsters) {
         if (dead) return;
 
+        this.currentMonsters = monsters;
+        if (attacking){
+            attackTimer -= delta;
+            if (attackTimer <= 0f){
+                attacking = false;
+            }
+        }
+
         // Current tile under player feet
         int footCol = (int) ((worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
         int footRow = (int) ((worldY + HIT_OFFSET_Y + HIT_H / 2f) / TileManager.TILE_SIZE);
@@ -272,22 +364,19 @@ public class Player extends Entity {
         // Read movement input
         float inputX = 0f;
         float inputY = 0f;
-        if (Gdx.input.isKeyPressed(Keys.W) || Gdx.input.isKeyPressed(Keys.UP))    inputY -= 1f;
-        if (Gdx.input.isKeyPressed(Keys.S) || Gdx.input.isKeyPressed(Keys.DOWN))  inputY += 1f;
-        if (Gdx.input.isKeyPressed(Keys.A) || Gdx.input.isKeyPressed(Keys.LEFT))  inputX -= 1f;
-        if (Gdx.input.isKeyPressed(Keys.D) || Gdx.input.isKeyPressed(Keys.RIGHT)) inputX += 1f;
+        if (Gdx.input.isKeyPressed(Keys.W)) inputY -= 1f;
+        if (Gdx.input.isKeyPressed(Keys.S)) inputY += 1f;
+        if (Gdx.input.isKeyPressed(Keys.A)) inputX -= 1f;
+        if (Gdx.input.isKeyPressed(Keys.D)) inputX += 1f;
 
         if (inputX != 0f || inputY != 0f) {
             moving = true;
 
-            if (inputY < 0f) {
-                direction = "up";
-            } else if (inputY > 0f) {
-                direction = "down";
-            } else if (inputX < 0f) {
-                direction = "left";
-            } else if (inputX > 0f) {
-                direction = "right";
+            if (!attacking) {
+                if (inputY < 0f) direction = "up";
+                else if (inputY > 0f) direction = "down";
+                else if (inputX < 0f) direction = "left";
+                else if (inputX > 0f) direction = "right";
             }
 
             // Diagonal normalization
@@ -525,6 +614,21 @@ public class Player extends Entity {
     }
 
     public TextureRegion getCurrentSprite() {
+        //si el jugador esta atacando, devuelve el sprite de ataque hacia su dirección
+        if (attacking) {
+            switch (direction){
+                case "up":
+                    return attackUp != null ? attackUp : upWalk[0];
+                case "left":
+                    return attackLeft != null ? attackLeft : leftWalk[0];
+                case "right":
+                    return attackRight != null ? attackRight : rightWalk[0];
+                case "down":
+                    return attackDown != null ? attackDown : downWalk[0];
+            }
+        }
+
+        //si no esta atacando continua con la animacion normal
         switch (direction) {
             case "up":
                 int upFrameIndex = Math.max(0, Math.min(12, spriteNum - 1));
@@ -592,7 +696,22 @@ public class Player extends Entity {
         float drawY = worldY + getWaterYShift(waterLevel);
 
         // Draw full sprite — clipping of the submerged portion is done in GameScreen with GL scissor
-        batch.draw(current, worldX, drawY, TileManager.TILE_SIZE, TileManager.TILE_SIZE);
+        
+
+        float drawX = worldX;
+        float drawW = current.getRegionWidth() * 3f;
+        float drawH = current.getRegionHeight() * 3f;
+
+        //si ataca a la izquierda o arriba desplaza el origen para que la espada sobresalga
+        if (attacking){
+            if ("left".equals(direction)){
+                drawX = worldX - (drawW - TileManager.TILE_SIZE);
+            } else if ("up".equals(direction)) {
+                drawY = worldY - (drawH - TileManager.TILE_SIZE);
+            }
+        }
+
+        batch.draw(current, drawX, drawY, drawW, drawH);
 
         // Foam overlay at the waist line (positioned at: drawY + tileSize - cutOff - 3)
         if (waterLevel > 0 && foamRegion != null) {
@@ -605,6 +724,18 @@ public class Player extends Entity {
 
         batch.setColor(1f, 1f, 1f, 1f);
     }
+
+    public final ArrayList<Item> inventory = new ArrayList<>();
+    public final int MAX_INVENTORY_SIZE = 20;
+
+    public boolean canObtainItem(Item item){
+        if (inventory.size() < MAX_INVENTORY_SIZE){
+            inventory.add(item);
+            return true;
+        }
+        return false;
+    }
+
 
     public void dispose() {
         for (Texture tex : textures) {

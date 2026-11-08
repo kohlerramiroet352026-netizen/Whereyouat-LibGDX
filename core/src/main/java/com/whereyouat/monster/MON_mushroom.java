@@ -33,6 +33,9 @@ public class MON_mushroom extends Entity {
     public static final int STATE_IDLE = 0;
     public static final int STATE_RUN = 1;
     public static final int STATE_ATTACK = 2;
+    public static final int STATE_STUN = 3;
+    public static final int STATE_HIT = 4;
+    public static final int STATE_DIE = 5;
 
     // Constantes de orientación horizontal
     private static final int SIDE_LEFT = 0;
@@ -50,6 +53,12 @@ public class MON_mushroom extends Entity {
     private TextureRegion[][] idleFrames;
     private TextureRegion[][] runFrames;
     private TextureRegion[][] attackFrames;
+    private TextureRegion[][] stunFrames;
+    private TextureRegion[][] hitFrames;
+    private TextureRegion[][] dieFrames;
+
+    private float knockbackDx = 0f;
+    private float knockbackDy = 0f;
 
     private String lastHorizontal = "left";
 
@@ -57,7 +66,7 @@ public class MON_mushroom extends Entity {
         super(0, 0, 50f);
         this.gp = gp;
 
-        name = "Giant Mushroom Boss";
+        name = "Rey Hongo";
         maxLife = 12;
         life = maxLife;
 
@@ -79,6 +88,9 @@ public class MON_mushroom extends Entity {
         idleFrames = loadFrames("monster/Mushroom-Idle.png", 7);
         runFrames = loadFrames("monster/Mushroom-Run.png", 8);
         attackFrames = loadFrames("monster/Mushroom-Attack.png", 10);
+        stunFrames = loadFrames("monster/Mushroom-Stun.png", 18);
+        hitFrames = loadFrames("monster/Mushroom-Hit.png", 5);
+        dieFrames = loadFrames("monster/Mushroom-Die.png", 15);
     }
 
     private TextureRegion[][] loadFrames(String path, int count) {
@@ -103,6 +115,30 @@ public class MON_mushroom extends Entity {
 
     @Override
     public void update(float delta) {
+        // si esta muriendo, solo reproduce la animacion de muerte
+        if (state == STATE_DIE){
+            updateAnimation(delta);
+            return;
+        }
+        //si esta en stun, se queda quieto
+        if (state == STATE_STUN){
+            updateAnimation(delta);
+            return;
+        }
+        //si recibio un golpe, se va un poco para atras y muestra la animacion de hit
+        if (state == STATE_HIT){
+            float knockbackSpeed = 120f;
+            float moveX = knockbackDx * knockbackSpeed * delta;
+            float moveY = knockbackDy * knockbackSpeed * delta;
+
+            if (!collides(worldX + moveY, worldY)) worldX += moveX;
+            if (!collides(worldX, worldY + moveY)) worldY += moveY;
+            clampToBounds();
+
+            updateAnimation(delta);
+            return;
+        }
+
         if (gp == null || gp.player == null || gp.player.dead) {
             state = STATE_IDLE;
             isAttacking = false;
@@ -230,18 +266,56 @@ public class MON_mushroom extends Entity {
             spriteCounter = 0;
         }
 
-        int maxFrames = (state == STATE_ATTACK) ? 10 : (state == STATE_RUN ? 8 : 7);
-        float animSpeed = (state == STATE_ATTACK) ? 7f : 6f;
+        int maxFrames;
+        float animSpeed = 6f;
+
+        switch (state){
+            case STATE_ATTACK:
+                maxFrames = 10;
+                animSpeed = 7f;
+                break;
+            case STATE_STUN:
+                maxFrames = 18;
+                animSpeed = 6f;
+                break;
+            case STATE_HIT:
+                maxFrames = 5;
+                animSpeed = 5f;
+            break;
+            case STATE_DIE:
+                maxFrames = 15;
+                animSpeed = 7f;
+                break;
+            case STATE_RUN:
+                maxFrames = 8;
+                break;
+            default:
+                maxFrames = 7;
+                break;
+        }
 
         spriteCounter += delta * 60f;
         if (spriteCounter >= animSpeed) {
             spriteNum++;
             if (spriteNum > maxFrames) {
-                if (isAttacking) {
+                if (state == STATE_ATTACK) {
                     isAttacking = false;
                     attackDamageDealt = false;
+                    state = STATE_STUN;
+                    spriteNum = 1;
+                } else if (state == STATE_STUN){
+                    state = STATE_RUN;
+                    spriteNum = 1;
+                } else if (state == STATE_HIT) {
+                    state = STATE_RUN;
+                    spriteNum = 1;
+                } else if (state == STATE_DIE){
+                    spriteNum = maxFrames;
+                    deleteBoss();
+                    return;
+                } else {
+                    spriteNum = 1;
                 }
-                spriteNum = 1;
             }
             spriteCounter = 0;
         }
@@ -257,6 +331,18 @@ public class MON_mushroom extends Entity {
             case STATE_ATTACK:
                 sheet = attackFrames;
                 maxFrames = 10;
+                break;
+            case STATE_STUN:
+                sheet = stunFrames;
+                maxFrames = 18;
+                break;
+            case STATE_HIT:
+                sheet = hitFrames;
+                maxFrames = 5;
+                break;
+            case STATE_DIE:
+                sheet = dieFrames;
+                maxFrames = 15;
                 break;
             case STATE_RUN:
                 sheet = runFrames;
@@ -318,6 +404,54 @@ public class MON_mushroom extends Entity {
         } else {
             batch.draw(region, worldX, worldY, DRAW_WIDTH, DRAW_HEIGHT);
         }
+    }
+
+    public void takeDamage(int damage, float playerX, float playerY){
+        if (state == STATE_DIE) return;
+
+        this.life -= damage;
+        Gdx.app.log("Rey hongo", "Vida restante: " + life + "/" + maxLife);
+
+        if (this.life <= 0){
+            //entra en la animacion final de muerte
+            state = STATE_DIE;
+            spriteNum = 1;
+            spriteCounter = 0;
+            isAttacking = false;
+        } else {
+            //entra en hit, si estana en stun, lo cancela
+            state = STATE_HIT;
+            spriteNum = 1;
+            spriteCounter = 0;
+            isAttacking = false;
+
+            //calcula el empuje para salir despedido lejos del jugador
+            float bossCenterX = worldX + solidArea.x + solidArea.width / 2f;
+            float bossCenterY = worldY + solidArea.y + solidArea.height / 2f;
+            float dx = bossCenterX - playerX;
+            float dy = bossCenterY - playerY;
+            float dist = (float) Math.hypot(dx, dy);
+
+            if (dist > 0.001f){
+                knockbackDx = dx / dist;
+                knockbackDy = dy / dist;
+            } else {
+                knockbackDx = "left".equals(lastHorizontal) ? 1f : -1f;
+                knockbackDy = 0f;
+            }
+        }
+    }
+
+    private void deleteBoss(){
+        if (gp != null && gp.monster != null){
+            for (int i = 0; i < gp.monster.length; i++){
+                if (gp.monster[i] == this){
+                    gp.monster[i] = null;
+                    break;
+                }
+            }
+        }
+        dispose();
     }
 
     @Override

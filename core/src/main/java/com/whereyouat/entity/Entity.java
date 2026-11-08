@@ -130,4 +130,5 @@ public abstract class Entity {
         float deltaY = this.worldY - targetY;
         return (float) Math.hypot(deltaX, deltaY);
     }
+
 }

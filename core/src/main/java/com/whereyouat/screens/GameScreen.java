@@ -1,5 +1,8 @@
 package com.whereyouat.screens;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.ScreenAdapter;
@@ -11,24 +14,20 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
-import com.whereyouat.WhereYouAtGame;
 import com.whereyouat.AssetSetter;
+import com.whereyouat.WhereYouAtGame;
 import com.whereyouat.audio.AudioManager;
 import com.whereyouat.effects.FootprintManager;
 import com.whereyouat.effects.SnowParticleSystem;
 import com.whereyouat.entity.BirdManager;
 import com.whereyouat.entity.Entity;
 import com.whereyouat.entity.Player;
+import com.whereyouat.items.Item;
 import com.whereyouat.lighting.DayNightCycle;
-import com.whereyouat.monster.MON_frogger;
 import com.whereyouat.lighting.LightingEngine;
 import com.whereyouat.map.MapGenerator;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.save.WorldSaveManager;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 /**
  * GameScreen - Pantalla principal de juego activo para Where you at (LibGDX Edition).
  *
@@ -85,6 +84,8 @@ public class GameScreen extends ScreenAdapter {
     private boolean showDeathScreen = false;
     private boolean showRespawnScreen = false;
     private float saveFeedbackTimer = 0f;
+
+    public boolean showInventory = false;
 
     public GameScreen(WhereYouAtGame game, long seed, String worldName, String worldFileName) {
         this.game = game;
@@ -176,6 +177,7 @@ public class GameScreen extends ScreenAdapter {
     public void render(float delta) {
         float dt = Math.min(delta, 0.1f);
         animTime += dt;
+
         if (saveFeedbackTimer > 0f) saveFeedbackTimer -= dt;
 
         // Pausa con ESC (solo vivo y fuera de pantallas de muerte)
@@ -200,6 +202,68 @@ public class GameScreen extends ScreenAdapter {
         }
 
         renderScene();
+
+        if (!isPaused && !showDeathScreen && Gdx.input.isKeyJustPressed(Keys.E)){
+            showInventory = !showInventory;
+        }
+
+        //Navegacion del inventario
+
+        if (showInventory){
+            if (Gdx.input.isKeyJustPressed(Keys.UP)){
+                hud.slotRow = Math.max(0, hud.slotRow - 1);
+            }
+
+            if (Gdx.input.isKeyJustPressed(Keys.DOWN)){
+                hud.slotRow = Math.min(3, hud.slotRow + 1);
+            }
+
+            if (Gdx.input.isKeyJustPressed(Keys.LEFT)){
+                hud.slotCol = Math.max(0, hud.slotCol - 1);
+            }
+
+            if (Gdx.input.isKeyJustPressed(Keys.RIGHT)){
+                hud.slotCol = Math.min(4, hud.slotCol + 1);
+            }
+
+            //Usar item con enter
+
+            if (Gdx.input.isKeyJustPressed(Keys.ENTER) || Gdx.input.isKeyJustPressed(Keys.SPACE)){
+                int itemIndex = hud.slotCol + (hud.slotRow * 5);
+
+                if (itemIndex < player.inventory.size()){
+                    Item item = player.inventory.get(itemIndex);
+                    if (item.use(player)){
+                        player.inventory.remove(itemIndex);
+                    }
+                }
+            }
+        }
+        
+        //ataque con clic izquierdo del mouse
+        if (!isPaused && !showInventory && !showDeathScreen && Gdx.input.isButtonJustPressed(0)){
+            //convierte las coordenadas del click de pantalla al mundo
+            Vector3 clickWorld = camera.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
+
+            float playerCenterX = player.worldX + TileManager.TILE_SIZE / 2f;
+            float playerCenterY = player.worldY + TileManager.TILE_SIZE / 2f;
+
+            float dx = clickWorld.x - playerCenterX;
+            float dy = clickWorld.y - playerCenterY;
+
+            //determinar si el click tira mas a horizontal o vertical
+
+            String attackDir;
+            if (Math.abs(dx) >= Math.abs(dy)){
+                attackDir = (dx > 0) ? "right" : "left";
+            } else {
+                attackDir = (dy > 0) ? "down" : "up"; //"Y" crece hacia abajo
+            }
+
+            //ejecutar el ataque con 2 puntos de daño hacia la dirección del click
+
+            player.attack(attackDir, 2);
+        }
     }
 
     private void updateGame(float delta) {
@@ -239,6 +303,7 @@ public class GameScreen extends ScreenAdapter {
             WorldSaveManager.saveGameProgress(worldFileName, worldName, seed, createdTime, player, dayNight);
         }
     }
+
 
     private void renderScene() {
         // Centrar cámara suavemente en el jugador
@@ -354,7 +419,7 @@ public class GameScreen extends ScreenAdapter {
         // -------------------------------------------------------------
         // PASE 4: Interfaz de usuario (HUD delegado en GameHUD)
         // -------------------------------------------------------------
-        hud.render(game.batch, player, isPaused, showDeathScreen, showRespawnScreen, saveFeedbackTimer, animTime);
+        hud.render(game.batch, player, isPaused, showDeathScreen, showRespawnScreen, saveFeedbackTimer, animTime, showInventory);
     }
 
     /**
@@ -428,6 +493,10 @@ public class GameScreen extends ScreenAdapter {
         }
     }
 
+
+
+
+
     private void returnToTitle() {
         saveProgress();
         Music music = audio.releaseCurrentMusic();
@@ -450,6 +519,7 @@ public class GameScreen extends ScreenAdapter {
 
         lighting.resize(width, height);
     }
+
 
     @Override
     public void dispose() {

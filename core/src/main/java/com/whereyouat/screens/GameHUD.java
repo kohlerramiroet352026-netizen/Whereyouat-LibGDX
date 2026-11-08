@@ -1,5 +1,8 @@
 package com.whereyouat.screens;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.graphics.Color;
@@ -16,9 +19,7 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.FreeTypeFont
 import com.whereyouat.WhereYouAtGame;
 import com.whereyouat.audio.AudioManager;
 import com.whereyouat.entity.Player;
-
-import java.util.ArrayList;
-import java.util.List;
+import com.whereyouat.items.Item;
 
 /**
  * GameHUD - Responsable de la carga y renderizado de la interfaz de usuario en el juego (HUD):
@@ -59,6 +60,9 @@ public class GameHUD {
     private TextureRegion buttonSlotRegion;
     private Texture backButtonTex;
     private TextureRegion backButtonRegion;
+
+    public int slotCol = 0;
+    public int slotRow = 0;
 
     private final List<Texture> hudTextures = new ArrayList<>();
     private final GlyphLayout glyphLayout = new GlyphLayout();
@@ -163,9 +167,138 @@ public class GameHUD {
         }
     }
 
-    public void render(SpriteBatch batch, Player player, boolean isPaused,
-                       boolean showDeathScreen, boolean showRespawnScreen,
-                       float saveFeedbackTimer, float animTime) {
+    public void renderInventory(SpriteBatch batch, Player player, float screenW, float screenH) {
+        // Dimensiones de la ventana de slots
+        float slotSize = 42f;
+        float slotPadding = 8f;
+        float padding = 16f;
+
+        // 5 columnas x 4 filas = 242px ancho x 192px alto de contenido
+        float gridW = (5 * slotSize) + (4 * slotPadding);
+        float gridH = (4 * slotSize) + (3 * slotPadding);
+
+        float frameW = gridW + (padding * 2f); // 274 px
+        float frameH = gridH + (padding * 2f); // 224 px
+        float frameX = screenW - frameW - 20f; // Margen derecho
+        float frameY = 24f;                    // Margen superior
+
+        // 1. VENTANA PRINCIPAL (Grid de ítems)
+        drawSubWindow(batch, frameX, frameY, frameW, frameH);
+
+        // 2. DIBUJAR ÍTEMS (flotando sin cajas grises, como RyiSnow)
+        float startSlotsX = frameX + padding;
+        float startSlotsY = frameY + padding;
+
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 5; col++) {
+                float slotX = startSlotsX + (col * (slotSize + slotPadding));
+                float slotY = startSlotsY + (row * (slotSize + slotPadding));
+
+                int index = col + (row * 5);
+                if (index < player.inventory.size()) {
+                    Item item = player.inventory.get(index);
+                    if (item.icon != null) {
+                        batch.draw(item.icon, slotX + 3f, slotY + 3f, slotSize - 6f, slotSize - 6f);
+                    } else {
+                        // Ícono provisorio si el ítem aún no tiene textura cargada
+                        batch.setColor(0.9f, 0.25f, 0.25f, 0.9f);
+                        batch.draw(whitePixel, slotX + 8f, slotY + 8f, slotSize - 16f, slotSize - 16f);
+                        batch.setColor(1f, 1f, 1f, 1f);
+                    }
+                }
+            }
+        }
+
+        // 3. CURSOR SELECTOR REDONDEADO
+        float cursorX = startSlotsX + (slotCol * (slotSize + slotPadding));
+        float cursorY = startSlotsY + (slotRow * (slotSize + slotPadding));
+        drawCursor(batch, cursorX, cursorY, slotSize);
+
+        // 4. VENTANA INFERIOR DE DESCRIPCIÓN (Siempre visible justo abajo)
+        float descX = frameX;
+        float descY = frameY + frameH + 8f; // 8px de separación
+        float descW = frameW;
+        float descH = 120f;
+        drawSubWindow(batch, descX, descY, descW, descH);
+
+        // Texto de descripción del ítem seleccionado
+        int selectedIndex = slotCol + (slotRow * 5);
+        if (selectedIndex < player.inventory.size()) {
+            Item selectedItem = player.inventory.get(selectedIndex);
+
+            if (fontSmall != null) {
+                // Nombre en dorado / amarillo
+                fontSmall.setColor(Color.GOLD);
+                fontSmall.draw(batch, selectedItem.name, descX + 16f, descY + 24f);
+
+                // Descripción en blanco con soporte multilínea (\n)
+                fontSmall.setColor(Color.WHITE);
+                float lineY = descY + 48f;
+                for (String line : selectedItem.description.split("\n")) {
+                    fontSmall.draw(batch, line, descX + 16f, lineY);
+                    lineY += 18f;
+                }
+            }
+        }
+    }
+
+    public void drawSubWindow(SpriteBatch batch, float x, float y, float width, float height){
+        if (whitePixel == null) return;
+
+        //fondo semitransparente
+        batch.setColor(0f, 0f, 0f, 0.82f);
+        batch.draw(whitePixel, x + 5f, y, width - 10f, height);
+        batch.draw(whitePixel, x, y +5f, width, height - 10f);
+        batch.draw(whitePixel, x + 2f, y + 2f, width - 4f, height - 4f);
+
+        batch.setColor(1f, 1f, 1f, 1f);
+        float b = 3f;
+
+        //tramos rectos
+        batch.draw(whitePixel, x + 6f, y, width - 12f, b);
+        batch.draw(whitePixel, x + 6f, y + height - b, width -12f, b);
+        batch.draw(whitePixel, x, y + 6f, b, height - 12f);
+        batch.draw(whitePixel, x + width - b, y + 6f, b, height - 12f);
+
+        //puntos de redondeo
+        //superior izquierda
+        batch.draw(whitePixel, x + 3f, y + 1f, 3f, b);
+        batch.draw(whitePixel, x + 1f, y + 3f, b, 3f);
+        //superior derecha
+        batch.draw(whitePixel, x + width - 6f, y + 1f, 3f, b);
+        batch.draw(whitePixel, x + width - 1f - b, y + 3f, b, 3f);
+        //inferior izquierda
+        batch.draw(whitePixel, x + 3f, y + height - 1f - b, 3f, b);
+        batch.draw(whitePixel, x + 1f, y + height - 6f, b, 3f);
+        //inferior derecha
+        batch.draw(whitePixel, x + width - 6f, y + height - 1f - b, 3f, b);
+        batch.draw(whitePixel, x + width - 1f - b, y + height - 6f, b, 3f);
+
+        batch.setColor(1f, 1f, 1f, 1f);
+    }
+
+    public void drawCursor(SpriteBatch batch, float x, float y, float size){
+        if (whitePixel == null) return;
+
+        batch.setColor(1f, 1f, 1f, 0.95f);
+        float b = 2.5f;
+
+        //bordes rectos
+        batch.draw(whitePixel, x + 4f, y, size - 8f, b);
+        batch.draw(whitePixel, x + 4f, y + size - b, size - 8f, b);
+        batch.draw(whitePixel, x, y + 4f, b, size - 8f);
+        batch.draw(whitePixel, x + size - b, y + 4f, b, size - 8f);
+
+        //esquinas redondeadas
+        batch.draw(whitePixel, x + 2f, y + 1f, 2f, 2f);
+        batch.draw(whitePixel, x + size - 4f, y + 1f, 2f, 2f);
+        batch.draw(whitePixel, x + 2f, y + size - 3f, 2f, 2f);
+        batch.draw(whitePixel, x + size - 4f, y + size - 3f, 2f, 2f);
+
+        batch.setColor(1f, 1f, 1f, 1f);
+    }
+
+    public void render(SpriteBatch batch, Player player, boolean isPaused, boolean showDeathScreen, boolean showRespawnScreen, float saveFeedbackTimer, float animTime, boolean showInventory) {
 
         hudCamera.update();
         batch.setProjectionMatrix(hudCamera.combined);
@@ -278,7 +411,13 @@ public class GameHUD {
             renderRespawnScreen(batch, screenWidth, screenHeight, player.lives);
         }
 
+        //renderizar inventario
+        if(showInventory){
+            renderInventory(batch, player, screenWidth, screenHeight);
+        }
+
         batch.end();
+        
     }
 
     private void renderPauseMenu(SpriteBatch batch, float screenW, float screenH, float saveFeedbackTimer) {
