@@ -63,7 +63,7 @@ public class MON_mushroom extends Entity {
     private String lastHorizontal = "left";
 
     public MON_mushroom(GameScreen gp) {
-        super(0, 0, 50f);
+        super(0, 0, 230f);
         this.gp = gp;
 
         name = "Rey Hongo";
@@ -131,7 +131,7 @@ public class MON_mushroom extends Entity {
             float moveX = knockbackDx * knockbackSpeed * delta;
             float moveY = knockbackDy * knockbackSpeed * delta;
 
-            if (!collides(worldX + moveY, worldY)) worldX += moveX;
+            if (!collides(worldX + moveX, worldY)) worldX += moveX;
             if (!collides(worldX, worldY + moveY)) worldY += moveY;
             clampToBounds();
 

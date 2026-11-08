@@ -241,7 +241,7 @@ public class GameScreen extends ScreenAdapter {
         }
         
         //ataque con clic izquierdo del mouse
-        if (!isPaused && !showInventory && !showDeathScreen && Gdx.input.isButtonJustPressed(0)){
+        if (!isPaused && !showInventory && !showDeathScreen && Gdx.input.isButtonJustPressed(0) && player.attackCooldown <= 0f){
             //convierte las coordenadas del click de pantalla al mundo
             Vector3 clickWorld = camera.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
 

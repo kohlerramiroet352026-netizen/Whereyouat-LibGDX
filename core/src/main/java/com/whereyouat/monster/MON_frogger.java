@@ -1,5 +1,9 @@
 package com.whereyouat.monster;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
@@ -8,10 +12,6 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.whereyouat.entity.Entity;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 
 /**
  * Frogger monster entity for Where you at (LibGDX Edition).
@@ -62,10 +62,10 @@ public class MON_frogger extends Entity {
         this.gp = gp;
 
         name = "Frogger";
-        maxLife = 4;
+        maxLife = 12;
         life = maxLife;
 
-        solidArea.set(HIT_OFFSET_X, HIT_OFFSET_Y, HIT_W, HIT_H);
+        solidArea.set(155f, 246f, 40f, 26f);
         solidAreaDefaultX = solidArea.x;
         solidAreaDefaultY = solidArea.y;
 

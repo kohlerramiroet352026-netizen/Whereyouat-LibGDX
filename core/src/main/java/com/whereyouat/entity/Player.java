@@ -81,7 +81,7 @@ public class Player extends Entity {
     public static final int MONSTER_DAMAGE = 20;
 
     // Movement speeds (pixels per second)
-    private static final float BASE_SPEED = 1000f; //240
+    private static final float BASE_SPEED = 240f; //240
     private static final float BUSH_SPEED = 180f;
     private static final float SHALLOW_SPEED = 120f;
     private static final float DEEP_SPEED = 60f;
@@ -96,6 +96,8 @@ public class Player extends Entity {
     public Entity[] currentMonsters;
     public boolean attacking = false;
     public float attackTimer = 0f;
+    public float attackCooldown = 0f;
+    public static final float ATTACK_COOLDOWN = 2.0f;
     public static final float ATTACK_DURATION = 0.2f;
     private TextureRegion attackUp;
     private TextureRegion attackDown;
@@ -111,21 +113,24 @@ public class Player extends Entity {
 
         loadSprites();
 
-        canObtainItem(new Sword(null));
-        canObtainItem(new ItemPotion(null));
+        addItem(new Sword());
+        addItem(new ItemPotion());
 
     }
 
     public void attack(String targetDir, int damage){
+        if (attackCooldown > 0f) return;
+
+        this.attackCooldown = ATTACK_COOLDOWN;
         this.direction = targetDir;
         this.attacking = true;
         this.attackTimer = ATTACK_DURATION;
 
         if (currentMonsters == null) return;
 
-        //area de impacto (40x40px en frente del jugador);
-        float attackW = 40f;
-        float attackH = 40f;
+        //area de impacto (24x24px en frente del jugador);
+        float attackW = 24f;
+        float attackH = 24f;
         float attackX = worldX;
         float attackY = worldY;
 
@@ -154,10 +159,10 @@ public class Player extends Entity {
             Entity m = currentMonsters[i];
             if (m != null && m.life > 0){
                 //hitbox del mounstro
-                float mX = (m instanceof MON_mushroom) ? m.worldX + 50f : m.worldX + m.solidArea.x;
-                float mY = (m instanceof MON_mushroom) ? m.worldY + 40f : m.worldY + m.solidArea.y;
-                float mW = (m instanceof MON_mushroom) ? 250f : m.solidArea.width;
-                float mH = (m instanceof MON_mushroom) ? 230f : m.solidArea.height;
+                float mX = (m instanceof MON_mushroom) ? m.worldX + 130f : m.worldX + m.solidArea.x;
+                float mY = (m instanceof MON_mushroom) ? m.worldY + 160f : m.worldY + m.solidArea.y;
+                float mW = (m instanceof MON_mushroom) ? 90f : m.solidArea.width;
+                float mH = (m instanceof MON_mushroom) ? 80f : m.solidArea.height;
 
                 //colision entre el ataque y el mounstro
                 if (attackX < mX + mW && attackX + attackW > mX && attackY < mY + mH && attackY + attackH > mY){
@@ -298,6 +303,11 @@ public class Player extends Entity {
         if (dead) return;
 
         this.currentMonsters = monsters;
+        // cooldown de 2 segundos
+        if (attackCooldown > 0f){
+            attackCooldown -= delta;
+        }
+        //la animacion de ataque dura 0.2 segundos
         if (attacking){
             attackTimer -= delta;
             if (attackTimer <= 0f){
@@ -728,7 +738,7 @@ public class Player extends Entity {
     public final ArrayList<Item> inventory = new ArrayList<>();
     public final int MAX_INVENTORY_SIZE = 20;
 
-    public boolean canObtainItem(Item item){
+    public boolean addItem(Item item){
         if (inventory.size() < MAX_INVENTORY_SIZE){
             inventory.add(item);
             return true;
