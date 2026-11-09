@@ -47,7 +47,7 @@ public class TileManager {
     private final FoliageSwayManager foliageSway = new FoliageSwayManager();
     private final TileDecorationRenderer decorationRenderer = new TileDecorationRenderer();
 
-    // Mantenido público por compatibilidad con BirdManager y accesos directos
+    // Expuesto para acceso directo desde subsistemas de decoración
     public final Map<Long, BushSway> swayingBushes = foliageSway.swayingBushes;
 
     // Texturas base y pixmaps

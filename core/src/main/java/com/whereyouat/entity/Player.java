@@ -106,6 +106,7 @@ public class Player extends Entity {
     private TextureRegion attackDown;
     private TextureRegion attackRight;
     private TextureRegion attackLeft;
+    
 
     public Player() {
         super(0, 0, BASE_SPEED);
@@ -123,6 +124,7 @@ public class Player extends Entity {
     }
 
     public void attack(String targetDir, int damage){
+        if (!hasSword()) return;
         if (attackCooldown > 0f) return;
 
         this.attackCooldown = ATTACK_COOLDOWN;
@@ -749,6 +751,15 @@ public class Player extends Entity {
         if (inventory.size() < MAX_INVENTORY_SIZE){
             inventory.add(item);
             return true;
+        }
+        return false;
+    }
+
+    public boolean hasSword(){
+        for (Item item : inventory){
+            if (item instanceof  Sword){
+                return true;
+            }
         }
         return false;
     }

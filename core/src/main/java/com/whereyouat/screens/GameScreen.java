@@ -19,14 +19,18 @@ import com.whereyouat.WhereYouAtGame;
 import com.whereyouat.audio.AudioManager;
 import com.whereyouat.effects.FootprintManager;
 import com.whereyouat.effects.SnowParticleSystem;
-import com.whereyouat.entity.BirdManager;
 import com.whereyouat.entity.Entity;
 import com.whereyouat.entity.Player;
 import com.whereyouat.items.Item;
+import com.whereyouat.items.ItemPotion;
+import com.whereyouat.items.OddMushroom;
+import com.whereyouat.items.Sword;
 import com.whereyouat.lighting.DayNightCycle;
 import com.whereyouat.lighting.LightingEngine;
 import com.whereyouat.map.MapGenerator;
 import com.whereyouat.map.TileManager;
+import com.whereyouat.monster.MON_frogger;
+import com.whereyouat.monster.MON_mushroom;
 import com.whereyouat.save.WorldSaveManager;
 /**
  * GameScreen - Pantalla principal de juego activo para Where you at (LibGDX Edition).
@@ -52,7 +56,6 @@ public class GameScreen extends ScreenAdapter {
     public final DayNightCycle dayNight;
     public final FootprintManager footprintM;
     public final SnowParticleSystem snowPS;
-    public final BirdManager birdM;
     public final LightingEngine lighting;
     public final AudioManager audio;
 
@@ -118,8 +121,6 @@ public class GameScreen extends ScreenAdapter {
         dayNight = new DayNightCycle();
         footprintM = new FootprintManager();
         snowPS = new SnowParticleSystem(seed);
-        birdM = new BirdManager(seed);
-        birdM.initForWorld(seed, mapGen, player);
         tileM.setSnowPS(snowPS);
 
         // Asset setter & initial game setup
@@ -242,7 +243,7 @@ public class GameScreen extends ScreenAdapter {
         }
         
         //ataque con clic izquierdo del mouse
-        if (!isPaused && !showInventory && !showDeathScreen && Gdx.input.isButtonJustPressed(0) && player.attackCooldown <= 0f){
+        if (!isPaused && !showInventory && !showDeathScreen && Gdx.input.isButtonJustPressed(0) && player.attackCooldown <= 0f && player.hasSword()){
             //convierte las coordenadas del click de pantalla al mundo
             Vector3 clickWorld = camera.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
 
@@ -281,8 +282,6 @@ public class GameScreen extends ScreenAdapter {
         boolean inSnow = (playerCol >= 0 && playerCol < mapGen.mapCols && playerRow >= 0 && playerRow < mapGen.mapRows) && mapGen.isSnowBiome[playerCol][playerRow];
         snowPS.update(delta, inSnow, 1.0f, hudCamera.viewportWidth, hudCamera.viewportHeight);
 
-        birdM.update(delta, mapGen, tileM, player);
-
         // Actualizar IA de monstruos
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] != null) {
@@ -301,7 +300,7 @@ public class GameScreen extends ScreenAdapter {
 
     private void saveProgress() {
         if (worldFileName != null && !worldFileName.isEmpty()) {
-            WorldSaveManager.saveGameProgress(worldFileName, worldName, seed, createdTime, player, dayNight);
+            WorldSaveManager.saveGameProgress(worldFileName, worldName, seed, createdTime, player, dayNight, monster);
         }
     }
 
@@ -342,10 +341,7 @@ public class GameScreen extends ScreenAdapter {
         // 4. Hojas cayendo en el mundo
         snowPS.drawWorldLeaves(game.batch, minX, minY, maxX, maxY);
 
-        // 5. Aves en el suelo (detrás del jugador)
-        birdM.drawBehindPlayer(game.batch, minX, minY, maxX, maxY);
-
-        // 6. Entidades y Decoraciones con ordenamiento unificado por profundidad Y (evita oclusiones prematuras)
+        // 5. Entidades y Decoraciones con ordenamiento unificado por profundidad Y (evita oclusiones prematuras)
         entityList.add(player);
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] != null) {
@@ -392,9 +388,6 @@ public class GameScreen extends ScreenAdapter {
         }
 
         entityList.clear();
-
-        // 9. Aves elevadas y en vuelo
-        birdM.drawInFrontOfPlayer(game.batch, minX, minY, maxX, maxY);
 
         game.batch.end();
 
@@ -494,6 +487,74 @@ public class GameScreen extends ScreenAdapter {
         }
     }
 
+    public void loadSavedState(WorldSaveManager.WorldInfo info) {
+    if (info == null) return;
+
+    // 1. Estado del jugador
+    if (info.hasPlayerData) {
+        player.worldX = info.playerWorldX;
+        player.worldY = info.playerWorldY;
+        player.direction = info.playerDirection;
+        player.health = info.playerHealth;
+        player.lives = info.playerLives;
+    }
+
+    // 2. Restaurar inventario guardado
+    if (info.hasInventoryData) {
+        player.inventory.clear();
+        for (String itemId : info.inventoryItems) {
+            Item item = createItem(itemId);
+            if (item != null) player.addItem(item);
+        }
+    }
+
+    // 3. Restaurar monstruos guardados
+    if (info.hasMonsterData) {
+        // Limpiar los monstruos por defecto de AssetSetter
+        for (int i = 0; i < monster.length; i++) {
+            if (monster[i] != null) {
+                monster[i].dispose();
+                monster[i] = null;
+            }
+        }
+        // Cargar los monstruos guardados
+        for (int i = 0; i < info.savedMonsters.size() && i < monster.length; i++) {
+            WorldSaveManager.WorldInfo.SavedMonster sm = info.savedMonsters.get(i);
+            Entity m = createMonster(sm.id);
+            if (m != null) {
+                m.worldX = sm.x;
+                m.worldY = sm.y;
+                m.life = sm.life;
+                monster[i] = m;
+            }
+        }
+    }
+
+    // 4. Ciclo día/noche
+    if (info.hasDayNightData && info.dayNightTicks >= 0) {
+        dayNight.setTimeTicks(info.dayNightTicks);
+    }
+}
+
+private Item createItem(String id) {
+    if (id == null) return null;
+    switch (id) {
+        case "Sword": return new Sword();
+        case "OddMushroom": return new OddMushroom();
+        case "ItemPotion": return new ItemPotion();
+        default: return null;
+    }
+}
+
+private Entity createMonster(String id) {
+    if (id == null) return null;
+    switch (id) {
+        case "MON_mushroom": return new MON_mushroom(this);
+        case "MON_frogger": return new MON_frogger(this);
+        default: return null;
+    }
+}
+
 
 
 
@@ -535,7 +596,6 @@ public class GameScreen extends ScreenAdapter {
         }
         footprintM.dispose();
         snowPS.dispose();
-        birdM.dispose();
         lighting.dispose();
         audio.dispose();
         hud.dispose();

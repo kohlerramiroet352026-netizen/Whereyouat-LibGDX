@@ -1,5 +1,8 @@
 package com.whereyouat.screens;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.ScreenAdapter;
@@ -20,9 +23,6 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 import com.whereyouat.WhereYouAtGame;
 import com.whereyouat.save.WorldSaveManager;
 import com.whereyouat.save.WorldSaveManager.WorldInfo;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * WorldSelectScreen for LibGDX.
@@ -200,17 +200,9 @@ public class WorldSelectScreen extends ScreenAdapter {
                         }
                         if (buttonSound != null) buttonSound.play(0.32f);
                         // Launch world
+                        // Reemplazar las líneas 203-214 por:
                         GameScreen gameScreen = new GameScreen(game, info.seed, info.name, info.fileName);
-                        if (info.hasPlayerData) {
-                            gameScreen.player.worldX = info.playerWorldX;
-                            gameScreen.player.worldY = info.playerWorldY;
-                            gameScreen.player.direction = info.playerDirection;
-                            gameScreen.player.health = info.playerHealth;
-                            gameScreen.player.lives = info.playerLives;
-                        }
-                        if (info.hasDayNightData && info.dayNightTicks >= 0) {
-                            gameScreen.dayNight.setTimeTicks(info.dayNightTicks);
-                        }
+                        gameScreen.loadSavedState(info);
                         game.setScreen(gameScreen);
                         return;
                     }

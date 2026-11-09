@@ -1,8 +1,5 @@
 package com.whereyouat.save;
 
-import com.whereyouat.entity.Player;
-import com.whereyouat.lighting.DayNightCycle;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -13,6 +10,11 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Properties;
+
+import com.whereyouat.entity.Entity;
+import com.whereyouat.entity.Player;
+import com.whereyouat.items.Item;
+import com.whereyouat.lighting.DayNightCycle;
 
 /**
  * WorldSaveManager for LibGDX.
@@ -43,6 +45,27 @@ public class WorldSaveManager {
         // Day/Night cycle state
         public boolean hasDayNightData = false;
         public long    dayNightTicks   = -1;
+
+        // datos de inventario
+        public boolean hasInventoryData = false;
+        public List<String> inventoryItems = new ArrayList<>();
+
+        //estructura para guardar mounstros
+        public static class SavedMonster{
+            public String id;
+            public float x, y;
+            public int life;
+
+            public SavedMonster(String id, float x, float y, int life){
+                this.id = id;
+                this.x = x;
+                this.y = y;
+                this.life = life;
+            }
+        }
+
+        public boolean hasMonsterData = false;
+        public List<SavedMonster> savedMonsters = new ArrayList<>();
 
         @Override
         public int compareTo(WorldInfo other) {
@@ -79,6 +102,7 @@ public class WorldSaveManager {
     }
 
     private static WorldInfo loadInfo(File file) {
+        
         try (FileInputStream fis = new FileInputStream(file)) {
             Properties properties = new Properties();
             properties.load(fis);
@@ -89,6 +113,7 @@ public class WorldSaveManager {
             info.lastPlayed  = Long.parseLong(properties.getProperty("world.lastPlayed", "0"));
             String fileName  = file.getName();
             info.fileName    = fileName.substring(0, fileName.lastIndexOf('.'));
+
 
             // Load player data if present
             if (properties.containsKey("player.worldX") && properties.containsKey("player.worldY")) {
@@ -119,6 +144,41 @@ public class WorldSaveManager {
                     info.hasDayNightData = false;
                 }
             }
+
+            //cargar inventario si existe
+        if (properties.containsKey("player.inventory")){
+            info.hasInventoryData = true;
+            info.inventoryItems = new ArrayList<>();
+            String invStr = properties.getProperty("player.inventory");
+
+            if (!invStr.trim().isEmpty()){
+                for (String itemId : invStr.split(",")){
+                    String trimmed = itemId.trim();
+                    if (!trimmed.isEmpty()) info.inventoryItems.add(trimmed);
+                }
+            }
+        }
+
+        //cargar mounstros si existen
+        if (properties.containsKey("monster.count")){
+            try {
+                int count = Integer.parseInt(properties.getProperty("monster.count" , "0"));
+                info.hasMonsterData = true;
+                info.savedMonsters = new ArrayList<>();
+                for (int i = 0; i < count; i++){
+                    String id = properties.getProperty("monster." + i + ".id");
+                    float mx = Float.parseFloat(properties.getProperty("monster." + i + ".x", "0"));
+                    float my = Float.parseFloat(properties.getProperty("monster." + i + ".y", "0"));
+                    int mLife = Integer.parseInt(properties.getProperty("monster." + i + ".life", "1"));
+
+                    if (id != null && !id.isEmpty()){
+                        info.savedMonsters.add(new WorldInfo.SavedMonster(id, mx, my, mLife));
+                    }
+                }
+            } catch (Exception ignored) {
+                info.hasMonsterData = false;
+            }
+        }
 
             return info;
         } catch (Exception e) {
@@ -169,7 +229,7 @@ public class WorldSaveManager {
      * Saves live player position and day/night cycle progress to world save file.
      */
     public static void saveGameProgress(String fileName, String worldName, long seed, long created,
-                                        Player player, DayNightCycle dayNight) {
+                                        Player player, DayNightCycle dayNight, Entity[] monsters) {
         if (fileName == null || fileName.trim().isEmpty()) return;
         File dir = new File(SAVES_DIR);
         if (!dir.exists()) {
@@ -191,6 +251,8 @@ public class WorldSaveManager {
         }
         properties.setProperty("world.lastPlayed", String.valueOf(System.currentTimeMillis()));
 
+        //guardar jugador e inventario
+
         if (player != null) {
             properties.setProperty("player.worldX", String.valueOf(player.worldX));
             properties.setProperty("player.worldY", String.valueOf(player.worldY));
@@ -198,6 +260,40 @@ public class WorldSaveManager {
             properties.setProperty("player.health", String.valueOf(player.health));
             properties.setProperty("player.lives", String.valueOf(player.lives));
             properties.setProperty("player.dead", String.valueOf(player.dead));
+
+            if (player.inventory != null){
+                List<String> ids = new ArrayList<>();
+                for (Item item : player.inventory){
+                    if (item != null) ids.add(item.getClass().getSimpleName());
+                }
+                properties.setProperty("player.inventory", String.join(",", ids));
+            }
+        }
+
+        if (monsters != null) {
+            // Limpiar claves viejas por si antes había más monstruos
+            int oldCount = 0;
+            if (properties.containsKey("monster.count")) {
+                try { oldCount = Integer.parseInt(properties.getProperty("monster.count", "0")); } catch (Exception ignored) {}
+            }
+            for (int i = 0; i < oldCount + 20; i++) {
+                properties.remove("monster." + i + ".id");
+                properties.remove("monster." + i + ".x");
+                properties.remove("monster." + i + ".y");
+                properties.remove("monster." + i + ".life");
+            }
+            int savedCount = 0;
+            for (int i = 0; i < monsters.length; i++) {
+                Entity m = monsters[i];
+                if (m != null && m.life > 0) {
+                    properties.setProperty("monster." + savedCount + ".id", m.getClass().getSimpleName());
+                    properties.setProperty("monster." + savedCount + ".x", String.valueOf(m.worldX));
+                    properties.setProperty("monster." + savedCount + ".y", String.valueOf(m.worldY));
+                    properties.setProperty("monster." + savedCount + ".life", String.valueOf(m.life));
+                    savedCount++;
+                }
+            }
+            properties.setProperty("monster.count", String.valueOf(savedCount));
         }
 
         if (dayNight != null) {

@@ -446,6 +446,25 @@ public class MON_mushroom extends Entity {
     public static boolean summon(GameScreen gp) {
         if (gp == null || gp.camera == null || gp.monster == null) return false;
 
+        //obtener la posicion del jugador en el mapa
+        int col = (int) ((gp.player.worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
+        int row = (int) ((gp.player.worldY + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
+
+        //comprobar si esta en el bosque
+
+        if (col < 0 || col >= gp.mapGen.mapCols || row < 0 || row >= gp.mapGen.mapRows) {
+            return false;
+        }
+        // Permitir invocar en bosque y planicies comunes (rechazar nieve, pantano, playa y agua)
+        if (gp.mapGen.isSnowBiome[col][row] 
+                || gp.mapGen.isSwampBiome[col][row] 
+                || gp.mapGen.isBeachBiome[col][row]
+                || gp.mapGen.isDeepWater[col][row]
+                || gp.mapGen.isShallowWater[col][row]) {
+            Gdx.app.log("Rey hongo", "No se puede invocar al rey hongo fuera del bosque y planicies");
+            return false;
+        }
+
         //evitar invocar dos veces si ya hay un Rey Hongo vivo en el mapa
         for (Entity m : gp.monster) {
             if (m instanceof MON_mushroom) {
