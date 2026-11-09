@@ -1,12 +1,9 @@
 package com.whereyouat;
 
-import com.badlogic.gdx.Gdx;
-import com.whereyouat.monster.MON_frogger;
-import com.whereyouat.monster.MON_mushroom;
-import com.whereyouat.screens.GameScreen;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import com.whereyouat.screens.GameScreen;
 
 /**
  * AssetSetter for Where you at (LibGDX Edition).
@@ -28,6 +25,7 @@ public class AssetSetter {
      * - Mushroom in the forest
      */
     public void setMonster() {
+        /*
         // 1. Spawning Froggers in the swamp (indices 0 and 1)
         List<int[]> swampWalkableTiles = findSwampWalkableTiles();
         if (!swampWalkableTiles.isEmpty()) {
@@ -80,6 +78,7 @@ public class AssetSetter {
             gp.monster[2].worldX = gp.tileSize * safeCol;
             gp.monster[2].worldY = gp.tileSize * safeRow;
         }
+            */
     }
 
     /**

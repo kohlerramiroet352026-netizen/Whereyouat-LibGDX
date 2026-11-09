@@ -11,12 +11,13 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.whereyouat.items.Item;
 import com.whereyouat.items.ItemPotion;
+import com.whereyouat.items.OddMushroom;
 import com.whereyouat.items.Sword;
 import com.whereyouat.map.MapGenerator;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.monster.MON_frogger;
 import com.whereyouat.monster.MON_mushroom;
-
+import com.whereyouat.screens.GameScreen;
 
 /**
  * Player entity for Where you at (LibGDX Edition).
@@ -94,6 +95,7 @@ public class Player extends Entity {
     public static final float HIT_H = 12f;
 
     //deteción de ataque y mounstros
+    public GameScreen gp;
     public Entity[] currentMonsters;
     public boolean attacking = false;
     public float attackTimer = 0f;
@@ -114,6 +116,7 @@ public class Player extends Entity {
 
         loadSprites();
 
+        addItem(new OddMushroom());
         addItem(new Sword());
         addItem(new ItemPotion());
 

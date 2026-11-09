@@ -112,6 +112,7 @@ public class GameScreen extends ScreenAdapter {
         // 4. Inicializar subsistemas
         tileM = new TileManager();
         player = new Player();
+        player.gp = this;
         player.initSpawn(mapGen);
 
         dayNight = new DayNightCycle();
