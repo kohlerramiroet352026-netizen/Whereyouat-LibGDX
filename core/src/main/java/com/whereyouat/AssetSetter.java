@@ -25,6 +25,16 @@ public class AssetSetter {
      * - Mushroom in the forest
      */
     public void setMonster() {
+
+        List<int[]> snowTiles = findSnowWalkableTiles();
+        if (!snowTiles.isEmpty()) {
+            int[] tile = snowTiles.get(0);
+            com.whereyouat.monster.MON_snowGhost boss = new com.whereyouat.monster.MON_snowGhost(gp);
+            boss.worldX = tile[0] * gp.tileSize;
+            boss.worldY = tile[1] * gp.tileSize;
+            gp.monster[0] = boss;
+            com.badlogic.gdx.Gdx.app.log("AssetSetter", "Spawned Espectro de las Nieves en tile de nieve: (" + tile[0] + ", " + tile[1] + ")");
+        }
         /*
         // 1. Spawning Froggers in the swamp (indices 0 and 1)
         List<int[]> swampWalkableTiles = findSwampWalkableTiles();
@@ -205,6 +215,31 @@ public class AssetSetter {
 
                         tiles.add(new int[]{c, r});
                     }
+                }
+            }
+        }
+
+        return tiles;
+    }
+
+    /* 
+    Encuentra baldosas transitables dentro del bioma de nieve, asegurando que no haya
+    agua ni obstáculos (árboles o rocas)
+    */
+
+    private List<int[]> findSnowWalkableTiles() {
+        List<int[]> tiles = new ArrayList<>();
+        if (gp.mapGen == null || gp.mapGen.isSnowBiome == null) {
+            return tiles;
+        }
+
+        for (int c = 10; c < gp.mapGen.mapCols - 10 && tiles.size() < 10; c += 4) {
+            for (int r = 10; r < gp.mapGen.mapRows - 10 && tiles.size() < 10; r += 4) {
+                if (gp.mapGen.isSnowBiome[c][r]
+                && !gp.mapGen.isDeepWater[c][r]
+                && !gp.mapGen.isShallowWater[c][r]
+                && gp.mapGen.mapTreeNum[c][r] == 0) {
+                    tiles.add(new int[]{c, r});
                 }
             }
         }

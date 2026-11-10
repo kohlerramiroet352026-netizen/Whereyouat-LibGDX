@@ -175,6 +175,8 @@ public class Player extends Entity {
                     
                     } else if (m instanceof MON_frogger) {
                         ((MON_frogger) m).takeDamage(damage, worldX, worldY);
+                    } else if (m instanceof com.whereyouat.monster.MON_snowGhost) {
+                        ((com.whereyouat.monster.MON_snowGhost) m).takeDamage(damage, worldX, worldY);
                     } else {
                         m.life -= damage;
                         if (m.life <=0){
