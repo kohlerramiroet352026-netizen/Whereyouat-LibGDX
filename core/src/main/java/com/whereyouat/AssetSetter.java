@@ -1,5 +1,6 @@
 package com.whereyouat;
 
+import com.whereyouat.monster.MON_Ghost;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +26,14 @@ public class AssetSetter {
      * - Mushroom in the forest
      */
     public void setMonster() {
+        // Los monstruos ahora spawnean dinámicamente (de noche y eventos climáticos)
+        /*
+        // Codigo fantasma de prueba anterior
+        gp.monster[0] = new MON_Ghost(gp);
+        gp.monster[0].worldX = gp.player.worldX + gp.tileSize * 3;
+        gp.monster[0].worldY = gp.player.worldY;
+        */
+
         /*
         // 1. Spawning Froggers in the swamp (indices 0 and 1)
         List<int[]> swampWalkableTiles = findSwampWalkableTiles();

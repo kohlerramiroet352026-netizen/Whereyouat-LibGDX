@@ -25,8 +25,9 @@ public class DayNightCycle {
     public static final long DEFAULT_TIME_TICKS = 2 * 60 * TICKS_PER_SEC + 30 * TICKS_PER_SEC;
     private long timeTicks = DEFAULT_TIME_TICKS;
 
-    // Optional time scale multiplier (1 = real-time, can be increased for debugging)
-    private int timeMultiplier = 1;
+    // Escala de tiempo: 4x hace que el ciclo completo dure 6 minutos reales
+    // (aprox. 3.5 min de día y 2 min de noche), logrando transiciones naturales y dinámicas
+    private int timeMultiplier = 4;
 
     // Evaluated state for current frame
     private float ambientR = 1.0f;

@@ -31,13 +31,17 @@ import com.whereyouat.map.MapGenerator;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.monster.MON_frogger;
 import com.whereyouat.monster.MON_mushroom;
+import com.whereyouat.monster.MON_Ghost;
 import com.whereyouat.save.WorldSaveManager;
+
 /**
- * GameScreen - Pantalla principal de juego activo para Where you at (LibGDX Edition).
+ * GameScreen - Pantalla principal de juego activo para Where you at (LibGDX
+ * Edition).
  *
  * Administra el bucle de juego (Game Loop), la coordinación de subsistemas y
  * el orden de capas de renderizado en el mundo.
- * La interfaz de usuario (HUD), pausa y pantallas de muerte/reaparición están delegadas en GameHUD.
+ * La interfaz de usuario (HUD), pausa y pantallas de muerte/reaparición están
+ * delegadas en GameHUD.
  */
 public class GameScreen extends ScreenAdapter {
 
@@ -67,12 +71,12 @@ public class GameScreen extends ScreenAdapter {
     public final AssetSetter assetSetter;
     public final int tileSize = TileManager.TILE_SIZE;
 
-    // Entity list for depth sorting (ordenamiento por la base/pies de la hitbox física)
+    // Entity list for depth sorting (ordenamiento por la base/pies de la hitbox
+    // física)
     public final ArrayList<Entity> entityList = new ArrayList<>();
     private final Comparator<Entity> entitySorter = (e1, e2) -> Float.compare(
             e1.worldY + e1.solidArea.y + e1.solidArea.height,
-            e2.worldY + e2.solidArea.y + e2.solidArea.height
-    );
+            e2.worldY + e2.solidArea.y + e2.solidArea.height);
 
     // Metadatos del mundo
     public final String worldFileName;
@@ -85,6 +89,12 @@ public class GameScreen extends ScreenAdapter {
     private float autoSaveTimer = 60f; // Guardado automático cada 60s
     private boolean isPaused = false;
     private boolean showDeathScreen = false;
+    private boolean wasNightLastFrame = false; // para detectar la transición DÍA→NOCHE
+    private float nightSpawnTimer = 0f; // temporizador para spawn continuo de noche
+    private static final float NIGHT_SPAWN_INTERVAL = 10f; // cada 10s de noche intenta reponer fantasmas
+    private float snowSpawnTimer = 0f; // ← nuevo
+    private static final float SNOW_SPAWN_INTERVAL = 15f; // cada 15 segundos en clima nevado
+    private static final int MAX_NIGHT_GHOSTS = 5; // cuántos fantasmas spawnear por noche
     private boolean showRespawnScreen = false;
     private float saveFeedbackTimer = 0f;
 
@@ -180,7 +190,8 @@ public class GameScreen extends ScreenAdapter {
         float dt = Math.min(delta, 0.1f);
         animTime += dt;
 
-        if (saveFeedbackTimer > 0f) saveFeedbackTimer -= dt;
+        if (saveFeedbackTimer > 0f)
+            saveFeedbackTimer -= dt;
 
         // Pausa con ESC (solo vivo y fuera de pantallas de muerte)
         if (!showDeathScreen && !showRespawnScreen && Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
@@ -205,46 +216,47 @@ public class GameScreen extends ScreenAdapter {
 
         renderScene();
 
-        if (!isPaused && !showDeathScreen && Gdx.input.isKeyJustPressed(Keys.E)){
+        if (!isPaused && !showDeathScreen && Gdx.input.isKeyJustPressed(Keys.E)) {
             showInventory = !showInventory;
         }
 
-        //Navegacion del inventario
+        // Navegacion del inventario
 
-        if (showInventory){
-            if (Gdx.input.isKeyJustPressed(Keys.UP)){
+        if (showInventory) {
+            if (Gdx.input.isKeyJustPressed(Keys.UP)) {
                 hud.slotRow = Math.max(0, hud.slotRow - 1);
             }
 
-            if (Gdx.input.isKeyJustPressed(Keys.DOWN)){
+            if (Gdx.input.isKeyJustPressed(Keys.DOWN)) {
                 hud.slotRow = Math.min(3, hud.slotRow + 1);
             }
 
-            if (Gdx.input.isKeyJustPressed(Keys.LEFT)){
+            if (Gdx.input.isKeyJustPressed(Keys.LEFT)) {
                 hud.slotCol = Math.max(0, hud.slotCol - 1);
             }
 
-            if (Gdx.input.isKeyJustPressed(Keys.RIGHT)){
+            if (Gdx.input.isKeyJustPressed(Keys.RIGHT)) {
                 hud.slotCol = Math.min(4, hud.slotCol + 1);
             }
 
-            //Usar item con enter
+            // Usar item con enter
 
-            if (Gdx.input.isKeyJustPressed(Keys.ENTER) || Gdx.input.isKeyJustPressed(Keys.SPACE)){
+            if (Gdx.input.isKeyJustPressed(Keys.ENTER) || Gdx.input.isKeyJustPressed(Keys.SPACE)) {
                 int itemIndex = hud.slotCol + (hud.slotRow * 5);
 
-                if (itemIndex < player.inventory.size()){
+                if (itemIndex < player.inventory.size()) {
                     Item item = player.inventory.get(itemIndex);
-                    if (item.use(player)){
+                    if (item.use(player)) {
                         player.inventory.remove(itemIndex);
                     }
                 }
             }
         }
-        
-        //ataque con clic izquierdo del mouse
-        if (!isPaused && !showInventory && !showDeathScreen && Gdx.input.isButtonJustPressed(0) && player.attackCooldown <= 0f && player.hasSword()){
-            //convierte las coordenadas del click de pantalla al mundo
+
+        // ataque con clic izquierdo del mouse
+        if (!isPaused && !showInventory && !showDeathScreen && Gdx.input.isButtonJustPressed(0)
+                && player.attackCooldown <= 0f && player.hasSword()) {
+            // convierte las coordenadas del click de pantalla al mundo
             Vector3 clickWorld = camera.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
 
             float playerCenterX = player.worldX + TileManager.TILE_SIZE / 2f;
@@ -253,16 +265,16 @@ public class GameScreen extends ScreenAdapter {
             float dx = clickWorld.x - playerCenterX;
             float dy = clickWorld.y - playerCenterY;
 
-            //determinar si el click tira mas a horizontal o vertical
+            // determinar si el click tira mas a horizontal o vertical
 
             String attackDir;
-            if (Math.abs(dx) >= Math.abs(dy)){
+            if (Math.abs(dx) >= Math.abs(dy)) {
                 attackDir = (dx > 0) ? "right" : "left";
             } else {
-                attackDir = (dy > 0) ? "down" : "up"; //"Y" crece hacia abajo
+                attackDir = (dy > 0) ? "down" : "up"; // "Y" crece hacia abajo
             }
 
-            //ejecutar el ataque con 2 puntos de daño hacia la dirección del click
+            // ejecutar el ataque con 2 puntos de daño hacia la dirección del click
 
             player.attack(attackDir, 2);
         }
@@ -271,6 +283,25 @@ public class GameScreen extends ScreenAdapter {
     private void updateGame(float delta) {
         // 1. Actualizar física del jugador, colisiones e interacción con monstruos
         player.update(delta, mapGen, tileM, monster);
+        // --- Spawn/despawn de fantasmas por ciclo día/noche ---
+        boolean isNightNow = dayNight.isNight();
+        if (isNightNow && !wasNightLastFrame) {
+            // Acaba de caer la noche: spawnear fantasmas
+            spawnNightGhosts();
+            nightSpawnTimer = 0f;
+        } else if (!isNightNow && wasNightLastFrame) {
+            // Acaba de amanecer: eliminar fantasmas nocturnos
+            despawnNightGhosts();
+            nightSpawnTimer = 0f;
+        } else if (isNightNow) {
+            // Spawn continuo: cada 10 segundos de noche repone fantasmas si murieron o te moviste
+            nightSpawnTimer += delta;
+            if (nightSpawnTimer >= NIGHT_SPAWN_INTERVAL) {
+                spawnNightGhosts();
+                nightSpawnTimer = 0f;
+            }
+        }
+        wasNightLastFrame = isNightNow;
 
         // 2. Actualizar tiles (animación de agua y balanceo de arbustos)
         tileM.update(delta, mapGen, dayNight);
@@ -279,8 +310,28 @@ public class GameScreen extends ScreenAdapter {
 
         int playerCol = (int) (player.worldX / TileManager.TILE_SIZE);
         int playerRow = (int) (player.worldY / TileManager.TILE_SIZE);
-        boolean inSnow = (playerCol >= 0 && playerCol < mapGen.mapCols && playerRow >= 0 && playerRow < mapGen.mapRows) && mapGen.isSnowBiome[playerCol][playerRow];
+        boolean inSnow = (playerCol >= 0 && playerCol < mapGen.mapCols && playerRow >= 0 && playerRow < mapGen.mapRows)
+                && mapGen.isSnowBiome[playerCol][playerRow];
         snowPS.update(delta, inSnow, 1.0f, hudCamera.viewportWidth, hudCamera.viewportHeight);
+
+        // --- Spawn por evento climático (nieve) ---
+        if (inSnow) {
+            snowSpawnTimer += delta;
+            if (snowSpawnTimer >= SNOW_SPAWN_INTERVAL) {
+                spawnSnowGhost();
+                snowSpawnTimer = 0f;
+            }
+        } else {
+            snowSpawnTimer = 0f; // si sale de la nieve, se reinicia el contador
+        }
+
+        // Limpiar fantasmas que quedaron demasiado lejos del jugador (> 25 tiles)
+        for (int i = 0; i < monster.length; i++) {
+            if (monster[i] instanceof MON_Ghost && monster[i].distanceTo(player) > 25 * tileSize) {
+                monster[i].dispose();
+                monster[i] = null;
+            }
+        }
 
         // Actualizar IA de monstruos
         for (int i = 0; i < monster.length; i++) {
@@ -304,11 +355,10 @@ public class GameScreen extends ScreenAdapter {
         }
     }
 
-
     private void renderScene() {
         // Centrar cámara suavemente en el jugador
         camera.position.set(player.worldX + TileManager.TILE_SIZE / 2f,
-                            player.worldY + TileManager.TILE_SIZE / 2f, 0);
+                player.worldY + TileManager.TILE_SIZE / 2f, 0);
         camera.update();
 
         float halfViewportWidth = (camera.viewportWidth * camera.zoom) / 2f;
@@ -341,7 +391,8 @@ public class GameScreen extends ScreenAdapter {
         // 4. Hojas cayendo en el mundo
         snowPS.drawWorldLeaves(game.batch, minX, minY, maxX, maxY);
 
-        // 5. Entidades y Decoraciones con ordenamiento unificado por profundidad Y (evita oclusiones prematuras)
+        // 5. Entidades y Decoraciones con ordenamiento unificado por profundidad Y
+        // (evita oclusiones prematuras)
         entityList.add(player);
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] != null) {
@@ -367,8 +418,10 @@ public class GameScreen extends ScreenAdapter {
                 Entity e = entityList.get(entityIndex);
                 float eFootY = e.worldY + e.solidArea.y + e.solidArea.height;
                 if (eFootY < rowFootY) {
-                    if (e == player) drawPlayer();
-                    else e.draw(game.batch);
+                    if (e == player)
+                        drawPlayer();
+                    else
+                        e.draw(game.batch);
                     entityIndex++;
                 } else {
                     break;
@@ -382,8 +435,10 @@ public class GameScreen extends ScreenAdapter {
         // Dibuja entidades restantes por delante de las filas visibles
         while (entityIndex < entityList.size()) {
             Entity e = entityList.get(entityIndex);
-            if (e == player) drawPlayer();
-            else e.draw(game.batch);
+            if (e == player)
+                drawPlayer();
+            else
+                e.draw(game.batch);
             entityIndex++;
         }
 
@@ -413,7 +468,8 @@ public class GameScreen extends ScreenAdapter {
         // -------------------------------------------------------------
         // PASE 4: Interfaz de usuario (HUD delegado en GameHUD)
         // -------------------------------------------------------------
-        hud.render(game.batch, player, isPaused, showDeathScreen, showRespawnScreen, saveFeedbackTimer, animTime, showInventory);
+        hud.render(game.batch, player, isPaused, showDeathScreen, showRespawnScreen, saveFeedbackTimer, animTime,
+                showInventory);
     }
 
     /**
@@ -453,8 +509,9 @@ public class GameScreen extends ScreenAdapter {
 
             // Project the clip rectangle corners from world space to GL window pixels.
             // camera.project() returns GL coords (Y-up, origin bottom-left of window).
-            Vector3 topLeft     = camera.project(new Vector3(player.worldX,                       clipWorldY,                    0));
-            Vector3 bottomRight = camera.project(new Vector3(player.worldX + TileManager.TILE_SIZE, clipWorldY + visibleWorldH, 0));
+            Vector3 topLeft = camera.project(new Vector3(player.worldX, clipWorldY, 0));
+            Vector3 bottomRight = camera
+                    .project(new Vector3(player.worldX + TileManager.TILE_SIZE, clipWorldY + visibleWorldH, 0));
 
             int sx = (int) Math.min(topLeft.x, bottomRight.x);
             int sy = (int) Math.min(topLeft.y, bottomRight.y);
@@ -473,11 +530,12 @@ public class GameScreen extends ScreenAdapter {
             game.batch.flush();
             Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
 
-            // Draw foam OUTSIDE scissor at the waterline, mirroring original g2.setClip restore
+            // Draw foam OUTSIDE scissor at the waterline, mirroring original g2.setClip
+            // restore
             TextureRegion playerFoam = tileM.getFoamRegion();
             if (playerFoam != null) {
                 float foamY = player.worldY + player.getWaterYShift(waterLevel)
-                              + TileManager.TILE_SIZE - player.getWaterCutOff(waterLevel) - 3f;
+                        + TileManager.TILE_SIZE - player.getWaterCutOff(waterLevel) - 3f;
                 game.batch.setColor(1f, 1f, 1f, 0.9f);
                 game.batch.draw(playerFoam, player.worldX, foamY, TileManager.TILE_SIZE, TileManager.TILE_SIZE);
                 game.batch.setColor(1f, 1f, 1f, 1f);
@@ -488,76 +546,85 @@ public class GameScreen extends ScreenAdapter {
     }
 
     public void loadSavedState(WorldSaveManager.WorldInfo info) {
-    if (info == null) return;
+        if (info == null)
+            return;
 
-    // 1. Estado del jugador
-    if (info.hasPlayerData) {
-        player.worldX = info.playerWorldX;
-        player.worldY = info.playerWorldY;
-        player.direction = info.playerDirection;
-        player.health = info.playerHealth;
-        player.lives = info.playerLives;
-    }
-
-    // 2. Restaurar inventario guardado
-    if (info.hasInventoryData) {
-        player.inventory.clear();
-        for (String itemId : info.inventoryItems) {
-            Item item = createItem(itemId);
-            if (item != null) player.addItem(item);
+        // 1. Estado del jugador
+        if (info.hasPlayerData) {
+            player.worldX = info.playerWorldX;
+            player.worldY = info.playerWorldY;
+            player.direction = info.playerDirection;
+            player.health = info.playerHealth;
+            player.lives = info.playerLives;
         }
-    }
 
-    // 3. Restaurar monstruos guardados
-    if (info.hasMonsterData) {
-        // Limpiar los monstruos por defecto de AssetSetter
-        for (int i = 0; i < monster.length; i++) {
-            if (monster[i] != null) {
-                monster[i].dispose();
-                monster[i] = null;
+        // 2. Restaurar inventario guardado
+        if (info.hasInventoryData) {
+            player.inventory.clear();
+            for (String itemId : info.inventoryItems) {
+                Item item = createItem(itemId);
+                if (item != null)
+                    player.addItem(item);
             }
         }
-        // Cargar los monstruos guardados
-        for (int i = 0; i < info.savedMonsters.size() && i < monster.length; i++) {
-            WorldSaveManager.WorldInfo.SavedMonster sm = info.savedMonsters.get(i);
-            Entity m = createMonster(sm.id);
-            if (m != null) {
-                m.worldX = sm.x;
-                m.worldY = sm.y;
-                m.life = sm.life;
-                monster[i] = m;
+
+        // 3. Restaurar monstruos guardados
+        if (info.hasMonsterData) {
+            // Limpiar los monstruos por defecto de AssetSetter
+            for (int i = 0; i < monster.length; i++) {
+                if (monster[i] != null) {
+                    monster[i].dispose();
+                    monster[i] = null;
+                }
             }
+            // Cargar los monstruos guardados
+            for (int i = 0; i < info.savedMonsters.size() && i < monster.length; i++) {
+                WorldSaveManager.WorldInfo.SavedMonster sm = info.savedMonsters.get(i);
+                Entity m = createMonster(sm.id);
+                if (m != null) {
+                    m.worldX = sm.x;
+                    m.worldY = sm.y;
+                    m.life = sm.life;
+                    monster[i] = m;
+                }
+            }
+        }
+
+        // 4. Ciclo día/noche
+        if (info.hasDayNightData && info.dayNightTicks >= 0) {
+            dayNight.setTimeTicks(info.dayNightTicks);
         }
     }
 
-    // 4. Ciclo día/noche
-    if (info.hasDayNightData && info.dayNightTicks >= 0) {
-        dayNight.setTimeTicks(info.dayNightTicks);
+    private Item createItem(String id) {
+        if (id == null)
+            return null;
+        switch (id) {
+            case "Sword":
+                return new Sword();
+            case "OddMushroom":
+                return new OddMushroom();
+            case "ItemPotion":
+                return new ItemPotion();
+            default:
+                return null;
+        }
     }
-}
 
-private Item createItem(String id) {
-    if (id == null) return null;
-    switch (id) {
-        case "Sword": return new Sword();
-        case "OddMushroom": return new OddMushroom();
-        case "ItemPotion": return new ItemPotion();
-        default: return null;
+    private Entity createMonster(String id) {
+        if (id == null)
+            return null;
+        switch (id) {
+            case "MON_mushroom":
+                return new MON_mushroom(this);
+            case "MON_frogger":
+                return new MON_frogger(this);
+            case "MON_Ghost":
+                return new MON_Ghost(this); // ← nuevo
+            default:
+                return null;
+        }
     }
-}
-
-private Entity createMonster(String id) {
-    if (id == null) return null;
-    switch (id) {
-        case "MON_mushroom": return new MON_mushroom(this);
-        case "MON_frogger": return new MON_frogger(this);
-        default: return null;
-    }
-}
-
-
-
-
 
     private void returnToTitle() {
         saveProgress();
@@ -582,7 +649,6 @@ private Entity createMonster(String id) {
         lighting.resize(width, height);
     }
 
-
     @Override
     public void dispose() {
         saveProgress();
@@ -599,5 +665,142 @@ private Entity createMonster(String id) {
         lighting.dispose();
         audio.dispose();
         hud.dispose();
+    }
+
+    /**
+     * Spawnea fantasmas en tiles walkables aleatorios cerca del jugador.
+     * Se llama una sola vez al caer la noche.
+     */
+    private void spawnNightGhosts() {
+        if (mapGen == null || player == null)
+            return;
+
+        // Contar cuántos fantasmas hay vivos cerca del jugador
+        int nearbyGhosts = 0;
+        for (int i = 0; i < monster.length; i++) {
+            if (monster[i] instanceof MON_Ghost && monster[i].distanceTo(player) < 25 * tileSize) {
+                nearbyGhosts++;
+            }
+        }
+        int toSpawn = MAX_NIGHT_GHOSTS - nearbyGhosts;
+        if (toSpawn <= 0)
+            return; // Ya hay suficientes fantasmas cerca
+
+        // Centro de búsqueda: posición del jugador en tiles
+        int playerCol = (int) (player.worldX / tileSize);
+        int playerRow = (int) (player.worldY / tileSize);
+
+        // Radio de spawn: entre 6 y 11 tiles del jugador (alrededor del borde de la pantalla)
+        int minRadius = 6;
+        int maxRadius = 11;
+
+        java.util.Random rand = new java.util.Random();
+        int spawned = 0;
+
+        // Intentamos hasta 60 veces para encontrar tiles válidos
+        for (int attempt = 0; attempt < 60 && spawned < toSpawn; attempt++) {
+            // Elegir un desplazamiento aleatorio dentro del anillo
+            int angle = rand.nextInt(360);
+            int radius = minRadius + rand.nextInt(maxRadius - minRadius);
+            int col = playerCol + (int) (Math.cos(Math.toRadians(angle)) * radius);
+            int row = playerRow + (int) (Math.sin(Math.toRadians(angle)) * radius);
+
+            // Validar límites del mapa
+            if (col < 1 || col >= mapGen.mapCols - 1 || row < 1 || row >= mapGen.mapRows - 1)
+                continue;
+
+            // No spawnear en agua profunda, árboles o rocas
+            if (mapGen.isDeepWater[col][row])
+                continue;
+            if (tileM.collidesWithTree(mapGen, col * tileSize, row * tileSize, tileSize, tileSize))
+                continue;
+
+            // Buscar un slot libre en el array de monstruos
+            int slotIndex = -1;
+            for (int i = 0; i < monster.length; i++) {
+                if (monster[i] == null) {
+                    slotIndex = i;
+                    break;
+                }
+            }
+            if (slotIndex == -1)
+                break; // array lleno
+
+            // Crear el fantasma y posicionarlo
+            MON_Ghost ghost = new MON_Ghost(this);
+            ghost.worldX = col * tileSize;
+            ghost.worldY = row * tileSize;
+            monster[slotIndex] = ghost;
+            spawned++;
+
+            Gdx.app.log("GameScreen", "Ghost spawned at (" + col + "," + row + ") slot " + slotIndex);
+        }
+    }
+
+    /**
+     * Elimina todos los fantasmas del mundo (llamado al amanecer).
+     */
+    private void despawnNightGhosts() {
+        for (int i = 0; i < monster.length; i++) {
+            if (monster[i] instanceof MON_Ghost) {
+                monster[i].dispose();
+                monster[i] = null;
+            }
+        }
+    }
+
+    /**
+     * Spawnea UN fantasma extra si el jugador está en bioma de nieve.
+     * Se llama cada SNOW_SPAWN_INTERVAL segundos mientras nieva.
+     */
+    private void spawnSnowGhost() {
+        if (mapGen == null || player == null)
+            return;
+
+        int playerCol = (int) (player.worldX / tileSize);
+        int playerRow = (int) (player.worldY / tileSize);
+
+        // Solo spawnear si el jugador está en zona nevada
+        if (playerCol < 0 || playerCol >= mapGen.mapCols ||
+                playerRow < 0 || playerRow >= mapGen.mapRows)
+            return;
+        if (!mapGen.isSnowBiome[playerCol][playerRow])
+            return;
+
+        // Buscar slot libre
+        int slotIndex = -1;
+        for (int i = 0; i < monster.length; i++) {
+            if (monster[i] == null) {
+                slotIndex = i;
+                break;
+            }
+        }
+        if (slotIndex == -1)
+            return;
+
+        java.util.Random rand = new java.util.Random();
+        // Spawn en un radio de 6-11 tiles
+        for (int attempt = 0; attempt < 30; attempt++) {
+            int angle = rand.nextInt(360);
+            int radius = 6 + rand.nextInt(6);
+            int col = playerCol + (int) (Math.cos(Math.toRadians(angle)) * radius);
+            int row = playerRow + (int) (Math.sin(Math.toRadians(angle)) * radius);
+
+            if (col < 1 || col >= mapGen.mapCols - 1 || row < 1 || row >= mapGen.mapRows - 1)
+                continue;
+            if (mapGen.isDeepWater[col][row])
+                continue;
+            if (!mapGen.isSnowBiome[col][row])
+                continue;
+            if (tileM.collidesWithTree(mapGen, col * tileSize, row * tileSize, tileSize, tileSize))
+                continue;
+
+            MON_Ghost ghost = new MON_Ghost(this);
+            ghost.worldX = col * tileSize;
+            ghost.worldY = row * tileSize;
+            monster[slotIndex] = ghost;
+            Gdx.app.log("GameScreen", "Snow ghost spawned at (" + col + "," + row + ")");
+            return;
+        }
     }
 }
