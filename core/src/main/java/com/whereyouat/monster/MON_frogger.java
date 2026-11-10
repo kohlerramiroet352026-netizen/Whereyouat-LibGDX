@@ -42,6 +42,8 @@ public class MON_frogger extends Entity {
     public static final float BODY_SIZE = 128f * SCALE;
     public static final float SHEET_WIDTH = 384 * SCALE;
     public static final float SHEET_HEIGHT = 128f * SCALE;
+    public static final float DRAW_WIDTH = 350f;
+    public static final float DRAW_HEIGHT = 280f;
 
 
     public float attackCooldown = 0f;
@@ -136,6 +138,8 @@ public class MON_frogger extends Entity {
         return frames;
     }
 
+    
+
     @Override
     public void update(float delta) {
        if (attackCooldown > 0f){
@@ -196,7 +200,7 @@ public class MON_frogger extends Entity {
                 spriteCounter = 0;
             } else if (distanceToPlayer <= 200f){
                 state = STATE_IDLE;
-            } else if(distanceToPlayer <= 600f){
+            } else if(distanceToPlayer <= 1200f){
                 state = STATE_RUN;
 
             
@@ -234,6 +238,17 @@ public class MON_frogger extends Entity {
        }
 
        updateAnimation(delta);
+    }
+
+    private void clampToBounds() {
+        if (gp == null || gp.mapGen == null) return;
+        int margin = 30;
+        float minX = margin * TileManager.TILE_SIZE;
+        float minY = margin * TileManager.TILE_SIZE;
+        float maxX = (gp.mapGen.mapCols - margin) * TileManager.TILE_SIZE - DRAW_WIDTH;
+        float maxY = (gp.mapGen.mapRows - margin) * TileManager.TILE_SIZE - DRAW_HEIGHT;
+        worldX = Math.max(minX, Math.min(maxX, worldX));
+        worldY = Math.max(minY, Math.min(maxY, worldY));
     }
 
     private boolean collides(float x, float y){
@@ -394,6 +409,82 @@ public class MON_frogger extends Entity {
                 knockbackDy = 0f;
             }
         }
+    }
+
+        public static boolean summon(GameScreen gp) {
+        if (gp == null || gp.camera == null || gp.monster == null) return false;
+
+        //obtener la posicion del jugador en el mapa
+        int col = (int) ((gp.player.worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
+        int row = (int) ((gp.player.worldY + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
+
+        //comprobar si esta en el pantano
+
+        if (col < 0 || col >= gp.mapGen.mapCols || row < 0 || row >= gp.mapGen.mapRows) {
+            return false;
+        }
+        // Permitir invocar en pantano
+        if (!gp.mapGen.isSwampBiome[col][row]) {
+            Gdx.app.log("Frogger", "No se puede invocar a Frogger fuera del pantano");
+            return false;
+        }
+
+        //evitar invocar dos veces si ya hay un Rey Hongo vivo en el mapa
+        for (Entity m : gp.monster) {
+            if (m instanceof MON_frogger) {
+                return false;
+            }
+        }
+
+        //buscar un espacio libre en el array de monstruos
+        int slotIndex = -1;
+        for (int i = 0; i < gp.monster.length; i++) {
+            if (gp.monster[i] == null) {
+                slotIndex = i;
+                break;
+            }
+        }
+        if (slotIndex == -1) return false; // Array lleno
+
+        //obtener el área visible real de la cámara (funciona en fullscreen y minimizada)
+        float halfW = (gp.camera.viewportWidth * gp.camera.zoom) / 2f;
+        float halfH = (gp.camera.viewportHeight * gp.camera.zoom) / 2f;
+        float centerX = gp.camera.position.x;
+        float centerY = gp.camera.position.y;
+
+        float spawnX, spawnY;
+        float margin = 60f; //margen para que no aparezca asomado en el borde
+
+        // 4. Elegir al azar uno de los 4 lados (0: Arriba, 1: Abajo, 2: Izquierda, 3: Derecha)
+        int side = (int) (Math.random() * 4);
+        switch (side) {
+            case 0: // ARRIBA
+                spawnX = centerX + (float) ((Math.random() - 0.5) * halfW * 1.5);
+                spawnY = centerY - halfH - DRAW_HEIGHT - margin;
+                break;
+            case 1: // ABAJO
+                spawnX = centerX + (float) ((Math.random() - 0.5) * halfW * 1.5);
+                spawnY = centerY + halfH + margin;
+                break;
+            case 2: // IZQUIERDA
+                spawnX = centerX - halfW - DRAW_WIDTH - margin;
+                spawnY = centerY + (float) ((Math.random() - 0.5) * halfH * 1.5);
+                break;
+            default: // DERECHA
+                spawnX = centerX + halfW + margin;
+                spawnY = centerY + (float) ((Math.random() - 0.5) * halfH * 1.5);
+                break;
+        }
+
+        //instanciar al jefe y ubicarlo
+        MON_frogger boss = new MON_frogger(gp);
+        boss.worldX = spawnX;
+        boss.worldY = spawnY;
+        boss.clampToBounds(); //evita que quede fuera de los límites del mapa del mundo
+
+        //ponerlo en el juego
+        gp.monster[slotIndex] = boss;
+        return true;
     }
 
     private void deleteFrogger() {
