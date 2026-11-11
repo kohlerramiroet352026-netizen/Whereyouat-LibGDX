@@ -18,13 +18,20 @@ public class MON_Ghost extends Entity {
 	public String name;
 
 	// Escala: 16x16 × 3 = 48px (exactamente 1 tile)
-	public static final float SCALE = 3.0f;
-	public static final float DRAW_SIZE = 16f * SCALE; // 48px
+	private static final float FRAME_W_NATIVE = 16f;
+    private static final float FRAME_H_NATIVE = 32f;
+    private static final float SCALE          = 3.0f; // ×4.5 → 72×144 px en pantalla
+    public  static final float DRAW_WIDTH     = FRAME_W_NATIVE * SCALE; // 72
+    public  static final float DRAW_HEIGHT    = FRAME_H_NATIVE * SCALE; // 144
 
 	// --- Estados (igual que Mushroom y Frogger) ---
 	public static final int STATE_WALK = 0;
 	public static final int STATE_HIT = 1;
 	public static final int STATE_DIE = 2;
+
+	private static final int FRAMES_IDLE  = 4;
+    private static final int FRAMES_WALK  = 4;
+    private static final int FRAMES_DIE   = 4;
 
 	public int state = STATE_WALK;
 	private int previousState = STATE_WALK;
@@ -35,6 +42,7 @@ public class MON_Ghost extends Entity {
 
 	// Texturas (para liberar memoria en dispose)
 	private final List<Texture> textures = new ArrayList<>();
+
 
 	// Frames por dirección (8 frames cada uno, tira vertical)
 	private TextureRegion[] downFrames;
@@ -59,11 +67,18 @@ public class MON_Ghost extends Entity {
 		direction = "down";
 
 		// Hitbox centrada dentro del tile 48x48
-		solidArea.set(10f, 10f, 28f, 28f);
-		solidAreaDefaultX = solidArea.x;
-		solidAreaDefaultY = solidArea.y;
+		float hitW = DRAW_WIDTH * 0.55f;
+        float hitH = DRAW_HEIGHT * 0.22f;
+        solidArea.set(
+            (DRAW_WIDTH  - hitW) / 2f,
+            DRAW_HEIGHT  - hitH - 4f,
+            hitW,
+            hitH
+        );
+        solidAreaDefaultX = solidArea.x;
+        solidAreaDefaultY = solidArea.y;
 
-		loadSprites();
+        loadSprites();
 	}
 
 	// -------------------------------------------------------
@@ -71,30 +86,34 @@ public class MON_Ghost extends Entity {
 	// Sin cambios respecto a antes, solo se agrega dieFrames
 	// -------------------------------------------------------
 	private void loadSprites() {
-		downFrames = loadFrames("monster/gohst_idle_walk_down.png", 8);
-		upFrames = loadFrames("monster/gohst_walk_up.png", 8);
-		leftFrames = loadFrames("monster/gohst_walk_left.png", 8);
-		rightFrames = loadFrames("monster/gohst_walk_right.png", 8);
-		dieFrames = loadFrames("monster/gohst_die.png", 8); // ← nuevo
-	}
+        downFrames  = loadColumn("monster/gohst_idle_walk_down.png", FRAMES_IDLE);
+        leftFrames  = loadColumn("monster/gohst_walk_left.png",      FRAMES_WALK);
+        rightFrames = loadColumn("monster/gohst_walk_right.png",     FRAMES_WALK);
+        upFrames    = loadColumn("monster/gohst_walk_up.png",        FRAMES_WALK);
+        dieFrames       = loadColumn("monster/gohst_die.png",            FRAMES_DIE);
+    }
 
-	// Corta una tira VERTICAL de 16×128 en 8 frames de 16×16
-	// (sheet[fila][columna] → tomamos columna 0 de cada fila)
-	private TextureRegion[] loadFrames(String path, int count) {
-		Texture texture = new Texture(Gdx.files.internal(path));
-		texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-		textures.add(texture);
+    /**
+     * Carga un spritesheet de 1 columna y N filas.
+     * Cada frame mide FRAME_W_NATIVE × FRAME_H_NATIVE px.
+     * Las regiones se voltean verticalmente para el sistema Y-down de LibGDX.
+     */
+    private TextureRegion[] loadColumn(String path, int frameCount) {
+        Texture tex = new Texture(Gdx.files.internal(path));
+        tex.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+        textures.add(tex);
 
-		TextureRegion[][] sheet = TextureRegion.split(texture, 16, 16);
-		TextureRegion[] frames = new TextureRegion[count];
+        TextureRegion[] frames = new TextureRegion[frameCount];
+        int fw = (int) FRAME_W_NATIVE;
+        int fh = (int) FRAME_H_NATIVE;
 
-		for (int i = 0; i < count; i++) {
-			TextureRegion frame = new TextureRegion(sheet[i][0]);
-			frame.flip(false, true); // corrección Y-down
-			frames[i] = frame;
-		}
-		return frames;
-	}
+        for (int i = 0; i < frameCount; i++) {
+            TextureRegion r = new TextureRegion(tex, 0, i * fh, fw, fh);
+            r.flip(false, true); // Y-down → Y-up para LibGDX
+            frames[i] = r;
+        }
+        return frames;
+    }
 
 	// -------------------------------------------------------
 	// RECIBIR DAÑO — igual que Mushroom.takeDamage()
@@ -170,7 +189,7 @@ public class MON_Ghost extends Entity {
 			float dy = playerCY - ghostCY;
 			float dist = (float) Math.hypot(dx, dy);
 
-			if (dist <= 600f && !gp.player.isHiddenInBush) {
+			if (dist <= 1200f && !gp.player.isHiddenInBush) {
 				// --- PERSECUCIÓN ---
 				// Mueve al Ghost hacia el jugador
 				if (dist > 1f) {
@@ -340,7 +359,7 @@ public class MON_Ghost extends Entity {
 			batch.setColor(1f, 1f, 1f, 0.3f);
 		}
 
-		batch.draw(region, worldX, worldY, DRAW_SIZE, DRAW_SIZE);
+		batch.draw(region, worldX, worldY, DRAW_WIDTH, DRAW_HEIGHT);
 		batch.setColor(1f, 1f, 1f, 1f); // siempre restaurar el color
 	}
 

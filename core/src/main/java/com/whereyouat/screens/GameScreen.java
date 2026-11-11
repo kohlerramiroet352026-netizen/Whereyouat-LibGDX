@@ -29,9 +29,9 @@ import com.whereyouat.lighting.DayNightCycle;
 import com.whereyouat.lighting.LightingEngine;
 import com.whereyouat.map.MapGenerator;
 import com.whereyouat.map.TileManager;
+import com.whereyouat.monster.MON_Ghost;
 import com.whereyouat.monster.MON_frogger;
 import com.whereyouat.monster.MON_mushroom;
-import com.whereyouat.monster.MON_Ghost;
 import com.whereyouat.save.WorldSaveManager;
 
 /**
@@ -94,7 +94,7 @@ public class GameScreen extends ScreenAdapter {
     private static final float NIGHT_SPAWN_INTERVAL = 10f; // cada 10s de noche intenta reponer fantasmas
     private float snowSpawnTimer = 0f; // ← nuevo
     private static final float SNOW_SPAWN_INTERVAL = 15f; // cada 15 segundos en clima nevado
-    private static final int MAX_NIGHT_GHOSTS = 5; // cuántos fantasmas spawnear por noche
+    private static final int MAX_NIGHT_GHOSTS = 2; // cuántos fantasmas spawnear por noche
     private boolean showRespawnScreen = false;
     private float saveFeedbackTimer = 0f;
 
@@ -314,20 +314,9 @@ public class GameScreen extends ScreenAdapter {
                 && mapGen.isSnowBiome[playerCol][playerRow];
         snowPS.update(delta, inSnow, 1.0f, hudCamera.viewportWidth, hudCamera.viewportHeight);
 
-        // --- Spawn por evento climático (nieve) ---
-        if (inSnow) {
-            snowSpawnTimer += delta;
-            if (snowSpawnTimer >= SNOW_SPAWN_INTERVAL) {
-                spawnSnowGhost();
-                snowSpawnTimer = 0f;
-            }
-        } else {
-            snowSpawnTimer = 0f; // si sale de la nieve, se reinicia el contador
-        }
-
         // Limpiar fantasmas que quedaron demasiado lejos del jugador (> 25 tiles)
         for (int i = 0; i < monster.length; i++) {
-            if (monster[i] instanceof MON_Ghost && monster[i].distanceTo(player) > 25 * tileSize) {
+            if (monster[i] instanceof MON_Ghost && monster[i].distanceTo(player) > 35 * tileSize) {
                 monster[i].dispose();
                 monster[i] = null;
             }
@@ -678,7 +667,7 @@ public class GameScreen extends ScreenAdapter {
         // Contar cuántos fantasmas hay vivos cerca del jugador
         int nearbyGhosts = 0;
         for (int i = 0; i < monster.length; i++) {
-            if (monster[i] instanceof MON_Ghost && monster[i].distanceTo(player) < 25 * tileSize) {
+            if (monster[i] instanceof MON_Ghost && monster[i].distanceTo(player) < 35 * tileSize) {
                 nearbyGhosts++;
             }
         }
@@ -690,9 +679,11 @@ public class GameScreen extends ScreenAdapter {
         int playerCol = (int) (player.worldX / tileSize);
         int playerRow = (int) (player.worldY / tileSize);
 
-        // Radio de spawn: entre 6 y 11 tiles del jugador (alrededor del borde de la pantalla)
-        int minRadius = 6;
-        int maxRadius = 11;
+        // Radio de spawn
+        float halfW = (camera.viewportWidth * camera.zoom) / 2f;
+        float halfH = (camera.viewportHeight * camera.zoom) / 2f;
+        int minRadius = (int) (Math.max(halfW, halfH) / tileSize) + 2;
+        int maxRadius = minRadius + 4;
 
         java.util.Random rand = new java.util.Random();
         int spawned = 0;
@@ -743,8 +734,7 @@ public class GameScreen extends ScreenAdapter {
     private void despawnNightGhosts() {
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] instanceof MON_Ghost) {
-                monster[i].dispose();
-                monster[i] = null;
+                ((MON_Ghost) monster[i]).takeDamage(999, 0, 0);
             }
         }
     }
@@ -781,8 +771,11 @@ public class GameScreen extends ScreenAdapter {
         java.util.Random rand = new java.util.Random();
         // Spawn en un radio de 6-11 tiles
         for (int attempt = 0; attempt < 30; attempt++) {
+            float halfW = (camera.viewportWidth * camera.zoom) / 2f;
+            float halfH = (camera.viewportHeight * camera.zoom) / 2f;
+            int minRadius = (int) (Math.hypot(halfW, halfH) / tileSize) + 2;
+            int radius = minRadius + rand.nextInt(5);
             int angle = rand.nextInt(360);
-            int radius = 6 + rand.nextInt(6);
             int col = playerCol + (int) (Math.cos(Math.toRadians(angle)) * radius);
             int row = playerRow + (int) (Math.sin(Math.toRadians(angle)) * radius);
 
