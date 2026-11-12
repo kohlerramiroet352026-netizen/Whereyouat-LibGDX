@@ -462,35 +462,49 @@ public class WorldCreateScreen extends ScreenAdapter {
             return;
         }
 
-        // Conectado con éxito: esperar el mensaje SEED: del host para usar su seed
-        // y garantizar que el mundo del cliente sea siempre el mismo entre reconexiones.
+        // Conectado con éxito: esperar SEED: del host para garantizar seed y save consistentes.
         // El host envía SEED:<valor> en su onConnected() apenas J2 se conecta.
+        // Se usa el roomCode como clave del save de J2 para encontrar siempre el mismo archivo.
+        final String roomKey = "j2_" + joinCodeInput.trim();
         connectionError = "Conectado. Esperando datos del host...";
         net.setListener(new NetworkManager.NetworkListener() {
-            @Override
-            public void onConnected() {
-                // No hacemos nada aquí; esperamos el SEED: que el host manda enseguida
-            }
+            @Override public void onConnected() {}
             @Override
             public void onMessageReceived(String message) {
-                if (message.startsWith("SEED:")) {
-                    long hostSeed;
-                    try {
-                        hostSeed = Long.parseLong(message.substring(5).trim());
-                    } catch (NumberFormatException ignored) {
-                        hostSeed = 42L; // fallback si el mensaje llega corrupto
+                if (!message.startsWith("SEED:")) return;
+                long hostSeed;
+                try { hostSeed = Long.parseLong(message.substring(5).trim()); }
+                catch (NumberFormatException ignored) { hostSeed = 42L; }
+                final long finalSeed = hostSeed;
+                Gdx.app.postRunnable(() -> {
+                    // Buscar save existente de J2 para esta sala (el fileName incluye timestamp)
+                    WorldSaveManager.WorldInfo existing = null;
+                    for (WorldSaveManager.WorldInfo w : WorldSaveManager.listWorlds()) {
+                        if (w.fileName != null && w.fileName.startsWith(roomKey)) {
+                            existing = w;
+                            break;
+                        }
                     }
-                    // Lanzar GameScreen en el GL thread con la seed del host
-                    final long finalSeed = hostSeed;
-                    Gdx.app.postRunnable(() -> {
-                        net.setListener(null); // limpiar este listener temporal
-                        game.setScreen(new GameScreen(game, finalSeed, "Mundo Conectado", null, net));
-                    });
-                }
+                    String fileName;
+                    long usedSeed;
+                    if (existing != null) {
+                        // Reconexión: usar la misma seed y datos guardados
+                        fileName = existing.fileName;
+                        usedSeed = existing.seed;
+                    } else {
+                        // Primera conexión: crear save con la seed del host
+                        WorldSaveManager.WorldInfo saved = WorldSaveManager.saveWorld(roomKey, finalSeed);
+                        fileName = (saved != null) ? saved.fileName : null;
+                        usedSeed = finalSeed;
+                    }
+                    net.setListener(null);
+                    GameScreen gs = new GameScreen(game, usedSeed, "Mundo Conectado", fileName, net);
+                    if (existing != null) gs.loadSavedState(existing);
+                    game.setScreen(gs);
+                });
             }
             @Override
             public void onDisconnected() {
-                // Si el host se va antes de enviar la seed, mostrar error
                 Gdx.app.postRunnable(() -> connectionError = "El host se desconecto antes de iniciar.");
             }
         });
