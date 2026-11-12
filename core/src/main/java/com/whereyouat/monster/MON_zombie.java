@@ -335,8 +335,8 @@ public class MON_zombie extends Entity {
 				case "down":
 					frames = downFrames;
 					break;
-					
-					es;
+				case "up":
+					frames = upFrames;
 					break;
 				case "left":
 					frames = leftFrames;
