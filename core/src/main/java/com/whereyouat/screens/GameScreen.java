@@ -220,11 +220,13 @@ public class GameScreen extends ScreenAdapter {
             netManager.setListener(new NetworkManager.NetworkListener() {
                 @Override
                 public void onConnected() {
+                    if (disposed) return;
                     String who = netManager.isHost ? "Jugador 2" : "Jugador 1 (host)";
                     addChatMessage(who + " se unio al mundo", com.badlogic.gdx.graphics.Color.YELLOW);
                 }
                 @Override
                 public void onMessageReceived(String message) {
+                    if (disposed) return;
                     if (message.startsWith("CHAT:")) {
                         String sender = netManager.isHost ? "J2" : "J1";
                         addChatMessage("[" + sender + "] " + message.substring(5),
@@ -233,6 +235,7 @@ public class GameScreen extends ScreenAdapter {
                 }
                 @Override
                 public void onDisconnected() {
+                    if (disposed) return;
                     addChatMessage("El otro jugador se desconecto.", new com.badlogic.gdx.graphics.Color(1f,0.4f,0.4f,1f));
                 }
             });
@@ -724,7 +727,6 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void returnToTitle() {
-        saveProgress();
         Music music = audio.releaseCurrentMusic();
         game.returnToMenuFromWorld(music);
     }

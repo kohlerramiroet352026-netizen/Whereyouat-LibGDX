@@ -462,9 +462,9 @@ public class WorldCreateScreen extends ScreenAdapter {
             return;
         }
 
-        // Conectado con éxito: lanza el juego como Cliente (Isla 2)
-        // La semilla 12345 la sincronizarán por red
-        game.setScreen(new GameScreen(game, 12345L, "Mundo Conectado", null, net));
+        // Conectado con éxito: lanza el juego como Cliente (Isla 2) con semilla aleatoria
+        long clientSeed = Math.abs(rand.nextLong() % 1_000_000_000L);
+        game.setScreen(new GameScreen(game, clientSeed, "Mundo Conectado", null, net));
         return;
     }
 

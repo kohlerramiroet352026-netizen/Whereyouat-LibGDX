@@ -185,10 +185,12 @@ public class NetworkManager {
         final NetworkListener l = listener;
         listener = null;
 
-        try { if (in         != null) in.close();           } catch (Exception ignored) {}
-        try { if (out        != null) out.close();          } catch (Exception ignored) {}
-        try { if (socket     != null) socket.close();       } catch (Exception ignored) {}
-        try { if (serverSocket != null) serverSocket.close(); } catch (Exception ignored) {}
+        // Cerrar el socket PRIMERO para que in.close() y out.close() fallen rápido
+        // en vez de bloquearse esperando flush() en el GL thread (lo que congela el juego).
+        try { if (socket       != null) { socket.setSoLinger(true, 0); socket.close(); }       } catch (Exception ignored) {}
+        try { if (serverSocket != null) serverSocket.close();                                  } catch (Exception ignored) {}
+        try { if (in           != null) in.close();                                            } catch (Exception ignored) {}
+        try { if (out          != null) out.close();                                           } catch (Exception ignored) {}
 
         // Notificar al juego UNA sola vez desde el hilo principal
         if (l != null) {
