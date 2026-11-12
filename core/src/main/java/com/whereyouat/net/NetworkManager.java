@@ -165,6 +165,71 @@ public class NetworkManager {
     }
 
     /**
+     * Solo para el HOST: reabre el ServerSocket para que el cliente pueda
+     * reconectarse con el mismo código de sala después de haberse desconectado.
+     * Resetea todos los flags y streams del cliente anterior, mantiene isHost = true.
+     */
+    public void reopenServer() {
+        // Resetear flags de la conexión anterior
+        synchronized (this) {
+            disconnecting = false;
+            acceptCancelled = false;
+        }
+        isConnected = false;
+
+        // Limpiar streams y socket del cliente anterior
+        try { if (in     != null) in.close();     } catch (Exception ignored) {}
+        try { if (out    != null) out.close();     } catch (Exception ignored) {}
+        try { if (socket != null) socket.close();  } catch (Exception ignored) {}
+        in     = null;
+        out    = null;
+        socket = null;
+
+        // Cerrar el serverSocket anterior si por alguna razón sigue abierto
+        try { if (serverSocket != null && !serverSocket.isClosed()) serverSocket.close(); } catch (Exception ignored) {}
+
+        // Abrir un nuevo ServerSocket en el mismo puerto
+        try {
+            serverSocket = new ServerSocket(DEFAULT_PORT, 1);
+
+            Thread acceptThread = new Thread(() -> {
+                try {
+                    safeLog("Network", "Host: esperando reconexion del Jugador 2...");
+                    Socket accepted = serverSocket.accept();
+
+                    if (acceptCancelled) {
+                        try { accepted.close(); } catch (Exception ignored) {}
+                        return;
+                    }
+
+                    synchronized (NetworkManager.this) {
+                        if (acceptCancelled) {
+                            try { accepted.close(); } catch (Exception ignored) {}
+                            return;
+                        }
+                        socket = accepted;
+                    }
+
+                    setupStreams();
+                    // Cerrar el serverSocket tras aceptar al único cliente
+                    try { serverSocket.close(); } catch (Exception ignored) {}
+
+                } catch (Exception e) {
+                    if (!acceptCancelled) {
+                        safeLog("Network", "Error en servidor (reopen): " + e.getMessage());
+                    }
+                }
+            });
+            acceptThread.setDaemon(true);
+            acceptThread.setName("net-accept-reopen");
+            acceptThread.start();
+
+        } catch (Exception e) {
+            safeLog("Network", "reopenServer error: " + e.getMessage());
+        }
+    }
+
+    /**
      * Cierra la conexión de forma segura.
      * Garantizado idempotente: aunque sea llamado simultáneamente desde
      * el hilo principal (dispose) y el listenerThread, solo ejecuta el
@@ -187,10 +252,13 @@ public class NetworkManager {
 
         // Cerrar el socket PRIMERO para que in.close() y out.close() fallen rápido
         // en vez de bloquearse esperando flush() en el GL thread (lo que congela el juego).
-        try { if (socket       != null) { socket.setSoLinger(true, 0); socket.close(); }       } catch (Exception ignored) {}
-        try { if (serverSocket != null) serverSocket.close();                                  } catch (Exception ignored) {}
-        try { if (in           != null) in.close();                                            } catch (Exception ignored) {}
-        try { if (out          != null) out.close();                                           } catch (Exception ignored) {}
+        // setSoLinger y close() están en try-catch SEPARADOS: si setSoLinger lanza excepción,
+        // el close() igual se ejecuta (antes estaban juntos y close() podía quedar saltado).
+        try { if (socket       != null) socket.setSoLinger(true, 0); } catch (Exception ignored) {}
+        try { if (socket       != null) socket.close();               } catch (Exception ignored) {}
+        try { if (serverSocket != null) serverSocket.close();         } catch (Exception ignored) {}
+        try { if (in           != null) in.close();                   } catch (Exception ignored) {}
+        try { if (out          != null) out.close();                  } catch (Exception ignored) {}
 
         // Notificar al juego UNA sola vez desde el hilo principal
         if (l != null) {

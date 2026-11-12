@@ -237,6 +237,12 @@ public class GameScreen extends ScreenAdapter {
                 public void onDisconnected() {
                     if (disposed) return;
                     addChatMessage("El otro jugador se desconecto.", new com.badlogic.gdx.graphics.Color(1f,0.4f,0.4f,1f));
+                    // Si somos el host, volver a escuchar para que J2 pueda reconectarse
+                    // con el mismo código de sala sin necesidad de reiniciar el juego.
+                    if (netManager.isHost) {
+                        netManager.reopenServer();
+                        addChatMessage("Esperando reconexion de Jugador 2...", new com.badlogic.gdx.graphics.Color(1f,0.8f,0.2f,1f));
+                    }
                 }
             });
             // Si somos el cliente, notificar al host que nos conectamos
@@ -767,11 +773,17 @@ public class GameScreen extends ScreenAdapter {
         }
         // Anular el listener de red ANTES de desconectar para que el callback
         // onDisconnected no se dispare sobre este GameScreen ya muerto.
+        // disconnect() se ejecuta en un hilo daemon para NO bloquear el GL thread
+        // (cualquier operación de red bloqueante congelaría el juego con "No responde").
         if (netManager != null) {
-            try {
-                netManager.setListener(null);
-                netManager.disconnect();
-            } catch (Throwable t) { Gdx.app.error("GameScreen", "netManager.disconnect falló", t); }
+            netManager.setListener(null); // nullear listener en GL thread antes de lanzar el hilo
+            final NetworkManager nm = netManager;
+            Thread disconnectThread = new Thread(() -> {
+                try { nm.disconnect(); } catch (Throwable ignored) {}
+            });
+            disconnectThread.setDaemon(true);
+            disconnectThread.setName("net-disconnect");
+            disconnectThread.start();
         }
         try { footprintM.dispose(); } catch (Throwable t) { Gdx.app.error("GameScreen", "footprintM.dispose falló", t); }
         try { snowPS.dispose();    } catch (Throwable t) { Gdx.app.error("GameScreen", "snowPS.dispose falló", t); }
