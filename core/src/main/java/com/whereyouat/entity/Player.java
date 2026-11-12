@@ -18,6 +18,7 @@ import com.whereyouat.map.MapGenerator;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.monster.MON_frogger;
 import com.whereyouat.monster.MON_mushroom;
+import com.whereyouat.monster.MON_zombie;
 import com.whereyouat.monster.MON_Ghost;
 import com.whereyouat.screens.GameScreen;
 
@@ -194,6 +195,8 @@ public class Player extends Entity {
                         ((MON_frogger) m).takeDamage(damage, worldX, worldY);
                     } else if (m instanceof MON_Ghost) {
                         ((MON_Ghost) m).takeDamage(damage, worldX, worldY);
+                    } else if (m instanceof MON_zombie){
+                        ((MON_zombie) m).takeDamage(damage, worldX, worldY);
                     } else {
                         m.life -= damage;
                         if (m.life <= 0) {

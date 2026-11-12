@@ -34,6 +34,7 @@ import com.whereyouat.monster.MON_frogger;
 import com.whereyouat.monster.MON_mushroom;
 import com.whereyouat.net.NetworkManager;
 import com.whereyouat.save.WorldSaveManager;
+import com.whereyouat.monster.MON_zombie;
 
 /**
  * GameScreen - Pantalla principal de juego activo para Where you at (LibGDX
@@ -70,7 +71,7 @@ public class GameScreen extends ScreenAdapter {
     // Lista de mensajes del chat: cada entrada es {texto, color, timerRestante}
     // Accedida por GameHUD para dibujar y por el bucle de red para insertar.
     public final java.util.LinkedList<ChatMessage> chatMessages = new java.util.LinkedList<>();
-    public static final int CHAT_MAX_VISIBLE = 6;    // líneas visibles simultáneamente
+    public static final int CHAT_MAX_VISIBLE = 6; // líneas visibles simultáneamente
     public static final float CHAT_FADE_SECONDS = 8f; // segundos que dura cada mensaje
     public boolean isChatOpen = false;
     public String chatInput = "";
@@ -79,6 +80,7 @@ public class GameScreen extends ScreenAdapter {
         public final String text;
         public final com.badlogic.gdx.graphics.Color color;
         public float timer;
+
         public ChatMessage(String text, com.badlogic.gdx.graphics.Color color) {
             this.text = text;
             this.color = color;
@@ -86,11 +88,15 @@ public class GameScreen extends ScreenAdapter {
         }
     }
 
-    /** Agrega un mensaje al chat (hilo-seguro vía postRunnable si se llama desde red). */
+    /**
+     * Agrega un mensaje al chat (hilo-seguro vía postRunnable si se llama desde
+     * red).
+     */
     public void addChatMessage(String text, com.badlogic.gdx.graphics.Color color) {
         Gdx.app.postRunnable(() -> {
             chatMessages.addFirst(new ChatMessage(text, color));
-            if (chatMessages.size() > 20) chatMessages.removeLast();
+            if (chatMessages.size() > 20)
+                chatMessages.removeLast();
         });
     }
 
@@ -119,7 +125,8 @@ public class GameScreen extends ScreenAdapter {
     private float animTime = 0f;
     private float autoSaveTimer = 60f; // Guardado automático cada 60s
     private boolean isPaused = false;
-    // Guard para evitar que dispose() corra más de una vez (hide() lo llama automáticamente)
+    // Guard para evitar que dispose() corra más de una vez (hide() lo llama
+    // automáticamente)
     private boolean disposed = false;
     private boolean showDeathScreen = false;
     private boolean wasNightLastFrame = false; // para detectar la transición DÍA→NOCHE
@@ -128,12 +135,14 @@ public class GameScreen extends ScreenAdapter {
     private float snowSpawnTimer = 0f; // ← nuevo
     private static final float SNOW_SPAWN_INTERVAL = 15f; // cada 15 segundos en clima nevado
     private static final int MAX_NIGHT_GHOSTS = 2; // cuántos fantasmas spawnear por noche
+    private static final int MAX_NIGHT_ZOMBIES = 2;
     private boolean showRespawnScreen = false;
     private float saveFeedbackTimer = 0f;
 
     public boolean showInventory = false;
 
-    public GameScreen(WhereYouAtGame game, long seed, String worldName, String worldFileName, NetworkManager netManager) {
+    public GameScreen(WhereYouAtGame game, long seed, String worldName, String worldFileName,
+            NetworkManager netManager) {
         this.game = game;
         this.seed = seed;
         this.worldName = (worldName != null && !worldName.isEmpty()) ? worldName : "World";
@@ -153,7 +162,8 @@ public class GameScreen extends ScreenAdapter {
 
         // 3. Generar mundo procedural 512x512
         long actualSeed = (netManager != null && !netManager.isHost) ? (seed + 7777L) : seed;
-        Gdx.app.log("GameScreen", "Generating 512x512 procedural world with seed: " + actualSeed + (netManager != null && !netManager.isHost ? " (Isla 2)" : "(Isla 1)"));
+        Gdx.app.log("GameScreen", "Generating 512x512 procedural world with seed: " + actualSeed
+                + (netManager != null && !netManager.isHost ? " (Isla 2)" : "(Isla 1)"));
         mapGen = new MapGenerator(512, 512, actualSeed, String.valueOf(actualSeed));
         mapGen.generate();
 
@@ -220,36 +230,45 @@ public class GameScreen extends ScreenAdapter {
             netManager.setListener(new NetworkManager.NetworkListener() {
                 @Override
                 public void onConnected() {
-                    if (disposed) return;
+                    if (disposed)
+                        return;
                     String who = netManager.isHost ? "Jugador 2" : "Jugador 1 (host)";
                     addChatMessage(who + " se unio al mundo", com.badlogic.gdx.graphics.Color.YELLOW);
                     // El host le manda su seed al cliente para que el mundo de J2
-                    // sea siempre el mismo (derivado de la seed del host), incluso tras reconexiones.
+                    // sea siempre el mismo (derivado de la seed del host), incluso tras
+                    // reconexiones.
                     if (netManager.isHost) {
                         netManager.send("SEED:" + seed);
                     }
                 }
+
                 @Override
                 public void onMessageReceived(String message) {
-                    if (disposed) return;
+                    if (disposed)
+                        return;
                     if (message.startsWith("CHAT:")) {
                         String sender = netManager.isHost ? "J2" : "J1";
                         addChatMessage("[" + sender + "] " + message.substring(5),
                                 com.badlogic.gdx.graphics.Color.WHITE);
                     }
                 }
+
                 @Override
                 public void onDisconnected() {
-                    if (disposed) return;
-                    addChatMessage("El otro jugador se desconecto.", new com.badlogic.gdx.graphics.Color(1f,0.4f,0.4f,1f));
+                    if (disposed)
+                        return;
+                    addChatMessage("El otro jugador se desconecto.",
+                            new com.badlogic.gdx.graphics.Color(1f, 0.4f, 0.4f, 1f));
                     // Si somos el host, volver a escuchar para que J2 pueda reconectarse
                     // con el mismo código de sala sin necesidad de reiniciar el juego.
                     if (netManager.isHost) {
                         netManager.reopenServer();
                         // CRÍTICO: disconnect() nullea el listener interno de NetworkManager.
-                        // Hay que re-registrarlo para que las próximas conexiones disparen los callbacks.
+                        // Hay que re-registrarlo para que las próximas conexiones disparen los
+                        // callbacks.
                         netManager.setListener(this);
-                        addChatMessage("Esperando reconexion de Jugador 2...", new com.badlogic.gdx.graphics.Color(1f,0.8f,0.2f,1f));
+                        addChatMessage("Esperando reconexion de Jugador 2...",
+                                new com.badlogic.gdx.graphics.Color(1f, 0.8f, 0.2f, 1f));
                     }
                 }
             });
@@ -281,7 +300,8 @@ public class GameScreen extends ScreenAdapter {
         while (chatIt.hasNext()) {
             ChatMessage cm = chatIt.next();
             cm.timer -= dt;
-            if (cm.timer <= 0f) chatIt.remove();
+            if (cm.timer <= 0f)
+                chatIt.remove();
         }
 
         // --- CHAT: capturar input de teclado ---
@@ -292,7 +312,8 @@ public class GameScreen extends ScreenAdapter {
                 isChatOpen = true;
                 chatInput = "";
                 // Resetear timer de mensajes visibles para que aparezcan
-                for (ChatMessage cm : chatMessages) cm.timer = CHAT_FADE_SECONDS;
+                for (ChatMessage cm : chatMessages)
+                    cm.timer = CHAT_FADE_SECONDS;
                 return; // no procesar más teclas este frame
             }
 
@@ -406,21 +427,25 @@ public class GameScreen extends ScreenAdapter {
     private void updateGame(float delta) {
         // 1. Actualizar física del jugador, colisiones e interacción con monstruos
         player.update(delta, mapGen, tileM, monster);
-        // --- Spawn/despawn de fantasmas por ciclo día/noche ---
+        // --- Spawn/despawn de monstruos nocturnos por ciclo día/noche ---
         boolean isNightNow = dayNight.isNight();
         if (isNightNow && !wasNightLastFrame) {
-            // Acaba de caer la noche: spawnear fantasmas
+            // Acaba de caer la noche: spawnear monstruos nocturnos
             spawnNightGhosts();
+            spawnNightZombies();
             nightSpawnTimer = 0f;
         } else if (!isNightNow && wasNightLastFrame) {
-            // Acaba de amanecer: eliminar fantasmas nocturnos
+            // Acaba de amanecer: eliminar monstruos nocturnos
             despawnNightGhosts();
+            despawnNightZombies();
             nightSpawnTimer = 0f;
         } else if (isNightNow) {
-            // Spawn continuo: cada 10 segundos de noche repone fantasmas si murieron o te moviste
+            // Spawn continuo: cada 10 segundos de noche repone monstruos si murieron o te
+            // moviste
             nightSpawnTimer += delta;
             if (nightSpawnTimer >= NIGHT_SPAWN_INTERVAL) {
                 spawnNightGhosts();
+                spawnNightZombies();
                 nightSpawnTimer = 0f;
             }
         }
@@ -440,6 +465,10 @@ public class GameScreen extends ScreenAdapter {
         // Limpiar fantasmas que quedaron demasiado lejos del jugador (> 25 tiles)
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] instanceof MON_Ghost && monster[i].distanceTo(player) > 35 * tileSize) {
+                monster[i].dispose();
+                monster[i] = null;
+            }
+            if (monster[i] instanceof MON_zombie && monster[i].distanceTo(player) > 35 * tileSize) {
                 monster[i].dispose();
                 monster[i] = null;
             }
@@ -465,7 +494,8 @@ public class GameScreen extends ScreenAdapter {
         if (worldFileName != null && !worldFileName.isEmpty()) {
             // Persistir bandera de multijugador si somos el host
             boolean isHost = (netManager != null && netManager.isHost);
-            WorldSaveManager.saveGameProgress(worldFileName, worldName, seed, createdTime, player, dayNight, monster, isHost);
+            WorldSaveManager.saveGameProgress(worldFileName, worldName, seed, createdTime, player, dayNight, monster,
+                    isHost);
         }
     }
 
@@ -735,6 +765,8 @@ public class GameScreen extends ScreenAdapter {
                 return new MON_frogger(this);
             case "MON_Ghost":
                 return new MON_Ghost(this); // ← nuevo
+            case "MON_zombie":
+                return new MON_zombie(this);
             default:
                 return null;
         }
@@ -766,38 +798,78 @@ public class GameScreen extends ScreenAdapter {
     public void dispose() {
         // Guard: dispose() puede ser llamado por hide() automáticamente y también
         // por returnToTitle() antes. Solo ejecutar una vez.
-        if (disposed) return;
+        if (disposed)
+            return;
         disposed = true;
 
         Gdx.app.log("GameScreen", "dispose() iniciado" + (netManager != null ? " [multijugador]" : ""));
-        try { saveProgress(); } catch (Throwable t) { Gdx.app.error("GameScreen", "saveProgress falló", t); }
-        try { tileM.dispose(); } catch (Throwable t) { Gdx.app.error("GameScreen", "tileM.dispose falló", t); }
-        try { player.dispose(); } catch (Throwable t) { Gdx.app.error("GameScreen", "player.dispose falló", t); }
+        try {
+            saveProgress();
+        } catch (Throwable t) {
+            Gdx.app.error("GameScreen", "saveProgress falló", t);
+        }
+        try {
+            tileM.dispose();
+        } catch (Throwable t) {
+            Gdx.app.error("GameScreen", "tileM.dispose falló", t);
+        }
+        try {
+            player.dispose();
+        } catch (Throwable t) {
+            Gdx.app.error("GameScreen", "player.dispose falló", t);
+        }
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] != null) {
-                try { monster[i].dispose(); } catch (Throwable ignored) {}
+                try {
+                    monster[i].dispose();
+                } catch (Throwable ignored) {
+                }
                 monster[i] = null;
             }
         }
         // Anular el listener de red ANTES de desconectar para que el callback
         // onDisconnected no se dispare sobre este GameScreen ya muerto.
         // disconnect() se ejecuta en un hilo daemon para NO bloquear el GL thread
-        // (cualquier operación de red bloqueante congelaría el juego con "No responde").
+        // (cualquier operación de red bloqueante congelaría el juego con "No
+        // responde").
         if (netManager != null) {
             netManager.setListener(null); // nullear listener en GL thread antes de lanzar el hilo
             final NetworkManager nm = netManager;
             Thread disconnectThread = new Thread(() -> {
-                try { nm.disconnect(); } catch (Throwable ignored) {}
+                try {
+                    nm.disconnect();
+                } catch (Throwable ignored) {
+                }
             });
             disconnectThread.setDaemon(true);
             disconnectThread.setName("net-disconnect");
             disconnectThread.start();
         }
-        try { footprintM.dispose(); } catch (Throwable t) { Gdx.app.error("GameScreen", "footprintM.dispose falló", t); }
-        try { snowPS.dispose();    } catch (Throwable t) { Gdx.app.error("GameScreen", "snowPS.dispose falló", t); }
-        try { lighting.dispose();  } catch (Throwable t) { Gdx.app.error("GameScreen", "lighting.dispose falló", t); }
-        try { audio.dispose();     } catch (Throwable t) { Gdx.app.error("GameScreen", "audio.dispose falló", t); }
-        try { hud.dispose();       } catch (Throwable t) { Gdx.app.error("GameScreen", "hud.dispose falló", t); }
+        try {
+            footprintM.dispose();
+        } catch (Throwable t) {
+            Gdx.app.error("GameScreen", "footprintM.dispose falló", t);
+        }
+        try {
+            snowPS.dispose();
+        } catch (Throwable t) {
+            Gdx.app.error("GameScreen", "snowPS.dispose falló", t);
+        }
+        try {
+            lighting.dispose();
+        } catch (Throwable t) {
+            Gdx.app.error("GameScreen", "lighting.dispose falló", t);
+        }
+        try {
+            audio.dispose();
+        } catch (Throwable t) {
+            Gdx.app.error("GameScreen", "audio.dispose falló", t);
+        }
+        try {
+            hud.dispose();
+        } catch (Throwable t) {
+            Gdx.app.error("GameScreen", "hud.dispose falló", t);
+        }
         Gdx.app.log("GameScreen", "dispose() completado");
     }
 
@@ -870,6 +942,74 @@ public class GameScreen extends ScreenAdapter {
             spawned++;
 
             Gdx.app.log("GameScreen", "Ghost spawned at (" + col + "," + row + ") slot " + slotIndex);
+
+        }
+    }
+
+    private void spawnNightZombies() {
+        if (mapGen == null || player == null)
+            return;
+
+        // Contar cuántos fantasmas hay vivos cerca del jugador
+        int nearbyZombies = 0;
+        for (int i = 0; i < monster.length; i++) {
+            if (monster[i] instanceof MON_zombie && monster[i].distanceTo(player) < 35 * tileSize) {
+                nearbyZombies++;
+            }
+        }
+        int toSpawnZ = MAX_NIGHT_ZOMBIES - nearbyZombies;
+        if (toSpawnZ <= 0)
+            return; // Ya hay suficientes fantasmas cerca
+
+        // Centro de búsqueda: posición del jugador en tiles
+        int playerCol = (int) (player.worldX / tileSize);
+        int playerRow = (int) (player.worldY / tileSize);
+
+        // Radio de spawn
+        float halfW = (camera.viewportWidth * camera.zoom) / 2f;
+        float halfH = (camera.viewportHeight * camera.zoom) / 2f;
+        int minRadius = (int) (Math.max(halfW, halfH) / tileSize) + 2;
+        int maxRadius = minRadius + 4;
+
+        java.util.Random rand = new java.util.Random();
+        int spawned = 0;
+
+        // Intentamos hasta 60 veces para encontrar tiles válidos
+        for (int attempt = 0; attempt < 60 && spawned < toSpawnZ; attempt++) {
+            // Elegir un desplazamiento aleatorio dentro del anillo
+            int angle = rand.nextInt(360);
+            int radius = minRadius + rand.nextInt(maxRadius - minRadius);
+            int col = playerCol + (int) (Math.cos(Math.toRadians(angle)) * radius);
+            int row = playerRow + (int) (Math.sin(Math.toRadians(angle)) * radius);
+
+            // Validar límites del mapa
+            if (col < 1 || col >= mapGen.mapCols - 1 || row < 1 || row >= mapGen.mapRows - 1)
+                continue;
+
+            // No spawnear en agua profunda, árboles o rocas
+            if (mapGen.isDeepWater[col][row])
+                continue;
+            if (tileM.collidesWithTree(mapGen, col * tileSize, row * tileSize, tileSize, tileSize))
+                continue;
+
+            // Buscar un slot libre en el array de monstruos
+            int slotIndex = -1;
+            for (int i = 0; i < monster.length; i++) {
+                if (monster[i] == null) {
+                    slotIndex = i;
+                    break;
+                }
+            }
+            if (slotIndex == -1)
+                break; // array lleno
+
+            MON_zombie zombie = new MON_zombie(this);
+            zombie.worldX = col * tileSize;
+            zombie.worldY = row * tileSize;
+            monster[slotIndex] = zombie;
+            spawned++;
+
+            Gdx.app.log("GameScreen", "Zombie spawned at (" + col + "," + row + ") slot " + slotIndex);
         }
     }
 
@@ -884,61 +1024,12 @@ public class GameScreen extends ScreenAdapter {
         }
     }
 
-    /**
-     * Spawnea UN fantasma extra si el jugador está en bioma de nieve.
-     * Se llama cada SNOW_SPAWN_INTERVAL segundos mientras nieva.
-     */
-    private void spawnSnowGhost() {
-        if (mapGen == null || player == null)
-            return;
-
-        int playerCol = (int) (player.worldX / tileSize);
-        int playerRow = (int) (player.worldY / tileSize);
-
-        // Solo spawnear si el jugador está en zona nevada
-        if (playerCol < 0 || playerCol >= mapGen.mapCols ||
-                playerRow < 0 || playerRow >= mapGen.mapRows)
-            return;
-        if (!mapGen.isSnowBiome[playerCol][playerRow])
-            return;
-
-        // Buscar slot libre
-        int slotIndex = -1;
+    private void despawnNightZombies() {
         for (int i = 0; i < monster.length; i++) {
-            if (monster[i] == null) {
-                slotIndex = i;
-                break;
+            if (monster[i] instanceof MON_zombie) {
+                ((MON_zombie) monster[i]).takeDamage(999, 0, 0);
             }
         }
-        if (slotIndex == -1)
-            return;
-
-        java.util.Random rand = new java.util.Random();
-        // Spawn en un radio de 6-11 tiles
-        for (int attempt = 0; attempt < 30; attempt++) {
-            float halfW = (camera.viewportWidth * camera.zoom) / 2f;
-            float halfH = (camera.viewportHeight * camera.zoom) / 2f;
-            int minRadius = (int) (Math.hypot(halfW, halfH) / tileSize) + 2;
-            int radius = minRadius + rand.nextInt(5);
-            int angle = rand.nextInt(360);
-            int col = playerCol + (int) (Math.cos(Math.toRadians(angle)) * radius);
-            int row = playerRow + (int) (Math.sin(Math.toRadians(angle)) * radius);
-
-            if (col < 1 || col >= mapGen.mapCols - 1 || row < 1 || row >= mapGen.mapRows - 1)
-                continue;
-            if (mapGen.isDeepWater[col][row])
-                continue;
-            if (!mapGen.isSnowBiome[col][row])
-                continue;
-            if (tileM.collidesWithTree(mapGen, col * tileSize, row * tileSize, tileSize, tileSize))
-                continue;
-
-            MON_Ghost ghost = new MON_Ghost(this);
-            ghost.worldX = col * tileSize;
-            ghost.worldY = row * tileSize;
-            monster[slotIndex] = ghost;
-            Gdx.app.log("GameScreen", "Snow ghost spawned at (" + col + "," + row + ")");
-            return;
-        }
     }
+
 }
