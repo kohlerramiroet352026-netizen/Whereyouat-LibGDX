@@ -223,6 +223,11 @@ public class GameScreen extends ScreenAdapter {
                     if (disposed) return;
                     String who = netManager.isHost ? "Jugador 2" : "Jugador 1 (host)";
                     addChatMessage(who + " se unio al mundo", com.badlogic.gdx.graphics.Color.YELLOW);
+                    // El host le manda su seed al cliente para que el mundo de J2
+                    // sea siempre el mismo (derivado de la seed del host), incluso tras reconexiones.
+                    if (netManager.isHost) {
+                        netManager.send("SEED:" + seed);
+                    }
                 }
                 @Override
                 public void onMessageReceived(String message) {
@@ -241,6 +246,9 @@ public class GameScreen extends ScreenAdapter {
                     // con el mismo código de sala sin necesidad de reiniciar el juego.
                     if (netManager.isHost) {
                         netManager.reopenServer();
+                        // CRÍTICO: disconnect() nullea el listener interno de NetworkManager.
+                        // Hay que re-registrarlo para que las próximas conexiones disparen los callbacks.
+                        netManager.setListener(this);
                         addChatMessage("Esperando reconexion de Jugador 2...", new com.badlogic.gdx.graphics.Color(1f,0.8f,0.2f,1f));
                     }
                 }

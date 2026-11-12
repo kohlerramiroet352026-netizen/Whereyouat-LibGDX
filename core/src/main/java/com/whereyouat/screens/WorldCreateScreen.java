@@ -462,9 +462,38 @@ public class WorldCreateScreen extends ScreenAdapter {
             return;
         }
 
-        // Conectado con éxito: lanza el juego como Cliente (Isla 2) con semilla aleatoria
-        long clientSeed = Math.abs(rand.nextLong() % 1_000_000_000L);
-        game.setScreen(new GameScreen(game, clientSeed, "Mundo Conectado", null, net));
+        // Conectado con éxito: esperar el mensaje SEED: del host para usar su seed
+        // y garantizar que el mundo del cliente sea siempre el mismo entre reconexiones.
+        // El host envía SEED:<valor> en su onConnected() apenas J2 se conecta.
+        connectionError = "Conectado. Esperando datos del host...";
+        net.setListener(new NetworkManager.NetworkListener() {
+            @Override
+            public void onConnected() {
+                // No hacemos nada aquí; esperamos el SEED: que el host manda enseguida
+            }
+            @Override
+            public void onMessageReceived(String message) {
+                if (message.startsWith("SEED:")) {
+                    long hostSeed;
+                    try {
+                        hostSeed = Long.parseLong(message.substring(5).trim());
+                    } catch (NumberFormatException ignored) {
+                        hostSeed = 42L; // fallback si el mensaje llega corrupto
+                    }
+                    // Lanzar GameScreen en el GL thread con la seed del host
+                    final long finalSeed = hostSeed;
+                    Gdx.app.postRunnable(() -> {
+                        net.setListener(null); // limpiar este listener temporal
+                        game.setScreen(new GameScreen(game, finalSeed, "Mundo Conectado", null, net));
+                    });
+                }
+            }
+            @Override
+            public void onDisconnected() {
+                // Si el host se va antes de enviar la seed, mostrar error
+                Gdx.app.postRunnable(() -> connectionError = "El host se desconecto antes de iniciar.");
+            }
+        });
         return;
     }
 
