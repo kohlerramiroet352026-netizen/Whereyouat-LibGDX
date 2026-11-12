@@ -5,11 +5,14 @@ import java.util.List;
 import java.util.Random;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Vector3;
 import com.whereyouat.entity.Entity;
+import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
 
 public class MON_zombie extends Entity {
@@ -63,7 +66,7 @@ public class MON_zombie extends Entity {
 		this.gp = gp;
 
 		name = "Zombie";
-		maxLife = 4;
+		maxLife = 8;
 		life = maxLife;
 		direction = "down";
 
@@ -358,12 +361,59 @@ public class MON_zombie extends Entity {
 		if (region == null)
 			return;
 
-		// Parpadeo cuando recibe daño (igual que Player con invincibleCounter)
+		// Parpadeo cuando recibe daño
 		if (state == STATE_HIT && (spriteNum / 2) % 2 == 0) {
 			batch.setColor(1f, 1f, 1f, 0.3f);
+		} else {
+			batch.setColor(1f, 1f, 1f, 1f);
 		}
 
-		batch.draw(region, worldX, worldY, DRAW_WIDTH, DRAW_HEIGHT);
+		// Detección de nivel de agua para sumersión
+		int waterLevel = 0;
+		if (gp != null && gp.tileM != null && gp.mapGen != null) {
+			float footX = worldX + solidArea.x + solidArea.width / 2f;
+			float footY = worldY + solidArea.y + solidArea.height / 2f;
+			int col = (int) (footX / TileManager.TILE_SIZE);
+			int row = (int) (footY / TileManager.TILE_SIZE);
+			waterLevel = gp.tileM.getWaterLevel(gp.mapGen, col, row);
+		}
+
+		// Sumersión en agua con OpenGL Scissor Test
+		if (waterLevel > 0 && gp != null && gp.camera != null) {
+			float cutOff = (waterLevel == 1) ? 16f : 26f;
+			float yShift = (waterLevel == 1) ? 4f : 8f;
+			float drawY = worldY + yShift;
+			float visibleH = DRAW_HEIGHT - cutOff;
+
+			Vector3 topLeft = gp.camera.project(new Vector3(worldX, drawY, 0));
+			Vector3 bottomRight = gp.camera.project(new Vector3(worldX + DRAW_WIDTH, drawY + visibleH, 0));
+
+			int sx = (int) Math.min(topLeft.x, bottomRight.x);
+			int sy = (int) Math.min(topLeft.y, bottomRight.y);
+			int sw = (int) Math.abs(bottomRight.x - topLeft.x);
+			int sh = (int) Math.abs(bottomRight.y - topLeft.y);
+
+			batch.flush();
+			Gdx.gl.glEnable(GL20.GL_SCISSOR_TEST);
+			Gdx.gl.glScissor(sx, sy, Math.max(1, sw), Math.max(1, sh));
+
+			batch.draw(region, worldX, drawY, DRAW_WIDTH, DRAW_HEIGHT);
+
+			batch.flush();
+			Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
+
+			// Espuma en la línea de agua
+			TextureRegion foam = gp.tileM.getFoamRegion();
+			if (foam != null) {
+				float foamY = drawY + DRAW_HEIGHT - cutOff - 3f;
+				float foamX = worldX + (DRAW_WIDTH - TileManager.TILE_SIZE) / 2f;
+				batch.setColor(1f, 1f, 1f, 0.9f);
+				batch.draw(foam, foamX, foamY, TileManager.TILE_SIZE, TileManager.TILE_SIZE);
+			}
+		} else {
+			batch.draw(region, worldX, worldY, DRAW_WIDTH, DRAW_HEIGHT);
+		}
+
 		batch.setColor(1f, 1f, 1f, 1f); // siempre restaurar el color
 	}
 

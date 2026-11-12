@@ -35,6 +35,7 @@ import com.whereyouat.monster.MON_mushroom;
 import com.whereyouat.net.NetworkManager;
 import com.whereyouat.save.WorldSaveManager;
 import com.whereyouat.monster.MON_zombie;
+import com.whereyouat.monster.MON_bat;
 
 /**
  * GameScreen - Pantalla principal de juego activo para Where you at (LibGDX
@@ -136,6 +137,7 @@ public class GameScreen extends ScreenAdapter {
     private static final float SNOW_SPAWN_INTERVAL = 15f; // cada 15 segundos en clima nevado
     private static final int MAX_NIGHT_GHOSTS = 2; // cuántos fantasmas spawnear por noche
     private static final int MAX_NIGHT_ZOMBIES = 2;
+    private static final int MAX_NIGHT_BATS = 2;
     private boolean showRespawnScreen = false;
     private float saveFeedbackTimer = 0f;
 
@@ -433,11 +435,13 @@ public class GameScreen extends ScreenAdapter {
             // Acaba de caer la noche: spawnear monstruos nocturnos
             spawnNightGhosts();
             spawnNightZombies();
+            spawnNightBats();
             nightSpawnTimer = 0f;
         } else if (!isNightNow && wasNightLastFrame) {
             // Acaba de amanecer: eliminar monstruos nocturnos
             despawnNightGhosts();
             despawnNightZombies();
+            despawnNightBats();
             nightSpawnTimer = 0f;
         } else if (isNightNow) {
             // Spawn continuo: cada 10 segundos de noche repone monstruos si murieron o te
@@ -446,6 +450,7 @@ public class GameScreen extends ScreenAdapter {
             if (nightSpawnTimer >= NIGHT_SPAWN_INTERVAL) {
                 spawnNightGhosts();
                 spawnNightZombies();
+                spawnNightBats();
                 nightSpawnTimer = 0f;
             }
         }
@@ -469,6 +474,10 @@ public class GameScreen extends ScreenAdapter {
                 monster[i] = null;
             }
             if (monster[i] instanceof MON_zombie && monster[i].distanceTo(player) > 35 * tileSize) {
+                monster[i].dispose();
+                monster[i] = null;
+            }
+            if (monster[i] instanceof MON_bat && monster[i].distanceTo(player) > 35 * tileSize) {
                 monster[i].dispose();
                 monster[i] = null;
             }
@@ -767,6 +776,8 @@ public class GameScreen extends ScreenAdapter {
                 return new MON_Ghost(this); // ← nuevo
             case "MON_zombie":
                 return new MON_zombie(this);
+            case "MON_bat":
+                return new MON_bat(this);
             default:
                 return null;
         }
@@ -1028,6 +1039,81 @@ public class GameScreen extends ScreenAdapter {
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] instanceof MON_zombie) {
                 ((MON_zombie) monster[i]).takeDamage(999, 0, 0);
+            }
+        }
+    }
+
+    private void spawnNightBats() {
+        if (mapGen == null || player == null)
+            return;
+
+        // Contar cuántos murciélagos hay vivos cerca del jugador
+        int nearbyBats = 0;
+        for (int i = 0; i < monster.length; i++) {
+            if (monster[i] instanceof MON_bat && monster[i].distanceTo(player) < 35 * tileSize) {
+                nearbyBats++;
+            }
+        }
+        int toSpawnB = MAX_NIGHT_BATS - nearbyBats;
+        if (toSpawnB <= 0)
+            return; // Ya hay suficientes murciélagos cerca
+
+        // Centro de búsqueda: posición del jugador en tiles
+        int playerCol = (int) (player.worldX / tileSize);
+        int playerRow = (int) (player.worldY / tileSize);
+
+        // Radio de spawn
+        float halfW = (camera.viewportWidth * camera.zoom) / 2f;
+        float halfH = (camera.viewportHeight * camera.zoom) / 2f;
+        int minRadius = (int) (Math.max(halfW, halfH) / tileSize) + 2;
+        int maxRadius = minRadius + 4;
+
+        java.util.Random rand = new java.util.Random();
+        int spawned = 0;
+
+        // Intentamos hasta 60 veces para encontrar tiles válidos
+        for (int attempt = 0; attempt < 60 && spawned < toSpawnB; attempt++) {
+            // Elegir un desplazamiento aleatorio dentro del anillo
+            int angle = rand.nextInt(360);
+            int radius = minRadius + rand.nextInt(maxRadius - minRadius);
+            int col = playerCol + (int) (Math.cos(Math.toRadians(angle)) * radius);
+            int row = playerRow + (int) (Math.sin(Math.toRadians(angle)) * radius);
+
+            // Validar límites del mapa
+            if (col < 1 || col >= mapGen.mapCols - 1 || row < 1 || row >= mapGen.mapRows - 1)
+                continue;
+
+            // No spawnear en agua profunda, árboles o rocas
+            if (mapGen.isDeepWater[col][row])
+                continue;
+            if (tileM.collidesWithTree(mapGen, col * tileSize, row * tileSize, tileSize, tileSize))
+                continue;
+
+            // Buscar un slot libre en el array de monstruos
+            int slotIndex = -1;
+            for (int i = 0; i < monster.length; i++) {
+                if (monster[i] == null) {
+                    slotIndex = i;
+                    break;
+                }
+            }
+            if (slotIndex == -1)
+                break; // array lleno
+
+            MON_bat bat = new MON_bat(this);
+            bat.worldX = col * tileSize;
+            bat.worldY = row * tileSize;
+            monster[slotIndex] = bat;
+            spawned++;
+
+            Gdx.app.log("GameScreen", "Bat spawned at (" + col + "," + row + ") slot " + slotIndex);
+        }
+    }
+
+    private void despawnNightBats() {
+        for (int i = 0; i < monster.length; i++) {
+            if (monster[i] instanceof MON_bat) {
+                ((MON_bat) monster[i]).takeDamage(999, 0, 0);
             }
         }
     }

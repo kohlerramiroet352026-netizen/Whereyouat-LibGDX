@@ -20,6 +20,7 @@ import com.whereyouat.monster.MON_frogger;
 import com.whereyouat.monster.MON_mushroom;
 import com.whereyouat.monster.MON_zombie;
 import com.whereyouat.monster.MON_Ghost;
+import com.whereyouat.monster.MON_bat;
 import com.whereyouat.screens.GameScreen;
 
 /**
@@ -88,7 +89,7 @@ public class Player extends Entity {
     public static final int MONSTER_DAMAGE = 20;
 
     // Movement speeds (pixels per second)
-    private static final float BASE_SPEED = 1000f; // 240
+    private static final float BASE_SPEED = 240f; // 240
     private static final float BUSH_SPEED = 180f;
     private static final float SHALLOW_SPEED = 120f;
     private static final float DEEP_SPEED = 60f;
@@ -195,8 +196,10 @@ public class Player extends Entity {
                         ((MON_frogger) m).takeDamage(damage, worldX, worldY);
                     } else if (m instanceof MON_Ghost) {
                         ((MON_Ghost) m).takeDamage(damage, worldX, worldY);
-                    } else if (m instanceof MON_zombie){
+                    } else if (m instanceof MON_zombie) {
                         ((MON_zombie) m).takeDamage(damage, worldX, worldY);
+                    } else if (m instanceof MON_bat) {
+                        ((MON_bat) m).takeDamage(damage, worldX, worldY);
                     } else {
                         m.life -= damage;
                         if (m.life <= 0) {

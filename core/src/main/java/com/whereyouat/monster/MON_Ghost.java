@@ -19,19 +19,19 @@ public class MON_Ghost extends Entity {
 
 	// Escala: 16x16 × 3 = 48px (exactamente 1 tile)
 	private static final float FRAME_W_NATIVE = 16f;
-    private static final float FRAME_H_NATIVE = 32f;
-    private static final float SCALE          = 3.0f; // ×4.5 → 72×144 px en pantalla
-    public  static final float DRAW_WIDTH     = FRAME_W_NATIVE * SCALE; // 72
-    public  static final float DRAW_HEIGHT    = FRAME_H_NATIVE * SCALE; // 144
+	private static final float FRAME_H_NATIVE = 32f;
+	private static final float SCALE = 3.0f; // ×4.5 → 72×144 px en pantalla
+	public static final float DRAW_WIDTH = FRAME_W_NATIVE * SCALE; // 72
+	public static final float DRAW_HEIGHT = FRAME_H_NATIVE * SCALE; // 144
 
 	// --- Estados (igual que Mushroom y Frogger) ---
 	public static final int STATE_WALK = 0;
 	public static final int STATE_HIT = 1;
 	public static final int STATE_DIE = 2;
 
-	private static final int FRAMES_IDLE  = 4;
-    private static final int FRAMES_WALK  = 4;
-    private static final int FRAMES_DIE   = 4;
+	private static final int FRAMES_IDLE = 4;
+	private static final int FRAMES_WALK = 4;
+	private static final int FRAMES_DIE = 4;
 
 	public int state = STATE_WALK;
 	private int previousState = STATE_WALK;
@@ -42,7 +42,6 @@ public class MON_Ghost extends Entity {
 
 	// Texturas (para liberar memoria en dispose)
 	private final List<Texture> textures = new ArrayList<>();
-
 
 	// Frames por dirección (8 frames cada uno, tira vertical)
 	private TextureRegion[] downFrames;
@@ -62,23 +61,22 @@ public class MON_Ghost extends Entity {
 		this.gp = gp;
 
 		name = "Fantasma";
-		maxLife = 4;
+		maxLife = 6;
 		life = maxLife;
 		direction = "down";
 
 		// Hitbox centrada dentro del tile 48x48
 		float hitW = DRAW_WIDTH * 0.55f;
-        float hitH = DRAW_HEIGHT * 0.22f;
-        solidArea.set(
-            (DRAW_WIDTH  - hitW) / 2f,
-            DRAW_HEIGHT  - hitH - 4f,
-            hitW,
-            hitH
-        );
-        solidAreaDefaultX = solidArea.x;
-        solidAreaDefaultY = solidArea.y;
+		float hitH = DRAW_HEIGHT * 0.22f;
+		solidArea.set(
+				(DRAW_WIDTH - hitW) / 2f,
+				DRAW_HEIGHT - hitH - 4f,
+				hitW,
+				hitH);
+		solidAreaDefaultX = solidArea.x;
+		solidAreaDefaultY = solidArea.y;
 
-        loadSprites();
+		loadSprites();
 	}
 
 	// -------------------------------------------------------
@@ -86,34 +84,34 @@ public class MON_Ghost extends Entity {
 	// Sin cambios respecto a antes, solo se agrega dieFrames
 	// -------------------------------------------------------
 	private void loadSprites() {
-        downFrames  = loadColumn("monster/gohst_idle_walk_down.png", FRAMES_IDLE);
-        leftFrames  = loadColumn("monster/gohst_walk_left.png",      FRAMES_WALK);
-        rightFrames = loadColumn("monster/gohst_walk_right.png",     FRAMES_WALK);
-        upFrames    = loadColumn("monster/gohst_walk_up.png",        FRAMES_WALK);
-        dieFrames       = loadColumn("monster/gohst_die.png",            FRAMES_DIE);
-    }
+		downFrames = loadColumn("monster/gohst_idle_walk_down.png", FRAMES_IDLE);
+		leftFrames = loadColumn("monster/gohst_walk_left.png", FRAMES_WALK);
+		rightFrames = loadColumn("monster/gohst_walk_right.png", FRAMES_WALK);
+		upFrames = loadColumn("monster/gohst_walk_up.png", FRAMES_WALK);
+		dieFrames = loadColumn("monster/gohst_die.png", FRAMES_DIE);
+	}
 
-    /**
-     * Carga un spritesheet de 1 columna y N filas.
-     * Cada frame mide FRAME_W_NATIVE × FRAME_H_NATIVE px.
-     * Las regiones se voltean verticalmente para el sistema Y-down de LibGDX.
-     */
-    private TextureRegion[] loadColumn(String path, int frameCount) {
-        Texture tex = new Texture(Gdx.files.internal(path));
-        tex.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
-        textures.add(tex);
+	/**
+	 * Carga un spritesheet de 1 columna y N filas.
+	 * Cada frame mide FRAME_W_NATIVE × FRAME_H_NATIVE px.
+	 * Las regiones se voltean verticalmente para el sistema Y-down de LibGDX.
+	 */
+	private TextureRegion[] loadColumn(String path, int frameCount) {
+		Texture tex = new Texture(Gdx.files.internal(path));
+		tex.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+		textures.add(tex);
 
-        TextureRegion[] frames = new TextureRegion[frameCount];
-        int fw = (int) FRAME_W_NATIVE;
-        int fh = (int) FRAME_H_NATIVE;
+		TextureRegion[] frames = new TextureRegion[frameCount];
+		int fw = (int) FRAME_W_NATIVE;
+		int fh = (int) FRAME_H_NATIVE;
 
-        for (int i = 0; i < frameCount; i++) {
-            TextureRegion r = new TextureRegion(tex, 0, i * fh, fw, fh);
-            r.flip(false, true); // Y-down → Y-up para LibGDX
-            frames[i] = r;
-        }
-        return frames;
-    }
+		for (int i = 0; i < frameCount; i++) {
+			TextureRegion r = new TextureRegion(tex, 0, i * fh, fw, fh);
+			r.flip(false, true); // Y-down → Y-up para LibGDX
+			frames[i] = r;
+		}
+		return frames;
+	}
 
 	// -------------------------------------------------------
 	// RECIBIR DAÑO — igual que Mushroom.takeDamage()
