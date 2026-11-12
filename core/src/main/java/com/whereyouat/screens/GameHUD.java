@@ -299,6 +299,10 @@ public class GameHUD {
     }
 
     public void render(SpriteBatch batch, Player player, boolean isPaused, boolean showDeathScreen, boolean showRespawnScreen, float saveFeedbackTimer, float animTime, boolean showInventory) {
+        render(batch, player, isPaused, showDeathScreen, showRespawnScreen, saveFeedbackTimer, animTime, showInventory, null);
+    }
+
+    public void render(SpriteBatch batch, Player player, boolean isPaused, boolean showDeathScreen, boolean showRespawnScreen, float saveFeedbackTimer, float animTime, boolean showInventory, GameScreen gameScreen) {
 
         hudCamera.update();
         batch.setProjectionMatrix(hudCamera.combined);
@@ -398,7 +402,7 @@ public class GameHUD {
 
         // 3. Menú de pausa
         if (isPaused) {
-            renderPauseMenu(batch, screenWidth, screenHeight, saveFeedbackTimer);
+            renderPauseMenu(batch, screenWidth, screenHeight, saveFeedbackTimer, gameScreen);
         }
 
         // 4. Pantalla de muerte definitiva (0 vidas)
@@ -416,11 +420,133 @@ public class GameHUD {
             renderInventory(batch, player, screenWidth, screenHeight);
         }
 
+        // 6. CHAT (siempre por encima, incluso en pausa)
+        if (gameScreen != null && gameScreen.netManager != null) {
+            renderChat(batch, gameScreen, screenWidth, screenHeight);
+        }
+
         batch.end();
-        
+
+        // IMPORTANTE: ejecutar acciones que cambian de pantalla DESPUÉS de batch.end().
+        // Si se llamaran dentro de batch.begin/end, LibGDX llamaría hide()→dispose()
+        // con el batch aún activo, crasheando el render.
+        if (pendingAction != null) {
+            Runnable action = pendingAction;
+            pendingAction = null;
+            action.run();
+        }
     }
 
-    private void renderPauseMenu(SpriteBatch batch, float screenW, float screenH, float saveFeedbackTimer) {
+    private void renderChat(SpriteBatch batch, GameScreen gs, float screenW, float screenH) {
+        if (fontSmall == null || whitePixel == null) return;
+
+        // Con camera.setToOrtho(true): Y=0 es arriba, Y=screenH es abajo.
+        // fontSmall.draw(batch, text, x, y) dibuja con y = esquina SUPERIOR-izquierda del texto.
+        // batch.draw(tex, x, y, w, h) dibuja con y = esquina SUPERIOR-izquierda del rectángulo.
+        //
+        // Layout del chat (de abajo hacia arriba):
+        //   [input box]      ← solo si está abierto (más abajo)
+        //   [mensaje 0]      ← más reciente, más abajo
+        //   [mensaje 1]
+        //   [mensaje 2]      ← más arriba
+
+        final float chatX    = 10f;
+        final float chatW    = 290f;
+        final float lineH    = 18f;   // separación entre líneas
+        final float fontH    = 11f;   // altura aproximada del glyph
+        final float chatPad  = 5f;
+        final float marginBottom = 72f; // margen desde el borde inferior de pantalla
+
+        int count = Math.min(gs.chatMessages.size(), GameScreen.CHAT_MAX_VISIBLE);
+        boolean inputOpen = gs.isChatOpen;
+
+        if (count == 0 && !inputOpen) return;
+
+        // anchorY = Y del mensaje más reciente (índice 0).
+        // En Y-down, "más abajo" = mayor Y → el más reciente está en mayor Y.
+        float anchorY = screenH - marginBottom - fontH;
+
+        // ── Fondo de mensajes ──────────────────────────────────────────────────────
+        if (count > 0) {
+            // El mensaje más viejo está en anchorY - (count-1)*lineH
+            float bgTop    = anchorY - (count - 1) * lineH - chatPad;
+            float bgBottom = anchorY + fontH + chatPad;
+            batch.setColor(0f, 0f, 0f, 0.48f);
+            batch.draw(whitePixel, chatX - chatPad, bgTop, chatW, bgBottom - bgTop);
+            batch.setColor(1f, 1f, 1f, 1f);
+        }
+
+        // ── Mensajes ──────────────────────────────────────────────────────────────
+        java.util.List<GameScreen.ChatMessage> msgs = new java.util.ArrayList<>(gs.chatMessages);
+        for (int i = 0; i < count; i++) {
+            GameScreen.ChatMessage cm = msgs.get(i);
+            float alpha = Math.min(1f, cm.timer / 1.5f);
+            float msgY = anchorY - i * lineH;  // i=0 abajo, i>0 sube
+            fontSmall.setColor(cm.color.r, cm.color.g, cm.color.b, alpha);
+            fontSmall.draw(batch, cm.text, chatX, msgY);
+        }
+
+        // ── Caja de entrada ───────────────────────────────────────────────────────
+        if (inputOpen) {
+            handleChatKeyInput(gs);
+
+            // La caja va DEBAJO del mensaje más reciente
+            float inputTop    = anchorY + fontH + chatPad + 2f;
+            float inputBottom = inputTop + fontH + chatPad * 2f;
+            batch.setColor(0f, 0f, 0f, 0.72f);
+            batch.draw(whitePixel, chatX - chatPad, inputTop, chatW, inputBottom - inputTop);
+            // borde blanco superior de la caja
+            batch.setColor(0.7f, 0.7f, 0.7f, 0.9f);
+            batch.draw(whitePixel, chatX - chatPad, inputTop, chatW, 1f);
+            batch.setColor(1f, 1f, 1f, 1f);
+
+            String cursor = ((System.currentTimeMillis() / 450) % 2 == 0) ? "_" : "";
+            fontSmall.setColor(Color.WHITE);
+            fontSmall.draw(batch, "> " + gs.chatInput + cursor, chatX, inputTop + chatPad);
+        }
+
+        fontSmall.setColor(Color.WHITE);
+    }
+
+    /** Captura las teclas de escritura del chat directamente desde el polling de LibGDX. */
+    private void handleChatKeyInput(GameScreen gs) {
+        // Backspace
+        if (Gdx.input.isKeyJustPressed(Keys.BACKSPACE) && gs.chatInput.length() > 0) {
+            gs.chatInput = gs.chatInput.substring(0, gs.chatInput.length() - 1);
+        }
+        // Letras y caracteres imprimibles (A-Z, 0-9, espacio, signos)
+        for (int k = Keys.A; k <= Keys.Z; k++) {
+            if (Gdx.input.isKeyJustPressed(k)) {
+                boolean shift = Gdx.input.isKeyPressed(Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Keys.SHIFT_RIGHT);
+                char c = (char) ('a' + (k - Keys.A));
+                if (shift) c = Character.toUpperCase(c);
+                if (gs.chatInput.length() < 60) gs.chatInput += c;
+            }
+        }
+        for (int k = Keys.NUM_0; k <= Keys.NUM_9; k++) {
+            if (Gdx.input.isKeyJustPressed(k) && gs.chatInput.length() < 60) {
+                gs.chatInput += (char) ('0' + (k - Keys.NUM_0));
+            }
+        }
+        if (Gdx.input.isKeyJustPressed(Keys.SPACE) && gs.chatInput.length() < 60) {
+            gs.chatInput += ' ';
+        }
+        if (Gdx.input.isKeyJustPressed(Keys.COMMA) && gs.chatInput.length() < 60) gs.chatInput += ',';
+        if (Gdx.input.isKeyJustPressed(Keys.PERIOD) && gs.chatInput.length() < 60) gs.chatInput += '.';
+        if (Gdx.input.isKeyJustPressed(Keys.APOSTROPHE) && gs.chatInput.length() < 60) gs.chatInput += '!';
+        if (Gdx.input.isKeyJustPressed(Keys.SLASH) && gs.chatInput.length() < 60) gs.chatInput += '?';
+    }
+
+    // Acción pendiente diferida: se ejecuta DESPUÉS de batch.end() para evitar
+    // el crash causado por cambiar de pantalla mientras el SpriteBatch está activo.
+    private Runnable pendingAction = null;
+
+    // Guardamos el roomCode copiado recientemente para feedback visual
+    private float roomCodeCopiedTimer = 0f;
+
+    private void renderPauseMenu(SpriteBatch batch, float screenW, float screenH, float saveFeedbackTimer, GameScreen gameScreen) {
+        if (roomCodeCopiedTimer > 0f) roomCodeCopiedTimer -= Gdx.graphics.getDeltaTime();
+
         if (whitePixel != null) {
             batch.setColor(0f, 0f, 0f, 0.65f);
             batch.draw(whitePixel, 0, 0, screenW, screenH);
@@ -440,11 +566,17 @@ public class GameHUD {
         float buttonX = (screenW - buttonWidth) / 2f;
         float menuButtonY = 250f;
         float saveButtonY = menuButtonY + buttonHeight + 16f;
+        // Botón de código de sala: solo visible si es host y tiene código
+        boolean showCodeBtn = (gameScreen != null && gameScreen.netManager != null
+                && gameScreen.netManager.isHost && gameScreen.roomCode != null
+                && !gameScreen.roomCode.isEmpty());
+        float codeButtonY = saveButtonY + buttonHeight + 16f;
 
         float mouseX = Gdx.input.getX() * (screenW / Gdx.graphics.getWidth());
         float mouseY = Gdx.input.getY() * (screenH / Gdx.graphics.getHeight());
         boolean hoverBack = mouseX >= buttonX && mouseX <= buttonX + buttonWidth && mouseY >= menuButtonY && mouseY <= menuButtonY + buttonHeight;
         boolean hoverSave = mouseX >= buttonX && mouseX <= buttonX + buttonWidth && mouseY >= saveButtonY && mouseY <= saveButtonY + buttonHeight;
+        boolean hoverCode = showCodeBtn && mouseX >= buttonX && mouseX <= buttonX + buttonWidth && mouseY >= codeButtonY && mouseY <= codeButtonY + buttonHeight;
 
         if (backButtonRegion != null) {
             batch.setColor(hoverBack ? 0.85f : 1f, hoverBack ? 0.85f : 1f, hoverBack ? 0.85f : 1f, 1f);
@@ -474,13 +606,34 @@ public class GameHUD {
                     saveButtonY + (buttonHeight - glyphLayout.height) / 2f);
         }
 
+        // Botón "Copiar código de sala" (solo host)
+        if (showCodeBtn) {
+            if (backButtonRegion != null) {
+                batch.setColor(hoverCode ? 0.85f : 1f, hoverCode ? 0.85f : 1f, hoverCode ? 0.85f : 1f, 1f);
+                batch.draw(backButtonRegion, buttonX, codeButtonY, buttonWidth, buttonHeight);
+                batch.setColor(1f, 1f, 1f, 1f);
+            }
+            if (fontSmall != null) {
+                String codeLabel = (roomCodeCopiedTimer > 0f) ? "\u00a1Copiado!" : "Copiar codigo de sala";
+                fontSmall.setColor(roomCodeCopiedTimer > 0f ? Color.YELLOW : (hoverCode ? Color.GOLD : Color.WHITE));
+                glyphLayout.setText(fontSmall, codeLabel);
+                fontSmall.draw(batch, codeLabel,
+                        buttonX + (buttonWidth - glyphLayout.width) / 2f,
+                        codeButtonY + (buttonHeight - glyphLayout.height) / 2f);
+            }
+        }
+
         if (Gdx.input.isButtonJustPressed(0)) {
             if (hoverBack) {
                 audio.playButtonClick();
-                callback.onReturnToTitle();
+                pendingAction = () -> callback.onReturnToTitle();
             } else if (hoverSave) {
                 audio.playButtonClick();
                 callback.onSaveProgress();
+            } else if (hoverCode && gameScreen != null) {
+                audio.playButtonClick();
+                try { Gdx.app.getClipboard().setContents(gameScreen.roomCode); } catch (Throwable ignored) {}
+                roomCodeCopiedTimer = 2f;
             }
         }
     }
@@ -522,7 +675,7 @@ public class GameHUD {
 
         if (Gdx.input.isButtonJustPressed(0) && hover) {
             audio.playButtonClick();
-            callback.onReturnToTitle();
+            pendingAction = () -> callback.onReturnToTitle();
         }
     }
 
@@ -586,7 +739,7 @@ public class GameHUD {
                 callback.onRespawn();
             } else if (hoverMenu) {
                 audio.playButtonClick();
-                callback.onReturnToTitle();
+                pendingAction = () -> callback.onReturnToTitle();
             }
         } else if (Gdx.input.isKeyJustPressed(Keys.ENTER)) {
             audio.playButtonClick();

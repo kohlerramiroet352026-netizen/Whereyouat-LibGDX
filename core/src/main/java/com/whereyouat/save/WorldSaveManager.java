@@ -67,6 +67,9 @@ public class WorldSaveManager {
         public boolean hasMonsterData = false;
         public List<SavedMonster> savedMonsters = new ArrayList<>();
 
+        // ¿El mundo fue creado/guardado con modo multijugador (host) habilitado?
+        public boolean isMultiplayer = false;
+
         @Override
         public int compareTo(WorldInfo other) {
             // Sort newest / most recently played first
@@ -180,6 +183,9 @@ public class WorldSaveManager {
             }
         }
 
+        // Cargar bandera de multijugador
+        info.isMultiplayer = Boolean.parseBoolean(properties.getProperty("world.multiplayer", "false"));
+
             return info;
         } catch (Exception e) {
             return null;
@@ -227,9 +233,11 @@ public class WorldSaveManager {
 
     /**
      * Saves live player position and day/night cycle progress to world save file.
+     * @param isMultiplayer true si el mundo fue/es un mundo multijugador (host).
      */
     public static void saveGameProgress(String fileName, String worldName, long seed, long created,
-                                        Player player, DayNightCycle dayNight, Entity[] monsters) {
+                                        Player player, DayNightCycle dayNight, Entity[] monsters,
+                                        boolean isMultiplayer) {
         if (fileName == null || fileName.trim().isEmpty()) return;
         File dir = new File(SAVES_DIR);
         if (!dir.exists()) {
@@ -298,6 +306,11 @@ public class WorldSaveManager {
 
         if (dayNight != null) {
             properties.setProperty("daynight.ticks", String.valueOf(dayNight.getTimeTicks()));
+        }
+
+        // Persistir bandera multijugador si corresponde
+        if (isMultiplayer) {
+            properties.setProperty("world.multiplayer", "true");
         }
 
         try (FileOutputStream fos = new FileOutputStream(file)) {

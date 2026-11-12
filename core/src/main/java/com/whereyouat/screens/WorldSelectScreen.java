@@ -21,6 +21,7 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.whereyouat.WhereYouAtGame;
+import com.whereyouat.net.NetworkManager;
 import com.whereyouat.save.WorldSaveManager;
 import com.whereyouat.save.WorldSaveManager.WorldInfo;
 
@@ -199,9 +200,19 @@ public class WorldSelectScreen extends ScreenAdapter {
                             return;
                         }
                         if (buttonSound != null) buttonSound.play(0.32f);
-                        // Launch world
-                        // Reemplazar las líneas 203-214 por:
-                        GameScreen gameScreen = new GameScreen(game, info.seed, info.name, info.fileName);
+                        // Launch world — si era multijugador, re-iniciar el servidor automáticamente
+                        NetworkManager net = null;
+                        String hostCode = null;
+                        if (info.isMultiplayer) {
+                            net = new NetworkManager();
+                            hostCode = net.startHost();
+                            if (hostCode != null) {
+                                try { Gdx.app.getClipboard().setContents(hostCode); } catch (Throwable ignored) {}
+                                Gdx.app.log("Network", "Mundo multijugador: servidor reiniciado. Codigo: " + hostCode);
+                            }
+                        }
+                        GameScreen gameScreen = new GameScreen(game, info.seed, info.name, info.fileName, net);
+                        if (hostCode != null) gameScreen.roomCode = hostCode;
                         gameScreen.loadSavedState(info);
                         game.setScreen(gameScreen);
                         return;
@@ -273,6 +284,13 @@ public class WorldSelectScreen extends ScreenAdapter {
                     // World Name
                     fontSlot.setColor(hoverSlot ? Color.GOLD : Color.WHITE);
                     fontSlot.draw(game.batch, info.name, panelX + 24f, slotY + 14f);
+
+                    // Insignia MULTI junto al nombre si es mundo multijugador
+                    if (info.isMultiplayer) {
+                        layout.setText(fontSlot, info.name);
+                        fontSmall.setColor(new Color(0.4f, 1f, 0.4f, 1f));
+                        fontSmall.draw(game.batch, "[MULTI]", panelX + 24f + layout.width + 8f, slotY + 14f);
+                    }
 
                     // Date & Seed
                     String subtitle = "Semilla: " + info.seed + " \u00b7 " + WorldSaveManager.formatDate(info.lastPlayed > 0 ? info.lastPlayed : info.created);

@@ -32,6 +32,7 @@ import com.whereyouat.map.TileManager;
 import com.whereyouat.monster.MON_Ghost;
 import com.whereyouat.monster.MON_frogger;
 import com.whereyouat.monster.MON_mushroom;
+import com.whereyouat.net.NetworkManager;
 import com.whereyouat.save.WorldSaveManager;
 
 /**
@@ -62,6 +63,36 @@ public class GameScreen extends ScreenAdapter {
     public final SnowParticleSystem snowPS;
     public final LightingEngine lighting;
     public final AudioManager audio;
+    public final NetworkManager netManager;
+    public String roomCode = ""; // Código para mostrar en pantalla si es Host
+
+    // --- CHAT ---
+    // Lista de mensajes del chat: cada entrada es {texto, color, timerRestante}
+    // Accedida por GameHUD para dibujar y por el bucle de red para insertar.
+    public final java.util.LinkedList<ChatMessage> chatMessages = new java.util.LinkedList<>();
+    public static final int CHAT_MAX_VISIBLE = 6;    // líneas visibles simultáneamente
+    public static final float CHAT_FADE_SECONDS = 8f; // segundos que dura cada mensaje
+    public boolean isChatOpen = false;
+    public String chatInput = "";
+
+    public static class ChatMessage {
+        public final String text;
+        public final com.badlogic.gdx.graphics.Color color;
+        public float timer;
+        public ChatMessage(String text, com.badlogic.gdx.graphics.Color color) {
+            this.text = text;
+            this.color = color;
+            this.timer = CHAT_FADE_SECONDS;
+        }
+    }
+
+    /** Agrega un mensaje al chat (hilo-seguro vía postRunnable si se llama desde red). */
+    public void addChatMessage(String text, com.badlogic.gdx.graphics.Color color) {
+        Gdx.app.postRunnable(() -> {
+            chatMessages.addFirst(new ChatMessage(text, color));
+            if (chatMessages.size() > 20) chatMessages.removeLast();
+        });
+    }
 
     // Delegado de interfaz de usuario
     private final GameHUD hud;
@@ -88,6 +119,8 @@ public class GameScreen extends ScreenAdapter {
     private float animTime = 0f;
     private float autoSaveTimer = 60f; // Guardado automático cada 60s
     private boolean isPaused = false;
+    // Guard para evitar que dispose() corra más de una vez (hide() lo llama automáticamente)
+    private boolean disposed = false;
     private boolean showDeathScreen = false;
     private boolean wasNightLastFrame = false; // para detectar la transición DÍA→NOCHE
     private float nightSpawnTimer = 0f; // temporizador para spawn continuo de noche
@@ -100,12 +133,13 @@ public class GameScreen extends ScreenAdapter {
 
     public boolean showInventory = false;
 
-    public GameScreen(WhereYouAtGame game, long seed, String worldName, String worldFileName) {
+    public GameScreen(WhereYouAtGame game, long seed, String worldName, String worldFileName, NetworkManager netManager) {
         this.game = game;
         this.seed = seed;
         this.worldName = (worldName != null && !worldName.isEmpty()) ? worldName : "World";
         this.worldFileName = worldFileName;
         this.createdTime = System.currentTimeMillis();
+        this.netManager = netManager;
 
         // 1. Configurar cámara del mundo con orientación Y-down
         camera = new OrthographicCamera();
@@ -118,8 +152,9 @@ public class GameScreen extends ScreenAdapter {
         hudViewport = new FitViewport(768, 576, hudCamera);
 
         // 3. Generar mundo procedural 512x512
-        Gdx.app.log("GameScreen", "Generating 512x512 procedural world with seed: " + seed);
-        mapGen = new MapGenerator(512, 512, seed, String.valueOf(seed));
+        long actualSeed = (netManager != null && !netManager.isHost) ? (seed + 7777L) : seed;
+        Gdx.app.log("GameScreen", "Generating 512x512 procedural world with seed: " + actualSeed + (netManager != null && !netManager.isHost ? " (Isla 2)" : "(Isla 1)"));
+        mapGen = new MapGenerator(512, 512, actualSeed, String.valueOf(actualSeed));
         mapGen.generate();
 
         // 4. Inicializar subsistemas
@@ -179,6 +214,37 @@ public class GameScreen extends ScreenAdapter {
 
         // Atenuación suave de música de menú al ingresar al mundo
         game.fadeOutMenuMusic();
+
+        // 6. Registrar callbacks de red si estamos en modo multijugador
+        if (netManager != null) {
+            netManager.setListener(new NetworkManager.NetworkListener() {
+                @Override
+                public void onConnected() {
+                    String who = netManager.isHost ? "Jugador 2" : "Jugador 1 (host)";
+                    addChatMessage(who + " se unio al mundo", com.badlogic.gdx.graphics.Color.YELLOW);
+                }
+                @Override
+                public void onMessageReceived(String message) {
+                    if (message.startsWith("CHAT:")) {
+                        String sender = netManager.isHost ? "J2" : "J1";
+                        addChatMessage("[" + sender + "] " + message.substring(5),
+                                com.badlogic.gdx.graphics.Color.WHITE);
+                    }
+                }
+                @Override
+                public void onDisconnected() {
+                    addChatMessage("El otro jugador se desconecto.", new com.badlogic.gdx.graphics.Color(1f,0.4f,0.4f,1f));
+                }
+            });
+            // Si somos el cliente, notificar al host que nos conectamos
+            if (!netManager.isHost) {
+                netManager.send("CHAT:Jugador 2 se unio al mundo");
+            }
+        }
+    }
+
+    public GameScreen(WhereYouAtGame game, long seed, String worldName, String worldFileName) {
+        this(game, seed, worldName, worldFileName, null);
     }
 
     public GameScreen(WhereYouAtGame game, long seed, String seedString) {
@@ -193,10 +259,48 @@ public class GameScreen extends ScreenAdapter {
         if (saveFeedbackTimer > 0f)
             saveFeedbackTimer -= dt;
 
+        // Decrementar timers de mensajes del chat
+        java.util.Iterator<ChatMessage> chatIt = chatMessages.iterator();
+        while (chatIt.hasNext()) {
+            ChatMessage cm = chatIt.next();
+            cm.timer -= dt;
+            if (cm.timer <= 0f) chatIt.remove();
+        }
+
+        // --- CHAT: capturar input de teclado ---
+        if (netManager != null) {
+            // T abre el chat (solo si no está en pausa/muerte y el chat está cerrado)
+            if (!isPaused && !showDeathScreen && !showRespawnScreen && !isChatOpen
+                    && Gdx.input.isKeyJustPressed(Keys.T)) {
+                isChatOpen = true;
+                chatInput = "";
+                // Resetear timer de mensajes visibles para que aparezcan
+                for (ChatMessage cm : chatMessages) cm.timer = CHAT_FADE_SECONDS;
+                return; // no procesar más teclas este frame
+            }
+
+            if (isChatOpen) {
+                // ENTER envía el mensaje
+                if (Gdx.input.isKeyJustPressed(Keys.ENTER) && !chatInput.trim().isEmpty()) {
+                    String me = netManager.isHost ? "J1" : "J2";
+                    addChatMessage("[" + me + "] " + chatInput.trim(), com.badlogic.gdx.graphics.Color.WHITE);
+                    netManager.send("CHAT:" + chatInput.trim());
+                    chatInput = "";
+                    isChatOpen = false;
+                } else if (Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
+                    isChatOpen = false;
+                }
+                // El texto lo captura GameHUD vía InputProcessor (ver abajo)
+                renderScene();
+                return; // bloquear movimiento/ataque mientras el chat está abierto
+            }
+        }
+
         // Pausa con ESC (solo vivo y fuera de pantallas de muerte)
         if (!showDeathScreen && !showRespawnScreen && Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
             isPaused = !isPaused;
             if (isPaused) {
+                showInventory = false; // Cerrar inventario al pausar
                 saveProgress();
             }
         }
@@ -207,9 +311,11 @@ public class GameScreen extends ScreenAdapter {
 
             if (player.lives < livesBefore && !player.dead) {
                 showRespawnScreen = true;
+                showInventory = false; // Cerrar inventario al morir
                 player.randomSpawn(mapGen);
             } else if (player.dead && !showDeathScreen) {
                 showDeathScreen = true;
+                showInventory = false; // Cerrar inventario en pantalla de muerte
                 saveProgress();
             }
         }
@@ -340,7 +446,9 @@ public class GameScreen extends ScreenAdapter {
 
     private void saveProgress() {
         if (worldFileName != null && !worldFileName.isEmpty()) {
-            WorldSaveManager.saveGameProgress(worldFileName, worldName, seed, createdTime, player, dayNight, monster);
+            // Persistir bandera de multijugador si somos el host
+            boolean isHost = (netManager != null && netManager.isHost);
+            WorldSaveManager.saveGameProgress(worldFileName, worldName, seed, createdTime, player, dayNight, monster, isHost);
         }
     }
 
@@ -458,7 +566,7 @@ public class GameScreen extends ScreenAdapter {
         // PASE 4: Interfaz de usuario (HUD delegado en GameHUD)
         // -------------------------------------------------------------
         hud.render(game.batch, player, isPaused, showDeathScreen, showRespawnScreen, saveFeedbackTimer, animTime,
-                showInventory);
+                showInventory, this);
     }
 
     /**
@@ -640,20 +748,35 @@ public class GameScreen extends ScreenAdapter {
 
     @Override
     public void dispose() {
-        saveProgress();
-        tileM.dispose();
-        player.dispose();
+        // Guard: dispose() puede ser llamado por hide() automáticamente y también
+        // por returnToTitle() antes. Solo ejecutar una vez.
+        if (disposed) return;
+        disposed = true;
+
+        Gdx.app.log("GameScreen", "dispose() iniciado" + (netManager != null ? " [multijugador]" : ""));
+        try { saveProgress(); } catch (Throwable t) { Gdx.app.error("GameScreen", "saveProgress falló", t); }
+        try { tileM.dispose(); } catch (Throwable t) { Gdx.app.error("GameScreen", "tileM.dispose falló", t); }
+        try { player.dispose(); } catch (Throwable t) { Gdx.app.error("GameScreen", "player.dispose falló", t); }
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] != null) {
-                monster[i].dispose();
+                try { monster[i].dispose(); } catch (Throwable ignored) {}
                 monster[i] = null;
             }
         }
-        footprintM.dispose();
-        snowPS.dispose();
-        lighting.dispose();
-        audio.dispose();
-        hud.dispose();
+        // Anular el listener de red ANTES de desconectar para que el callback
+        // onDisconnected no se dispare sobre este GameScreen ya muerto.
+        if (netManager != null) {
+            try {
+                netManager.setListener(null);
+                netManager.disconnect();
+            } catch (Throwable t) { Gdx.app.error("GameScreen", "netManager.disconnect falló", t); }
+        }
+        try { footprintM.dispose(); } catch (Throwable t) { Gdx.app.error("GameScreen", "footprintM.dispose falló", t); }
+        try { snowPS.dispose();    } catch (Throwable t) { Gdx.app.error("GameScreen", "snowPS.dispose falló", t); }
+        try { lighting.dispose();  } catch (Throwable t) { Gdx.app.error("GameScreen", "lighting.dispose falló", t); }
+        try { audio.dispose();     } catch (Throwable t) { Gdx.app.error("GameScreen", "audio.dispose falló", t); }
+        try { hud.dispose();       } catch (Throwable t) { Gdx.app.error("GameScreen", "hud.dispose falló", t); }
+        Gdx.app.log("GameScreen", "dispose() completado");
     }
 
     /**
