@@ -25,6 +25,7 @@ public class MON_snowGhost extends Entity {
     private static final float SCALE = 3.0f;
     public static final float DRAW_WIDTH = FRAME_W_NATIVE * SCALE;
     public static final float DRAW_HEIGHT = FRAME_H_NATIVE * SCALE;
+    private static final float FEET_Y = 109f * SCALE;
 
     public static final int STATE_IDLE = 0;
     public static final int STATE_RUN = 1;
@@ -75,7 +76,7 @@ public class MON_snowGhost extends Entity {
         float hitH = 35f * SCALE;
         solidArea.set(
                 (DRAW_WIDTH - hitW) / 2f,
-                DRAW_HEIGHT - hitH - 20f,
+                FEET_Y - hitH,
                 hitW,
                 hitH);
         solidAreaDefaultX = solidArea.x;
@@ -349,17 +350,17 @@ public class MON_snowGhost extends Entity {
         int waterLevel = 0;
         if (gp != null && gp.tileM != null && gp.mapGen != null) {
             float footX = worldX + solidArea.x + solidArea.width / 2f;
-            float footY = worldY + solidArea.y + solidArea.height / 2f;
+            float footY = worldY + FEET_Y;
             int col = (int) (footX / TileManager.TILE_SIZE);
             int row = (int) (footY / TileManager.TILE_SIZE);
             waterLevel = gp.tileM.getWaterLevel(gp.mapGen, col, row);
         }
 
         if (waterLevel > 0 && gp != null && gp.camera != null) {
-            float cutOff = (waterLevel == 1) ? 20f * SCALE : 35f * SCALE;
-            float yShift  = (waterLevel == 1) ?  8f * SCALE : 16f * SCALE;
+            float cutOff = (waterLevel == 1) ? 20f * SCALE : 38f * SCALE;
+            float yShift  = (waterLevel == 1) ?  6f * SCALE : 14f * SCALE;
             float drawY    = worldY + yShift;
-            float visibleH = DRAW_HEIGHT - cutOff;
+            float visibleH = FEET_Y - cutOff;
 
             Vector3 topLeft     = gp.camera.project(new Vector3(worldX, drawY, 0));
             Vector3 bottomRight = gp.camera.project(new Vector3(worldX + DRAW_WIDTH, drawY + visibleH, 0));
@@ -380,7 +381,7 @@ public class MON_snowGhost extends Entity {
 
             TextureRegion foam = gp.tileM.getFoamRegion();
             if (foam != null) {
-                float foamY = drawY + DRAW_HEIGHT - cutOff - 4f;
+                float foamY = drawY + visibleH - 4f;
                 float bodyCenterX = worldX + solidArea.x + solidArea.width / 2f;
                 int tileCount = 4;
                 float foamTileSize = TileManager.TILE_SIZE;

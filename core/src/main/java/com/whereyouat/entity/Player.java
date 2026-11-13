@@ -12,6 +12,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.whereyouat.items.BoatPiece1;
 import com.whereyouat.items.BoatPiece2;
 import com.whereyouat.items.BoatPiece3;
+import com.whereyouat.items.IceGem;
 import com.whereyouat.items.Item;
 import com.whereyouat.items.ItemPotion;
 import com.whereyouat.items.Sword;
@@ -71,7 +72,7 @@ public class Player extends Entity {
 
     public static final int MONSTER_DAMAGE = 20;
 
-    private static final float BASE_SPEED = 1000f;
+    private static final float BASE_SPEED = 240f;
     private static final float BUSH_SPEED = 180f;
     private static final float SHALLOW_SPEED = 120f;
     private static final float DEEP_SPEED = 60f;
@@ -105,6 +106,7 @@ public class Player extends Entity {
         addItem(new devsword());
         addItem(new ItemPotion());
         addItem(new boat());
+        addItem(new IceGem());
     }
 
     public boolean hasSword() {
