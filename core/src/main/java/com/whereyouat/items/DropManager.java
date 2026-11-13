@@ -7,16 +7,12 @@ import com.whereyouat.entity.Entity;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
 
-//gestor de drops
 public class DropManager {
-
-    //chances de drop
     private static final float CHANCE_SUMMON = 0.1625f;
     private static final float CHANCE_POTION = 0.5125f;
 
     private static final Random random = new Random();
 
-    //calcular drop enemigo
     public static void processMonsterDrop(Entity monster, GameScreen gp) {
         if (gp == null || gp.player == null || gp.mapGen == null) {
             return;
@@ -33,7 +29,6 @@ public class DropManager {
         float roll = random.nextFloat();
 
         if (roll < CHANCE_SUMMON) {
-            //drop por bioma
             if (gp.mapGen.isSnowBiome[tileCol][tileRow]) {
                 dropItem = new IceGem();
             } else if (gp.mapGen.isSwampBiome[tileCol][tileRow]) {
@@ -42,11 +37,9 @@ public class DropManager {
                 dropItem = new OddMushroom();
             }
         } else if (roll < CHANCE_POTION) {
-            //drop de pocion
             dropItem = new ItemPotion();
         }
 
-        //agregar drop inventario
         if (dropItem != null) {
             boolean added = gp.player.addItem(dropItem);
             if (added) {
@@ -60,7 +53,6 @@ public class DropManager {
         }
     }
 
-    //dar recompensa jefe
     public static void deliverBossReward(String bossName, Item boatPiece, GameScreen gp) {
         if (gp == null || gp.player == null || boatPiece == null) {
             return;

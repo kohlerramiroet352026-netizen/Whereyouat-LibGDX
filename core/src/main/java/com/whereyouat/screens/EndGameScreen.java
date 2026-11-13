@@ -22,9 +22,7 @@ import com.badlogic.gdx.video.VideoPlayerCreator;
 import com.whereyouat.WhereYouAtGame;
 import com.whereyouat.net.NetworkManager;
 
-//pantalla cinemática fin de juego
 public class EndGameScreen extends ScreenAdapter {
-
     private enum State {
         FADE_IN_BLACK,
         SHOW_TEXT,
@@ -35,7 +33,7 @@ public class EndGameScreen extends ScreenAdapter {
     private State state = State.FADE_IN_BLACK;
 
     private final WhereYouAtGame game;
-    private final NetworkManager netManager; // null = un jugador
+    private final NetworkManager netManager;
 
     private final OrthographicCamera camera;
     private final Viewport viewport;
@@ -45,8 +43,7 @@ public class EndGameScreen extends ScreenAdapter {
     private final GlyphLayout layout = new GlyphLayout();
     private Texture blackPixel;
 
-    // Transiciones y tiempos suaves (curvas SmoothStep para máxima delicadeza)
-    private static final float FADE_SPEED = 0.40f; // ~2.5 seg para completar el fade
+    private static final float FADE_SPEED = 0.40f;
     private float fadeProgress = 0f;
 
     private float textAlpha = 0f;
@@ -56,11 +53,9 @@ public class EndGameScreen extends ScreenAdapter {
 
     private float fadeOutMenuProgress = 0f;
 
-    // Multijugador
     private volatile boolean otherSailed = false;
     private final String otherPlayerName;
 
-    // Video
     private VideoPlayer videoPlayer;
     private volatile boolean videoFinished = false;
     private boolean videoFailed = false;
@@ -78,10 +73,8 @@ public class EndGameScreen extends ScreenAdapter {
         this.viewport = new FitViewport(768, 576, camera);
         this.batch = new SpriteBatch();
 
-        // 1. Cargar la fuente oficial del juego (PressStart2P) para que coincida con el HUD y menú
         loadFont();
 
-        // 2. Pixel negro 1x1 para fades
         Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pm.setColor(Color.BLACK);
         pm.fill();
@@ -90,7 +83,6 @@ public class EndGameScreen extends ScreenAdapter {
 
         this.otherPlayerName = (netManager != null && netManager.isHost) ? "Jugador 2" : "Jugador 1";
 
-        // 3. Manejo de red
         if (netManager != null) {
             netManager.send("SAILED");
 
@@ -130,7 +122,6 @@ public class EndGameScreen extends ScreenAdapter {
         }
     }
 
-    /** Curva SmoothStep para transiciones suaves y naturales */
     private float smoothStep(float t) {
         float x = Math.max(0f, Math.min(1f, t));
         return x * x * (3f - 2f * x);
@@ -147,8 +138,6 @@ public class EndGameScreen extends ScreenAdapter {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         switch (state) {
-
-            // 1. Fade in inicial a pantalla negra (delicado, ~2.5 seg)
             case FADE_IN_BLACK:
                 fadeProgress += FADE_SPEED * delta;
                 drawBlackOverlay(smoothStep(fadeProgress));
@@ -158,18 +147,15 @@ public class EndGameScreen extends ScreenAdapter {
                 }
                 break;
 
-            // 2. Texto con fade in, lectura y fade out (hacia el video si es multiplayer, o al menú si es singleplayer)
             case SHOW_TEXT:
                 drawBlackOverlay(1f);
 
                 String message;
                 boolean canProceed;
                 if (netManager == null) {
-                    // Un jugador: mensaje final de victoria
                     message = "Escapaste de la isla, felicitaciones";
                     canProceed = (textHoldTimer >= TEXT_HOLD_DURATION);
                 } else {
-                    // Multijugador: esperar al compañero o confirmar que ambos zarparon
                     if (otherSailed) {
                         message = "Ambos zarparon, escapando de la isla...";
                         canProceed = (textHoldTimer >= 2.0f);
@@ -191,10 +177,8 @@ public class EndGameScreen extends ScreenAdapter {
                     textAlpha = Math.max(0f, textAlpha - delta * 0.85f);
                     if (textAlpha <= 0f) {
                         if (netManager != null) {
-                            // En multijugador se reproduce el video cinemático final
                             startVideo();
                         } else {
-                            // En un jugador NO hay video: transición suave directa al menú principal
                             fadeOutMenuProgress = 0f;
                             state = State.FADE_OUT_TO_MENU;
                         }
@@ -204,7 +188,6 @@ public class EndGameScreen extends ScreenAdapter {
                 drawCenteredText(message, smoothStep(textAlpha));
                 break;
 
-            // 3. Reproducción del video final (exclusivo para multijugador)
             case PLAYING_VIDEO:
                 if (videoFailed || videoPlayer == null) {
                     returnToMenu();
@@ -217,14 +200,12 @@ public class EndGameScreen extends ScreenAdapter {
                     renderVideoFrame(frame);
                 }
 
-                // Fin del video
                 if (videoFinished || (!videoPlayer.isPlaying() && videoPlayer.getCurrentTimestamp() > 1000)) {
                     fadeOutMenuProgress = 0f;
                     state = State.FADE_OUT_TO_MENU;
                 }
                 break;
 
-            // 4. Fade out suave a negro post-video / post-texto y regreso al menú (~2.5 seg)
             case FADE_OUT_TO_MENU:
                 if (videoPlayer != null && videoPlayer.getTexture() != null) {
                     renderVideoFrame(videoPlayer.getTexture());
@@ -242,10 +223,6 @@ public class EndGameScreen extends ScreenAdapter {
         }
     }
 
-    /**
-     * Renderiza el frame de video respetando su relación de aspecto real 16:9
-     * aprovechando todo el ancho de la pantalla sin deformarlo ni achatado.
-     */
     private void renderVideoFrame(Texture frame) {
         if (frame == null) return;
 
@@ -263,13 +240,11 @@ public class EndGameScreen extends ScreenAdapter {
         float drawW, drawH, drawX, drawY;
 
         if (screenAspect > videoAspect) {
-            // Pantalla más ancha que el video (ej: ultrawide)
             drawH = screenH;
             drawW = screenH * videoAspect;
             drawX = (screenW - drawW) / 2f;
             drawY = 0f;
         } else {
-            // Pantalla 16:9 o 4:3: expandir a todo el ancho y centrar verticalmente
             drawW = screenW;
             drawH = screenW / videoAspect;
             drawX = 0f;
@@ -316,7 +291,6 @@ public class EndGameScreen extends ScreenAdapter {
     private void startVideo() {
         if (state == State.PLAYING_VIDEO) return;
         if (netManager == null) {
-            // Protección: en un solo jugador nunca se reproduce el video
             returnToMenu();
             return;
         }
@@ -344,10 +318,8 @@ public class EndGameScreen extends ScreenAdapter {
                 return;
             }
 
-            // Volumen reducido significativamente (después de inicializar el stream)
             videoPlayer.setVolume(0.12f);
             state = State.PLAYING_VIDEO;
-
         } catch (Throwable e) {
             Gdx.app.error("EndGameScreen", "Error al inicializar video: " + e.getMessage(), e);
             videoFailed = true;

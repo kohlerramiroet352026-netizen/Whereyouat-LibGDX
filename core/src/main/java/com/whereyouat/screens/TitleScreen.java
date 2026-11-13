@@ -18,17 +18,7 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.whereyouat.WhereYouAtGame;
 
-/**
- * TitleScreen for LibGDX.
- * Atmospheric start menu with gentle floating title logo, pixel-art buttons,
- * sound effects, and clean screen transitions.
- *
- * Menu music is started here and stored in game.menuMusic so it persists
- * across WorldSelectScreen and WorldCreateScreen without interruption.
- * It only fades out when the player enters a world.
- */
 public class TitleScreen extends ScreenAdapter {
-
     private final WhereYouAtGame game;
     private final OrthographicCamera camera;
     private final Viewport viewport;
@@ -54,7 +44,6 @@ public class TitleScreen extends ScreenAdapter {
     public boolean inputEnabled = true;
     public float bgAlpha = 1f;
 
-    // Button geometry (768 x 576 virtual coords)
     private static final float BTN_WIDTH = 200f;
     private static final float BTN_HEIGHT = 44f;
     private static final float PLAY_Y = 320f;
@@ -90,12 +79,10 @@ public class TitleScreen extends ScreenAdapter {
             buttonSound = Gdx.audio.newSound(Gdx.files.internal("sounds/button_sound.mp3"));
         }
 
-        // Start menu music immediately on cold launch if not already playing or scheduled
         if (!game.isIntroActive && game.menuMusic == null && !game.isMenuMusicScheduled()) {
             game.playMenuMusicImmediately();
         }
 
-        // Fonts
         if (Gdx.files.internal("fonts/PressStart2P-Regular.ttf").exists()) {
             FreeTypeFontGenerator fontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/PressStart2P-Regular.ttf"));
             FreeTypeFontParameter fontParameter = new FreeTypeFontParameter();
@@ -132,7 +119,6 @@ public class TitleScreen extends ScreenAdapter {
     public void render(float delta) {
         animTime += delta;
 
-        // Convert mouse coordinates to 768x576 virtual screen space
         mousePos.set(Gdx.input.getX(), Gdx.input.getY(), 0);
         viewport.unproject(mousePos);
 
@@ -145,8 +131,7 @@ public class TitleScreen extends ScreenAdapter {
         if (inputEnabled && Gdx.input.isButtonJustPressed(0)) {
             if (hoverPlay) {
                 if (buttonSound != null) buttonSound.play(0.32f);
-                // Music continues — WorldSelectScreen uses game.menuMusic directly.
-                // Do NOT stop or dispose it here.
+
                 game.setScreen(new WorldSelectScreen(game));
                 return;
             } else if (hoverQuit) {
@@ -156,7 +141,6 @@ public class TitleScreen extends ScreenAdapter {
             }
         }
 
-        // Clear background
         Gdx.gl.glClearColor(0.06f * bgAlpha, 0.08f * bgAlpha, 0.07f * bgAlpha, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
@@ -165,7 +149,6 @@ public class TitleScreen extends ScreenAdapter {
         game.batch.setProjectionMatrix(camera.combined);
         game.batch.begin();
 
-        // 1. Title logo with gentle floating bob
         float bob = (float) Math.sin(animTime * 2.5f) * 6f;
         float titleCenterY = 160f + bob;
 
@@ -179,20 +162,16 @@ public class TitleScreen extends ScreenAdapter {
             fontTitle.draw(game.batch, "WHERE YOU AT?", (768f - layout.width) / 2f, titleCenterY - layout.height / 2f);
         }
 
-        // Subtitle (only shown if title graphic is missing)
         if (titleRegion == null) {
             layout.setText(fontSmall, "Somewhere Out There");
             fontSmall.setColor(new Color(0.65f, 0.88f, 0.55f, 0.9f));
             fontSmall.draw(game.batch, "Somewhere Out There", (768f - layout.width) / 2f, titleCenterY + 45f);
         }
 
-        // 2. Play button
         drawMenuButton("JUGAR", btnX, PLAY_Y, hoverPlay);
 
-        // 3. Quit button
         drawMenuButton("SALIR", btnX, QUIT_Y, hoverQuit);
 
-        // 4. Footer instructions
         layout.setText(fontSmall, "Usa el MOUSE para navegar y seleccionar");
         fontSmall.setColor(new Color(0.7f, 0.75f, 0.7f, 0.8f));
         fontSmall.draw(game.batch, "Usa el MOUSE para navegar y seleccionar", (768f - layout.width) / 2f, 520f);
@@ -232,8 +211,7 @@ public class TitleScreen extends ScreenAdapter {
         if (titleTexture != null) titleTexture.dispose();
         if (buttonTexture != null) buttonTexture.dispose();
         if (buttonSound != null) buttonSound.dispose();
-        // Note: game.menuMusic is NOT disposed here — it is owned by WhereYouAtGame
-        // and shared with WorldSelectScreen/WorldCreateScreen.
+
         if (fontTitle != null) fontTitle.dispose();
         if (fontBtn != null) fontBtn.dispose();
         if (fontSmall != null) fontSmall.dispose();

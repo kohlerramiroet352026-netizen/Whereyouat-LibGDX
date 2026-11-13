@@ -25,13 +25,7 @@ import com.whereyouat.net.NetworkManager;
 import com.whereyouat.save.WorldSaveManager;
 import com.whereyouat.save.WorldSaveManager.WorldInfo;
 
-/**
- * WorldSelectScreen for LibGDX.
- * Displays existing worlds in clickable wood-border slots,
- * with delete button icons and "+ CREAR MUNDO" button.
- */
 public class WorldSelectScreen extends ScreenAdapter {
-
     private final WhereYouAtGame game;
     private final OrthographicCamera camera;
     private final Viewport viewport;
@@ -55,7 +49,6 @@ public class WorldSelectScreen extends ScreenAdapter {
     private int scrollOffset = 0;
     private static final int VISIBLE_SLOTS = 5;
 
-    // Slot layout
     private static final float SLOT_W = 540f;
     private static final float SLOT_H = 64f;
     private static final float SLOT_GAP = 12f;
@@ -95,7 +88,6 @@ public class WorldSelectScreen extends ScreenAdapter {
             buttonSound = Gdx.audio.newSound(Gdx.files.internal("sounds/button_sound.mp3"));
         }
 
-        // Fonts
         if (Gdx.files.internal("fonts/PressStart2P-Regular.ttf").exists()) {
             FreeTypeFontGenerator fontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/PressStart2P-Regular.ttf"));
             FreeTypeFontParameter fontParameter = new FreeTypeFontParameter();
@@ -137,7 +129,6 @@ public class WorldSelectScreen extends ScreenAdapter {
         mousePos.set(Gdx.input.getX(), Gdx.input.getY(), 0);
         viewport.unproject(mousePos);
 
-        // Escape key returns to title
         if (Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
             if (buttonSound != null) buttonSound.play(0.32f);
             game.setScreen(new TitleScreen(game));
@@ -160,10 +151,8 @@ public class WorldSelectScreen extends ScreenAdapter {
             return;
         }
 
-        // Total items = 1 ("+ CREAR MUNDO") + worldList.size()
         int totalItems = 1 + worldList.size();
 
-        // Handle item clicks
         for (int i = 0; i < VISIBLE_SLOTS && (i + scrollOffset) < totalItems; i++) {
             int itemIndex = i + scrollOffset;
             float slotY = START_Y + i * (SLOT_H + SLOT_GAP);
@@ -172,7 +161,6 @@ public class WorldSelectScreen extends ScreenAdapter {
                                  mousePos.y >= slotY && mousePos.y <= slotY + SLOT_H);
 
             if (itemIndex == 0) {
-                // "+ CREAR MUNDO" button
                 if (clicked && hoverSlot) {
                     if (buttonSound != null) buttonSound.play(0.32f);
                     game.setScreen(new WorldCreateScreen(game));
@@ -182,7 +170,6 @@ public class WorldSelectScreen extends ScreenAdapter {
                 int worldIdx = itemIndex - 1;
                 WorldInfo info = worldList.get(worldIdx);
 
-                // Check delete button on the right edge of slot
                 float delX = panelX + SLOT_W - 40f;
                 float delY = slotY + (SLOT_H - 24f) / 2f;
                 boolean hoverDelete = (mousePos.x >= delX && mousePos.x <= delX + 24f &&
@@ -196,11 +183,10 @@ public class WorldSelectScreen extends ScreenAdapter {
                         return;
                     } else if (hoverSlot) {
                         if (info.isDead) {
-                            // El jugador murio definitivamente: la unica opcion es borrar el mundo
                             return;
                         }
                         if (buttonSound != null) buttonSound.play(0.32f);
-                        // Launch world — si era multijugador, re-iniciar el servidor automáticamente
+
                         NetworkManager net = null;
                         String hostCode = null;
                         if (info.isMultiplayer) {
@@ -221,7 +207,6 @@ public class WorldSelectScreen extends ScreenAdapter {
             }
         }
 
-        // Draw screen
         Gdx.gl.glClearColor(0.06f, 0.08f, 0.07f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
@@ -230,12 +215,10 @@ public class WorldSelectScreen extends ScreenAdapter {
         game.batch.setProjectionMatrix(camera.combined);
         game.batch.begin();
 
-        // 1. Title
         layout.setText(fontTitle, "SELECCIONAR MUNDO");
         fontTitle.setColor(Color.GOLD);
         fontTitle.draw(game.batch, "SELECCIONAR MUNDO", (768f - layout.width) / 2f, 60f);
 
-        // 2. Slots
         for (int i = 0; i < VISIBLE_SLOTS && (i + scrollOffset) < totalItems; i++) {
             int itemIndex = i + scrollOffset;
             float slotY = START_Y + i * (SLOT_H + SLOT_GAP);
@@ -256,7 +239,6 @@ public class WorldSelectScreen extends ScreenAdapter {
             }
 
             if (itemIndex == 0) {
-                // "+ CREAR NUEVO MUNDO"
                 layout.setText(fontSlot, "+ CREAR NUEVO MUNDO");
                 fontSlot.setColor(hoverSlot ? Color.GOLD : Color.WHITE);
                 fontSlot.draw(game.batch, "+ CREAR NUEVO MUNDO",
@@ -267,38 +249,31 @@ public class WorldSelectScreen extends ScreenAdapter {
                 WorldInfo info = worldList.get(worldIdx);
 
                 if (info.isDead) {
-                    // World Name (dimmed)
                     fontSlot.setColor(new Color(0.75f, 0.75f, 0.75f, 0.85f));
                     layout.setText(fontSlot, info.name);
                     fontSlot.draw(game.batch, info.name, panelX + 24f, slotY + 14f);
 
-                    // Red "Muerto" label right next to the world name
                     fontSlot.setColor(new Color(0.95f, 0.2f, 0.2f, 1f));
                     fontSlot.draw(game.batch, " [Muerto]", panelX + 24f + layout.width + 6f, slotY + 14f);
 
-                    // Subtitle: Partida finalizada
                     String subtitle = "Partida finalizada \u00b7 " + WorldSaveManager.formatDate(info.lastPlayed > 0 ? info.lastPlayed : info.created);
                     fontSmall.setColor(new Color(0.65f, 0.4f, 0.4f, 0.85f));
                     fontSmall.draw(game.batch, subtitle, panelX + 24f, slotY + 38f);
                 } else {
-                    // World Name
                     fontSlot.setColor(hoverSlot ? Color.GOLD : Color.WHITE);
                     fontSlot.draw(game.batch, info.name, panelX + 24f, slotY + 14f);
 
-                    // Insignia MULTI junto al nombre si es mundo multijugador
                     if (info.isMultiplayer) {
                         layout.setText(fontSlot, info.name);
                         fontSmall.setColor(new Color(0.4f, 1f, 0.4f, 1f));
                         fontSmall.draw(game.batch, "[MULTI]", panelX + 24f + layout.width + 8f, slotY + 14f);
                     }
 
-                    // Date & Seed
                     String subtitle = "Semilla: " + info.seed + " \u00b7 " + WorldSaveManager.formatDate(info.lastPlayed > 0 ? info.lastPlayed : info.created);
                     fontSmall.setColor(new Color(0.7f, 0.7f, 0.7f, 0.9f));
                     fontSmall.draw(game.batch, subtitle, panelX + 24f, slotY + 38f);
                 }
 
-                // Delete Button icon
                 if (deleteBtnRegion != null) {
                     float deleteX = panelX + SLOT_W - 40f;
                     float deleteY = slotY + (SLOT_H - 24f) / 2f;
@@ -315,7 +290,6 @@ public class WorldSelectScreen extends ScreenAdapter {
             }
         }
 
-        // 3. Back Button
         if (backBtnRegion != null) {
             game.batch.setColor(hoverBack ? 1.15f : 1f, hoverBack ? 1.15f : 1f, hoverBack ? 1.15f : 1f, 1f);
             game.batch.draw(backBtnRegion, backButtonX, backButtonY, backButtonWidth, backButtonHeight);

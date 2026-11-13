@@ -16,19 +16,16 @@ import com.whereyouat.entity.Player;
 import com.whereyouat.items.Item;
 import com.whereyouat.lighting.DayNightCycle;
 
-//gestor de guardado
 public class WorldSaveManager {
-
     public static final String SAVES_DIR = "saves";
 
     public static class WorldInfo implements Comparable<WorldInfo> {
         public String name;
         public long   seed;
-        public long   created;    // epoch millis
-        public long   lastPlayed; // epoch millis
-        public String fileName;   // without extension
+        public long   created;
+        public long   lastPlayed;
+        public String fileName;
 
-        // Player state
         public boolean hasPlayerData = false;
         public float   playerWorldX;
         public float   playerWorldY;
@@ -37,15 +34,12 @@ public class WorldSaveManager {
         public int     playerLives     = 3;
         public boolean isDead          = false;
 
-        // Day/Night cycle state
         public boolean hasDayNightData = false;
         public long    dayNightTicks   = -1;
 
-        // datos de inventario
         public boolean hasInventoryData = false;
         public List<String> inventoryItems = new ArrayList<>();
 
-        //estructura para guardar mounstros
         public static class SavedMonster{
             public String id;
             public float x, y;
@@ -62,19 +56,16 @@ public class WorldSaveManager {
         public boolean hasMonsterData = false;
         public List<SavedMonster> savedMonsters = new ArrayList<>();
 
-        // ¿El mundo fue creado/guardado con modo multijugador (host) habilitado?
         public boolean isMultiplayer = false;
 
         @Override
         public int compareTo(WorldInfo other) {
-            // Sort newest / most recently played first
             long timeThis = this.lastPlayed > 0 ? this.lastPlayed : this.created;
             long timeOther = other.lastPlayed > 0 ? other.lastPlayed : other.created;
             return Long.compare(timeOther, timeThis);
         }
     }
 
-    //listar mundos
     public static List<WorldInfo> listWorlds() {
         List<WorldInfo> worlds = new ArrayList<>();
         File dir = new File(SAVES_DIR);
@@ -91,7 +82,6 @@ public class WorldSaveManager {
         return worlds;
     }
 
-    //cargar mundo archivo
     public static WorldInfo loadWorld(String fileName) {
         if (fileName == null || fileName.trim().isEmpty()) return null;
         File file = new File(SAVES_DIR, fileName + ".properties");
@@ -100,7 +90,6 @@ public class WorldSaveManager {
     }
 
     private static WorldInfo loadInfo(File file) {
-        
         try (FileInputStream fis = new FileInputStream(file)) {
             Properties properties = new Properties();
             properties.load(fis);
@@ -112,8 +101,6 @@ public class WorldSaveManager {
             String fileName  = file.getName();
             info.fileName    = fileName.substring(0, fileName.lastIndexOf('.'));
 
-
-            // Load player data if present
             if (properties.containsKey("player.worldX") && properties.containsKey("player.worldY")) {
                 try {
                     info.playerWorldX    = Float.parseFloat(properties.getProperty("player.worldX"));
@@ -133,7 +120,6 @@ public class WorldSaveManager {
                 info.isDead = Boolean.parseBoolean(properties.getProperty("player.dead", "false"));
             }
 
-            // Load DayNightCycle data if present
             if (properties.containsKey("daynight.ticks")) {
                 try {
                     info.dayNightTicks   = Long.parseLong(properties.getProperty("daynight.ticks"));
@@ -143,7 +129,6 @@ public class WorldSaveManager {
                 }
             }
 
-            //cargar inventario si existe
         if (properties.containsKey("player.inventory")){
             info.hasInventoryData = true;
             info.inventoryItems = new ArrayList<>();
@@ -157,7 +142,6 @@ public class WorldSaveManager {
             }
         }
 
-        //cargar mounstros si existen
         if (properties.containsKey("monster.count")){
             try {
                 int count = Integer.parseInt(properties.getProperty("monster.count" , "0"));
@@ -178,7 +162,6 @@ public class WorldSaveManager {
             }
         }
 
-        // Cargar bandera de multijugador
         info.isMultiplayer = Boolean.parseBoolean(properties.getProperty("world.multiplayer", "false"));
 
             return info;
@@ -187,7 +170,6 @@ public class WorldSaveManager {
         }
     }
 
-    //guardar nuevo mundo
     public static WorldInfo saveWorld(String name, long seed) {
         File dir = new File(SAVES_DIR);
         if (!dir.exists()) {
@@ -221,7 +203,6 @@ public class WorldSaveManager {
         }
     }
 
-    //guardar progreso juego
     public static void saveGameProgress(String fileName, String worldName, long seed, long created,
                                         Player player, DayNightCycle dayNight, Entity[] monsters,
                                         boolean isMultiplayer) {
@@ -246,8 +227,6 @@ public class WorldSaveManager {
         }
         properties.setProperty("world.lastPlayed", String.valueOf(System.currentTimeMillis()));
 
-        //guardar jugador e inventario
-
         if (player != null) {
             properties.setProperty("player.worldX", String.valueOf(player.worldX));
             properties.setProperty("player.worldY", String.valueOf(player.worldY));
@@ -266,7 +245,6 @@ public class WorldSaveManager {
         }
 
         if (monsters != null) {
-            // Limpiar claves viejas por si antes había más monstruos
             int oldCount = 0;
             if (properties.containsKey("monster.count")) {
                 try { oldCount = Integer.parseInt(properties.getProperty("monster.count", "0")); } catch (Exception ignored) {}
@@ -295,7 +273,6 @@ public class WorldSaveManager {
             properties.setProperty("daynight.ticks", String.valueOf(dayNight.getTimeTicks()));
         }
 
-        // Persistir bandera multijugador si corresponde
         if (isMultiplayer) {
             properties.setProperty("world.multiplayer", "true");
         }
@@ -307,7 +284,6 @@ public class WorldSaveManager {
         }
     }
 
-    //eliminar mundo
     public static void deleteWorld(String fileName) {
         File file = new File(SAVES_DIR, fileName + ".properties");
         if (file.exists() && !file.delete()) {
@@ -315,7 +291,6 @@ public class WorldSaveManager {
         }
     }
 
-    //formatear fecha
     public static String formatDate(long millis) {
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yy HH:mm");
         return dateFormat.format(new Date(millis));

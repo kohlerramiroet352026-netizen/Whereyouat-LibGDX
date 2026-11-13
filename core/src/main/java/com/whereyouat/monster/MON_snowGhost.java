@@ -16,20 +16,16 @@ import com.whereyouat.items.DropManager;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
 
-//jefe espectro de las nieves
 public class MON_snowGhost extends Entity {
-
     public GameScreen gp;
     public String name;
 
-    // Dimensiones del frame nativo y escala de renderizado
     private static final float FRAME_W_NATIVE = 192f;
     private static final float FRAME_H_NATIVE = 128f;
-    private static final float SCALE = 3.0f; // Ajusta este valor para cambiar el tamaño en pantalla
-    public static final float DRAW_WIDTH = FRAME_W_NATIVE * SCALE; // 576
-    public static final float DRAW_HEIGHT = FRAME_H_NATIVE * SCALE; // 384
+    private static final float SCALE = 3.0f;
+    public static final float DRAW_WIDTH = FRAME_W_NATIVE * SCALE;
+    public static final float DRAW_HEIGHT = FRAME_H_NATIVE * SCALE;
 
-    // Estados de animación e IA
     public static final int STATE_IDLE = 0;
     public static final int STATE_RUN = 1;
     public static final int STATE_ATTACK = 2;
@@ -39,20 +35,18 @@ public class MON_snowGhost extends Entity {
     private float knockbackDx = 0f;
     private float knockbackDy = 0f;
     private float hitTimer = 0f;
-    private static final float HIT_DURATION = 0.25f; // Duración del retroceso
+    private static final float HIT_DURATION = 0.25f;
 
     private float attackCooldown = 0f;
-    private static final float ATTACK_COOLDOWN = 2.5f;  // Enfriamiento entre ataques
-    private static final float ATTACK_RANGE  = 220f;    // Distancia desde la que dispara el ataque
-    private static final float KEEP_DISTANCE = 180f;    // Distancia mínima de seguridad (se queda parado)
-    private static final int   DAMAGE_FRAME  = 7;       // Frame en que el golpe conecta (1-based)
-    // ATTACK_DURATION se calcula dinámicamente para que cubra los 14 frames completos
-    // animSpeed ataque = 5 ticks/frame → 14 frames × (5/60s) ≈ 1.167 s
-    private static final float ATTACK_DURATION = 14 * (5f / 60f) + 0.05f; // ~1.22 s
+    private static final float ATTACK_COOLDOWN = 2.5f;
+    private static final float ATTACK_RANGE  = 220f;
+    private static final float KEEP_DISTANCE = 180f;
+    private static final int   DAMAGE_FRAME  = 7;
+
+    private static final float ATTACK_DURATION = 14 * (5f / 60f) + 0.05f;
     private float attackTimer = 0f;
     private boolean attackDamageDealt = false;
 
-    // Control para evitar entrega múltiple de la recompensa del bote
     private boolean rewardDelivered = false;
 
     public int state = STATE_IDLE;
@@ -71,19 +65,17 @@ public class MON_snowGhost extends Entity {
     private TextureRegion[][] dieFrames;
 
     public MON_snowGhost(GameScreen gp) {
-        super(0, 0, 120f); // worldX, worldY, speed
+        super(0, 0, 120f);
         this.gp = gp;
         this.name = "Espectro de las Nieves";
         this.maxLife = 24;
         this.life = maxLife;
 
-        // Hitbox sólida centrada en la base del sprite (escalada con SCALE)
-        // solidArea.y + solidArea.height define el "pie" para el Y-sorting
         float hitW = 52f * SCALE;
         float hitH = 35f * SCALE;
         solidArea.set(
-                (DRAW_WIDTH - hitW) / 2f,       // centrada horizontalmente
-                DRAW_HEIGHT - hitH - 20f,        // pegada al borde inferior (pies)
+                (DRAW_WIDTH - hitW) / 2f,
+                DRAW_HEIGHT - hitH - 20f,
                 hitW,
                 hitH);
         solidAreaDefaultX = solidArea.x;
@@ -94,7 +86,6 @@ public class MON_snowGhost extends Entity {
 
     @Override
     public boolean dealsContactDamage() {
-        // Daña a través de su ataque cuerpo a cuerpo
         return false;
     }
 
@@ -103,33 +94,25 @@ public class MON_snowGhost extends Entity {
         texture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
         textures.add(texture);
 
-        // Corta la hoja de celdas de 192 x 128 px
         TextureRegion[][] sheet = TextureRegion.split(texture, 192, 128);
 
-        // Fila 0: Idle (6 frames)
         idleFrames = extractRow(sheet, 0, 6);
 
-        // Fila 1: Walk (10 frames)
         runFrames = extractRow(sheet, 1, 10);
 
-        // Fila 2: Attack (14 frames)
         attackFrames = extractRow(sheet, 2, 14);
 
-        // Fila 3: Take Hit (7 frames)
         hitFrames = extractRow(sheet, 3, 7);
 
-        // Fila 4: Death (16 frames)
         dieFrames = extractRow(sheet, 4, 16);
     }
 
     private TextureRegion[][] extractRow(TextureRegion[][] sheet, int row, int count) {
         TextureRegion[][] frames = new TextureRegion[2][count];
         for (int i = 0; i < count; i++) {
-            // Mirando a la derecha (sprite original con Y invertido para el sistema de coordenadas)
             TextureRegion right = new TextureRegion(sheet[row][i]);
             right.flip(true, true);
 
-            // Mirando a la izquierda (volteado horizontalmente)
             TextureRegion left = new TextureRegion(sheet[row][i]);
             left.flip(false, true);
 
@@ -150,11 +133,9 @@ public class MON_snowGhost extends Entity {
             attackCooldown -= delta;
         }
 
-        // --- Estado ATTACK: reproduce los 14 frames completos ---
         if (state == STATE_ATTACK) {
             attackTimer -= delta;
 
-            // El daño conecta exactamente en el frame DAMAGE_FRAME (frame 7)
             if (!attackDamageDealt && spriteNum >= DAMAGE_FRAME && gp != null && gp.player != null) {
                 float ghostCenterX = worldX + solidArea.x + solidArea.width / 2f;
                 float ghostCenterY = worldY + solidArea.y + solidArea.height / 2f;
@@ -168,7 +149,6 @@ public class MON_snowGhost extends Entity {
                 }
             }
 
-            // Vuelve a moverse solo cuando el timer cubre todos los frames
             if (attackTimer <= 0f) {
                 state = STATE_RUN;
                 attackCooldown = ATTACK_COOLDOWN;
@@ -178,7 +158,6 @@ public class MON_snowGhost extends Entity {
             return;
         }
 
-        // --- Estado HIT: retroceso ---
         if (state == STATE_HIT) {
             float knockbackSpeed = 140f;
             float moveX = knockbackDx * knockbackSpeed * delta;
@@ -197,7 +176,6 @@ public class MON_snowGhost extends Entity {
             return;
         }
 
-        // --- Lógica de movimiento / idle ---
         if (gp == null || gp.player == null || gp.player.dead) {
             state = STATE_IDLE;
         } else {
@@ -211,7 +189,6 @@ public class MON_snowGhost extends Entity {
             float deltaY = playerCenterY - ghostCenterY;
             float distanceToPlayer = (float) Math.hypot(deltaX, deltaY);
 
-            // Orientar la mirada hacia el jugador
             if (Math.abs(deltaX) > Math.abs(deltaY)) {
                 direction = (deltaX < 0) ? "left" : "right";
             } else {
@@ -222,23 +199,16 @@ public class MON_snowGhost extends Entity {
             }
 
             if (distanceToPlayer > 1000f) {
-                // Fuera del rango de detección: idle
                 state = STATE_IDLE;
-
             } else if (distanceToPlayer <= ATTACK_RANGE && attackCooldown <= 0f) {
-                // En rango de ataque y cooldown listo: disparar ataque
                 state = STATE_ATTACK;
                 attackTimer = ATTACK_DURATION;
                 attackDamageDealt = false;
                 spriteNum = 1;
                 spriteCounter = 0;
-
             } else if (distanceToPlayer <= KEEP_DISTANCE) {
-                // Demasiado cerca pero cooldown activo: se queda en idle (mantiene distancia)
                 state = STATE_IDLE;
-
             } else {
-                // Se acerca caminando
                 state = STATE_RUN;
 
                 float moveX = (deltaX / distanceToPlayer) * speed * delta;
@@ -256,7 +226,6 @@ public class MON_snowGhost extends Entity {
                     movedY = true;
                 }
 
-                // Evasión de obstáculos
                 if (!movedX && !movedY) {
                     float slideStep = speed * delta;
                     if (Math.abs(deltaY) >= Math.abs(deltaX)) {
@@ -330,10 +299,10 @@ public class MON_snowGhost extends Entity {
             if (spriteNum > maxFrames) {
                 if (state == STATE_DIE) {
                     spriteNum = maxFrames;
-                    deleteBoss(); // Fin de la animación de muerte
+                    deleteBoss();
                     return;
                 } else if (state == STATE_ATTACK) {
-                    spriteNum = maxFrames; // Congela en el último frame hasta que el timer expire
+                    spriteNum = maxFrames;
                 } else {
                     spriteNum = 1;
                 }
@@ -377,7 +346,6 @@ public class MON_snowGhost extends Entity {
         TextureRegion region = sheet[side][frameIndex];
         if (region == null) return;
 
-        // Detección del nivel de agua bajo los pies del boss
         int waterLevel = 0;
         if (gp != null && gp.tileM != null && gp.mapGen != null) {
             float footX = worldX + solidArea.x + solidArea.width / 2f;
@@ -388,7 +356,6 @@ public class MON_snowGhost extends Entity {
         }
 
         if (waterLevel > 0 && gp != null && gp.camera != null) {
-            // Sumersión: recortar la parte inferior del sprite con scissor test
             float cutOff = (waterLevel == 1) ? 20f * SCALE : 35f * SCALE;
             float yShift  = (waterLevel == 1) ?  8f * SCALE : 16f * SCALE;
             float drawY    = worldY + yShift;
@@ -411,7 +378,6 @@ public class MON_snowGhost extends Entity {
             batch.flush();
             Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
 
-            // Espuma en la línea de flotación (misma lógica que frogger)
             TextureRegion foam = gp.tileM.getFoamRegion();
             if (foam != null) {
                 float foamY = drawY + DRAW_HEIGHT - cutOff - 4f;
@@ -447,10 +413,8 @@ public class MON_snowGhost extends Entity {
             spriteCounter = 0;
             hitTimer = HIT_DURATION;
 
-            // Al recibir daño, forzar cooldown de ataque para dar tiempo al jugador de alejarse
             attackCooldown = Math.max(attackCooldown, ATTACK_COOLDOWN);
 
-            // Calcular dirección del empuje (alejándose del jugador)
             float ghostCenterX = worldX + solidArea.x + solidArea.width / 2f;
             float ghostCenterY = worldY + solidArea.y + solidArea.height / 2f;
             float dx = ghostCenterX - playerX;
@@ -467,13 +431,11 @@ public class MON_snowGhost extends Entity {
         }
     }
 
-    //invocar espectro con gema de hielo
     public static boolean summon(GameScreen gp) {
         if (gp == null || gp.camera == null || gp.monster == null || gp.player == null || gp.mapGen == null) {
             return false;
         }
 
-        // 1. Obtener la posición del jugador en la cuadrícula de tiles
         int playerCol = (int) ((gp.player.worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
         int playerRow = (int) ((gp.player.worldY + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
 
@@ -481,14 +443,12 @@ public class MON_snowGhost extends Entity {
             return false;
         }
 
-        // 2. Comprobar que el jugador se encuentre en el bioma de nieve
         if (!gp.mapGen.isSnowBiome[playerCol][playerRow] || gp.mapGen.isDeepWater[playerCol][playerRow]) {
             gp.showNotification("¡Debes estar en el bioma de nieve para usar la Gema de Hielo!");
             Gdx.app.log("Espectro de las Nieves", "Invocación rechazada: fuera del bioma de nieve.");
             return false;
         }
 
-        // 3. Evitar invocar si ya existe un Espectro de las Nieves vivo
         for (Entity m : gp.monster) {
             if (m instanceof MON_snowGhost) {
                 gp.showNotification("¡El Espectro de las Nieves ya ha sido invocado!");
@@ -496,7 +456,6 @@ public class MON_snowGhost extends Entity {
             }
         }
 
-        // 4. Buscar espacio disponible en el array de monstruos
         int slotIndex = -1;
         for (int i = 0; i < gp.monster.length; i++) {
             if (gp.monster[i] == null) {
@@ -509,7 +468,6 @@ public class MON_snowGhost extends Entity {
             return false;
         }
 
-        // 5. Calcular posición de spawn fuera de la pantalla de la cámara
         float halfW = (gp.camera.viewportWidth * gp.camera.zoom) / 2f;
         float halfH = (gp.camera.viewportHeight * gp.camera.zoom) / 2f;
         float centerX = gp.camera.position.x;
@@ -523,19 +481,19 @@ public class MON_snowGhost extends Entity {
         for (int attempt = 0; attempt < 8; attempt++) {
             int side = (int) (Math.random() * 4);
             switch (side) {
-                case 0: // ARRIBA
+                case 0:
                     spawnX = centerX + (float) ((Math.random() - 0.5) * halfW * 1.5);
                     spawnY = centerY - halfH - DRAW_HEIGHT - margin;
                     break;
-                case 1: // ABAJO
+                case 1:
                     spawnX = centerX + (float) ((Math.random() - 0.5) * halfW * 1.5);
                     spawnY = centerY + halfH + margin;
                     break;
-                case 2: // IZQUIERDA
+                case 2:
                     spawnX = centerX - halfW - DRAW_WIDTH - margin;
                     spawnY = centerY + (float) ((Math.random() - 0.5) * halfH * 1.5);
                     break;
-                default: // DERECHA
+                default:
                     spawnX = centerX + halfW + margin;
                     spawnY = centerY + (float) ((Math.random() - 0.5) * halfH * 1.5);
                     break;
@@ -552,13 +510,11 @@ public class MON_snowGhost extends Entity {
             }
         }
 
-        // Si los intentos exteriores cayeron en agua profunda, generar a distancia prudencial en tile de nieve
         if (!positionFound) {
             spawnX = gp.player.worldX + TileManager.TILE_SIZE * 4f;
             spawnY = gp.player.worldY;
         }
 
-        // 6. Instanciar y posicionar al jefe
         MON_snowGhost boss = new MON_snowGhost(gp);
         boss.worldX = spawnX;
         boss.worldY = spawnY;
@@ -571,13 +527,11 @@ public class MON_snowGhost extends Entity {
     }
 
     private void deleteBoss() {
-        // 1. Entregar la recompensa única (Pieza de bote 3) de forma protegida contra duplicados
         if (!rewardDelivered && gp != null) {
             rewardDelivered = true;
             DropManager.deliverBossReward("Espectro de las Nieves", new BoatPiece3(), gp);
         }
 
-        // 2. Remover del array de monstruos del mundo
         if (gp != null && gp.monster != null) {
             for (int i = 0; i < gp.monster.length; i++) {
                 if (gp.monster[i] == this) {
@@ -587,7 +541,6 @@ public class MON_snowGhost extends Entity {
             }
         }
 
-        // 3. Liberar texturas
         dispose();
     }
 

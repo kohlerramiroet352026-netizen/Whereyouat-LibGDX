@@ -9,17 +9,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * TransitionRenderer — faithful 1:1 port of the original Swing TransitionRenderer.
- *
- * Pre-caches all rotation × blend level variants using pixel-level tinting
- * (tintGrass / tintSwampGrass) via Pixmap, exactly matching the original.
- *
- * Cache structure: [type 0-2][rotation 0-3][blendStep 0-10]
- *   type 0 = SIDE, type 1 = OUT_CORNER, type 2 = IN_CORNER
- */
 public class TransitionRenderer {
-
     public static final int TRANS_NONE       = 0;
     public static final int TRANS_SIDE       = 1;
     public static final int TRANS_OUT_CORNER = 2;
@@ -30,7 +20,6 @@ public class TransitionRenderer {
     public static final int ROT_180 = 2;
     public static final int ROT_270 = 3;
 
-    // Pre-rotated and tinted image cache: [type][rotation][blendLevel 0-10]
     private final TextureRegion[][][] rotated = new TextureRegion[3][4][11];
     private final TextureRegion[][][] rotatedSwamp = new TextureRegion[3][4][11];
 
@@ -39,17 +28,7 @@ public class TransitionRenderer {
     public TransitionRenderer() {
     }
 
-    /**
-     * Load and pre-cache all transition sprite variants.
-     * Called by TileManager after tile pixmaps are loaded.
-     *
-     * @param sideTex     transition_grass_sides texture
-     * @param outCornerTex transition_grass_out_corner texture
-     * @param inCornerTex  transition_grass_in_corner texture
-     * @param tileMgr     TileManager reference for tinting methods
-     */
     public void load(Texture sideTex, Texture outCornerTex, Texture inCornerTex, TileManager tileMgr) {
-        // Extract pixmaps from textures
         Pixmap sidePixmap = extractPixmap(sideTex);
         Pixmap outCornerPixmap = extractPixmap(outCornerTex);
         Pixmap inCornerPixmap  = extractPixmap(inCornerTex);
@@ -68,7 +47,7 @@ public class TransitionRenderer {
 
                     if (blendStep == 0) {
                         rotated[typeIdx][rotation][blendStep] = pixmapToRegion(rotatedPixmap);
-                        rotatedSwamp[typeIdx][rotation][blendStep] = rotated[typeIdx][rotation][blendStep]; // Same at blend 0
+                        rotatedSwamp[typeIdx][rotation][blendStep] = rotated[typeIdx][rotation][blendStep];
                     } else {
                         Pixmap snowPixmap = TileManager.tintGrass(rotatedPixmap, blend);
                         rotated[typeIdx][rotation][blendStep] = pixmapToRegion(snowPixmap);
@@ -80,24 +59,18 @@ public class TransitionRenderer {
                     }
                 }
 
-                // Dispose rotated pixmap if it's not the original
                 if (rotation != 0) {
                     rotatedPixmap.dispose();
                 }
             }
         }
 
-        // Dispose extracted pixmaps
         sidePixmap.dispose();
         outCornerPixmap.dispose();
         inCornerPixmap.dispose();
     }
 
-    /**
-     * Backwards-compatible load for existing code that doesn't pass TileManager.
-     */
     public void load(Texture sideTex, Texture outCornerTex, Texture inCornerTex) {
-        // Fallback: just store simple regions without tinting
         Pixmap sidePixmap = extractPixmap(sideTex);
         Pixmap outCornerPixmap = extractPixmap(outCornerTex);
         Pixmap inCornerPixmap  = extractPixmap(inCornerTex);
@@ -124,14 +97,13 @@ public class TransitionRenderer {
         inCornerPixmap.dispose();
     }
 
-    /** Extract a Pixmap from a Texture by reading its texture data. */
     private Pixmap extractPixmap(Texture tex) {
         if (tex == null) return null;
         if (!tex.getTextureData().isPrepared()) {
             tex.getTextureData().prepare();
         }
         Pixmap pixmap = tex.getTextureData().consumePixmap();
-        // Make a copy since consumePixmap may return a managed pixmap
+
         Pixmap copy = new Pixmap(pixmap.getWidth(), pixmap.getHeight(), Pixmap.Format.RGBA8888);
         copy.drawPixmap(pixmap, 0, 0);
         if (tex.getTextureData().disposePixmap()) {
@@ -140,7 +112,6 @@ public class TransitionRenderer {
         return copy;
     }
 
-    /** Create a TextureRegion from a Pixmap, Y-flipped for Y-down camera. */
     private TextureRegion pixmapToRegion(Pixmap pixmap) {
         Texture tex = new Texture(pixmap);
         tex.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
@@ -150,18 +121,6 @@ public class TransitionRenderer {
         return region;
     }
 
-    /**
-     * Renders a transition overlay at the given position.
-     *
-     * @param batch     SpriteBatch
-     * @param type      TRANS_SIDE, TRANS_OUT_CORNER, or TRANS_IN_CORNER
-     * @param rot       ROT_0..ROT_270
-     * @param x         World X position
-     * @param y         World Y position
-     * @param size      Tile size in pixels
-     * @param blendStep 0-10 for snow/swamp tint level
-     * @param isSwamp   true to use swamp tint, false for snow tint
-     */
     public void draw(SpriteBatch batch, int type, int rot, float x, float y, float size,
                      int blendStep, boolean isSwamp) {
         if (type < TRANS_SIDE || type > TRANS_IN_CORNER) return;
@@ -178,21 +137,14 @@ public class TransitionRenderer {
         batch.draw(region, x, y, size, size);
     }
 
-    /**
-     * Backwards-compatible draw with color tinting (legacy).
-     */
     public void draw(SpriteBatch batch, int type, int rot, float x, float y, float size,
                      float r, float g, float b, float a) {
         draw(batch, type, rot, x, y, size, 0, false);
     }
 
-    // =========================================================================
-    // Rotation helper (Pixmap-based, matching original AffineTransform rotations)
-    // =========================================================================
-
     private static Pixmap rotateCW(Pixmap src, int steps) {
         steps = ((steps % 4) + 4) % 4;
-        if (steps == 0) return src; // Return original, caller must not dispose
+        if (steps == 0) return src;
 
         int w = src.getWidth();
         int h = src.getHeight();
@@ -204,7 +156,6 @@ public class TransitionRenderer {
             Pixmap rotated = new Pixmap(ch, cw, Pixmap.Format.RGBA8888);
             for (int y = 0; y < ch; y++) {
                 for (int x = 0; x < cw; x++) {
-                    // 90° CW: (x, y) -> (ch - 1 - y, x)
                     rotated.drawPixel(ch - 1 - y, x, current.getPixel(x, y));
                 }
             }
@@ -215,10 +166,6 @@ public class TransitionRenderer {
         }
         return current;
     }
-
-    // =========================================================================
-    // Static analysis — determines transition type and rotation for one tile
-    // =========================================================================
 
     public static class TransInfo {
         public int type;

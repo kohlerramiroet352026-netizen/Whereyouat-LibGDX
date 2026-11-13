@@ -2,16 +2,7 @@ package com.whereyouat.map;
 
 import java.util.Random;
 
-/**
- * FeaturePlacer - Responsable de la colocación y validación de decoraciones naturales,
- * árboles, rocas de superficie, vegetación costera y elementos acuáticos.
- */
 public class FeaturePlacer {
-
-    /**
-     * Valida que ningún árbol, pino o sauce quede flotando en el agua,
-     * sobre acantilados sin base de tierra o fuera de los límites del mapa.
-     */
     public void validateTrees(MapGenerator map) {
         int cols = map.mapCols;
         int rows = map.mapRows;
@@ -23,17 +14,14 @@ public class FeaturePlacer {
                     continue;
                 }
 
-                // 1. Árboles altos (Robles 12-15, Pinos 16-20, Palmeras 21-22, Sauces 48-50)
                 if ((tree >= 12 && tree <= 22) || (tree >= MapGenerator.TILE_WILLOW1 && tree <= MapGenerator.TILE_WILLOW3)) {
                     boolean isPalm = (tree == MapGenerator.TILE_PALM1 || tree == MapGenerator.TILE_PALM2);
                     boolean invalid = false;
 
-                    // Límites del mapa para el footprint 2x3: [col, col+1] x [row-2, row]
                     if (col + 1 >= cols || row - 2 < 0 || row >= rows) {
                         invalid = true;
                     }
 
-                    // Chequear que no haya agua en el área 2x3 del árbol
                     if (!invalid) {
                         for (int tileCol = col; tileCol <= col + 1; tileCol++) {
                             for (int tileRow = row - 2; tileRow <= row; tileRow++) {
@@ -46,7 +34,6 @@ public class FeaturePlacer {
                         }
                     }
 
-                    // Chequear que la base del tronco descanse firmemente en suelo sólido
                     if (!invalid) {
                         if (isPalm) {
                             if (!map.isSand(col, row) || !map.isSand(col + 1, row)) {
@@ -57,7 +44,7 @@ public class FeaturePlacer {
                                 invalid = true;
                             }
                         }
-                        // La base no debe caer directamente a un acantilado de agua
+
                         if (row + 1 < rows && (map.isWater(col, row + 1) || map.isWater(col + 1, row + 1))) {
                             invalid = true;
                         }
@@ -67,7 +54,6 @@ public class FeaturePlacer {
                         map.mapTreeNum[col][row] = 0;
                     }
                 } else {
-                    // Vegetación menor (arbustos, pastos altos, troncos caídos)
                     if (map.isWater(col, row)) {
                         map.mapTreeNum[col][row] = 0;
                     } else if (isLandVegetation(tree)) {
@@ -81,9 +67,6 @@ public class FeaturePlacer {
         }
     }
 
-    /**
-     * Distribuye rocas en pasto abierto respetando distancias mínimas con árboles, agua y otras rocas.
-     */
     public void placeRocks(MapGenerator map, long seed) {
         Random rockRand = new Random(seed + 424242L);
         int cols = map.mapCols;
@@ -170,9 +153,6 @@ public class FeaturePlacer {
         }
     }
 
-    /**
-     * Coloca rocas de arenisca y vegetación de arena en zonas de playa secas.
-     */
     public void placeSandDecorations(MapGenerator map, long seed) {
         Random sandRand = new Random(seed + 848484L);
         int cols = map.mapCols;
@@ -196,7 +176,6 @@ public class FeaturePlacer {
                     continue;
                 }
 
-                // 1. Roca de arenisca (~0.7% de probabilidad)
                 if (sandRand.nextDouble() < 0.007) {
                     boolean blocked = false;
                     for (int dx = -4; dx <= 4; dx++) {
@@ -251,7 +230,6 @@ public class FeaturePlacer {
                     }
                 }
 
-                // 2. Pasto de arena (~5.5% de probabilidad)
                 if (sandRand.nextDouble() < 0.055) {
                     if (row + 1 < rows && map.isWater(col, row + 1)) {
                         continue;
@@ -263,9 +241,6 @@ public class FeaturePlacer {
         }
     }
 
-    /**
-     * Coloca manglares, nenúfares, espadañas y rocas sumergidas en aguas poco profundas de ríos y lagos.
-     */
     public void placeAquaticFeatures(MapGenerator map, long seed) {
         Random aquaticRand = new Random(seed + 551122L);
         int cols = map.mapCols;
@@ -277,7 +252,6 @@ public class FeaturePlacer {
                     continue;
                 }
 
-                // Fuera del océano abierto (distancia mínima de los bordes del mapa >= 75)
                 double distX = Math.min(col, cols - 1 - col);
                 double distY = Math.min(row, rows - 1 - row);
                 if (Math.min(distX, distY) < 75) {
@@ -311,7 +285,6 @@ public class FeaturePlacer {
                     if (nearShore5x5) break;
                 }
 
-                // 1. Manglares (exclusivo de pantano)
                 if (isSwamp && map.mapTreeNum[col][row] == 0) {
                     boolean pureWaterMangrove = true;
                     for (int checkCol = col - 1; checkCol <= col + 2; checkCol++) {
@@ -365,7 +338,6 @@ public class FeaturePlacer {
                     continue;
                 }
 
-                // 2. Espadañas (Cattails)
                 if (!isSnow && pureWater3x3 && nearShore5x5) {
                     boolean nearMangrove = false;
                     for (int offsetX = -2; offsetX <= 2; offsetX++) {
@@ -387,7 +359,6 @@ public class FeaturePlacer {
                     }
                 }
 
-                // 3. Nenúfares (Lilipads)
                 if (isSwamp && map.mapTreeNum[col][row] == 0) {
                     boolean cardinalWater = map.isWater(col, row - 1) && map.isWater(col, row + 1)
                             && map.isWater(col - 1, row) && map.isWater(col + 1, row);
@@ -419,7 +390,6 @@ public class FeaturePlacer {
                     }
                 }
 
-                // 4. Rocas sumergidas
                 if (!isSnow && pureWater3x3 && map.mapTreeNum[col][row] == 0) {
                     if (aquaticRand.nextDouble() < 0.0022) {
                         boolean nearObstacle = false;
@@ -458,4 +428,3 @@ public class FeaturePlacer {
                tree == MapGenerator.TILE_SNOWY_BUSH3_LARGE;
     }
 }
-

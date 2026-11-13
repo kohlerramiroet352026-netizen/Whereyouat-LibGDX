@@ -9,46 +9,25 @@ import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Adds some utilities to ensure that the JVM was started with the
- * {@code -XstartOnFirstThread} argument, which is required on macOS for LWJGL 3
- * to function. Also helps on Windows when starting with some JVMs that
- * don't support LWJGL 3 well without explicit setup.
- * <br>
- * Based on https://github.com/spencer-lord/StartupHelper
- */
 public class StartupHelper {
-
     private static final String JVM_RESTARTED_ARG = "jvmIsRestarted";
 
     private StartupHelper() {
         throw new UnsupportedOperationException();
     }
 
-    /**
-     * Starts a new JVM if the application was started on macOS without the
-     * {@code -XstartOnFirstThread} argument. This also handles some other
-     * edge cases on various platforms.
-     *
-     * @return whether a new JVM was started and thus no code should be executed.
-     *         Be sure to test for this and exit the application immediately if
-     *         this method returns true!
-     */
     public static boolean startNewJvmIfRequired(boolean redirectOutput) {
         String osName = System.getProperty("os.name").toLowerCase();
         if (!osName.contains("mac")) {
             return false;
         }
 
-        // Check if JVM is already restarted
         if ("true".equals(System.getProperty(JVM_RESTARTED_ARG))) {
             return false;
         }
 
-        // Check -XstartOnFirstThread
         long pid = LibC.getpid();
 
-        // Check whether -XstartOnFirstThread is already present
         List<String> jvmArgs = ManagementFactory.getRuntimeMXBean().getInputArguments();
         boolean hasStartOnFirstThread = false;
         for (String jvmArg : jvmArgs) {
@@ -62,7 +41,6 @@ public class StartupHelper {
             return false;
         }
 
-        // Restart the JVM with -XstartOnFirstThread
         String separator = System.getProperty("file.separator");
         String classpath = System.getProperty("java.class.path");
         String mainClass = System.getenv("JAVA_MAIN_CLASS_" + pid);
@@ -76,7 +54,6 @@ public class StartupHelper {
             }
         }
 
-        // Build command to start a new JVM with -XstartOnFirstThread
         ArrayList<String> jvmArgsNew = new ArrayList<String>();
         String javaExec = System.getProperty("java.home") + separator + "bin" + separator + "java";
         jvmArgsNew.add(javaExec);
@@ -110,4 +87,3 @@ public class StartupHelper {
         return startNewJvmIfRequired(true);
     }
 }
-

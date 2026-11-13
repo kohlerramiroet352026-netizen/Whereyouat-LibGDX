@@ -16,17 +16,13 @@ import com.whereyouat.items.DropManager;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
 
-//jefe rey hongo
 public class MON_mushroom extends Entity {
-
     public GameScreen gp;
     public String name;
 
-    // Dimensiones proporcionales 80:64 (5:4). Tamaño de jefe (~tamaño de un árbol)
     public static final float DRAW_WIDTH = 350f;
     public static final float DRAW_HEIGHT = 280f;
 
-    // Constantes de estados de animación e IA
     public static final int STATE_IDLE = 0;
     public static final int STATE_RUN = 1;
     public static final int STATE_ATTACK = 2;
@@ -34,18 +30,15 @@ public class MON_mushroom extends Entity {
     public static final int STATE_HIT = 4;
     public static final int STATE_DIE = 5;
 
-    // Constantes de orientación horizontal
     private static final int SIDE_LEFT = 0;
     private static final int SIDE_RIGHT = 1;
 
     public int state = STATE_IDLE;
     private int previousState = STATE_IDLE;
 
-    // Control del ciclo de ataque
     private boolean isAttacking = false;
     private boolean attackDamageDealt = false;
 
-    // Colección de texturas para liberar recursos en dispose()
     private final List<Texture> textures = new ArrayList<>();
     private TextureRegion[][] idleFrames;
     private TextureRegion[][] runFrames;
@@ -68,8 +61,6 @@ public class MON_mushroom extends Entity {
         maxLife = 20;
         life = maxLife;
 
-        // Hitbox compacta en la base de los pies (40x26 px) para permitir pasar entre
-        // árboles
         solidArea.set(155f, 246f, 40f, 26f);
         solidAreaDefaultX = solidArea.x;
         solidAreaDefaultY = solidArea.y;
@@ -79,7 +70,6 @@ public class MON_mushroom extends Entity {
 
     @Override
     public boolean dealsContactDamage() {
-        // El hongo no daña por mero roce, daña mediante su ataque en el frame 7
         return false;
     }
 
@@ -106,25 +96,24 @@ public class MON_mushroom extends Entity {
             TextureRegion right = new TextureRegion(sheet[0][i]);
             right.flip(true, true);
 
-            frames[SIDE_LEFT][i] = left; // Mirando a la izquierda
-            frames[SIDE_RIGHT][i] = right; // Mirando a la derecha
+            frames[SIDE_LEFT][i] = left;
+            frames[SIDE_RIGHT][i] = right;
         }
         return frames;
     }
 
     @Override
     public void update(float delta) {
-        // si esta muriendo, solo reproduce la animacion de muerte
         if (state == STATE_DIE) {
             updateAnimation(delta);
             return;
         }
-        // si esta en stun, se queda quieto
+
         if (state == STATE_STUN) {
             updateAnimation(delta);
             return;
         }
-        // si recibio un golpe, se va un poco para atras y muestra la animacion de hit
+
         if (state == STATE_HIT) {
             float knockbackSpeed = 120f;
             float moveX = knockbackDx * knockbackSpeed * delta;
@@ -144,27 +133,22 @@ public class MON_mushroom extends Entity {
             state = STATE_IDLE;
             isAttacking = false;
         } else {
-            // Posición de los pies del hongo y del jugador en coordenadas del mundo
             float mushroomFootX = worldX + solidArea.x + solidArea.width / 2f;
             float mushroomFootY = worldY + solidArea.y + solidArea.height / 2f;
             float playerFootX = gp.player.worldX + gp.player.solidArea.x + gp.player.solidArea.width / 2f;
             float playerFootY = gp.player.worldY + gp.player.solidArea.y + gp.player.solidArea.height / 2f;
 
-            // Vector de distancia hacia el jugador
             float deltaX = playerFootX - mushroomFootX;
             float deltaY = playerFootY - mushroomFootY;
             float distanceToPlayer = (float) Math.hypot(deltaX, deltaY);
 
-            // Orientación visual según la posición del jugador
             if (!isAttacking && deltaX != 0) {
                 lastHorizontal = (deltaX < 0) ? "left" : "right";
             }
 
-            // Máquina de estados: Ataque, Persecución o Reposo
             if (isAttacking) {
                 state = STATE_ATTACK;
 
-                // El daño ocurre exactamente en el frame 7 de la animación de ataque
                 if (spriteNum >= 7 && !attackDamageDealt) {
                     if (distanceToPlayer <= 125f || intersects(gp.player)) {
                         gp.player.contactMonster();
@@ -172,7 +156,6 @@ public class MON_mushroom extends Entity {
                     attackDamageDealt = true;
                 }
             } else {
-                // Si está a rango de golpe, inicia ataque
                 if (distanceToPlayer <= 110f || intersects(gp.player)) {
                     isAttacking = true;
                     attackDamageDealt = false;
@@ -180,7 +163,6 @@ public class MON_mushroom extends Entity {
                     spriteNum = 1;
                     spriteCounter = 0;
                 } else if (distanceToPlayer <= 1200f) {
-                    // Si el jugador está dentro del rango de detección, lo persigue
                     state = STATE_RUN;
 
                     float currentSpeed = speed;
@@ -200,32 +182,27 @@ public class MON_mushroom extends Entity {
                     boolean movedX = false;
                     boolean movedY = false;
 
-                    // Moverse en X si no colisiona con un árbol o roca
                     float nextX = worldX + moveX;
                     if (!collides(nextX, worldY)) {
                         worldX = nextX;
                         movedX = true;
                     }
 
-                    // Moverse en Y si no colisiona con un árbol o roca
                     float nextY = worldY + moveY;
                     if (!collides(worldX, nextY)) {
                         worldY = nextY;
                         movedY = true;
                     }
 
-                    // Evasión: si se frena contra un árbol de frente, se desvía al costado
                     if (!movedX && !movedY) {
                         float slideStep = currentSpeed * delta;
                         if (Math.abs(deltaY) >= Math.abs(deltaX)) {
-                            // Si intentaba moverse verticalmente, intenta deslizarse en horizontal
                             if (!collides(worldX + slideStep, worldY)) {
                                 worldX += slideStep;
                             } else if (!collides(worldX - slideStep, worldY)) {
                                 worldX -= slideStep;
                             }
                         } else {
-                            // Si intentaba moverse horizontalmente, intenta deslizarse en vertical
                             if (!collides(worldX, worldY + slideStep)) {
                                 worldY += slideStep;
                             } else if (!collides(worldX, worldY - slideStep)) {
@@ -236,7 +213,6 @@ public class MON_mushroom extends Entity {
 
                     clampToBounds();
                 } else {
-                    // Si el jugador está fuera de rango, queda en reposo
                     state = STATE_IDLE;
                 }
             }
@@ -364,7 +340,6 @@ public class MON_mushroom extends Entity {
         if (region == null)
             return;
 
-        // Detección de nivel de agua para sumersión
         int waterLevel = 0;
         if (gp != null && gp.tileM != null && gp.mapGen != null) {
             float footX = worldX + solidArea.x + solidArea.width / 2f;
@@ -374,7 +349,6 @@ public class MON_mushroom extends Entity {
             waterLevel = gp.tileM.getWaterLevel(gp.mapGen, col, row);
         }
 
-        // Sumersión en agua con OpenGL Scissor Test
         if (waterLevel > 0 && gp != null && gp.camera != null) {
             float cutOff = (waterLevel == 1) ? 28f : 56f;
             float yShift = (waterLevel == 1) ? 10f : 20f;
@@ -398,7 +372,6 @@ public class MON_mushroom extends Entity {
             batch.flush();
             Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
 
-            // Espuma en la línea de agua
             TextureRegion foam = gp.tileM.getFoamRegion();
             if (foam != null) {
                 float foamY = drawY + DRAW_HEIGHT - cutOff - 4f;
@@ -420,19 +393,16 @@ public class MON_mushroom extends Entity {
         Gdx.app.log("Rey hongo", "Vida restante: " + life + "/" + maxLife);
 
         if (this.life <= 0) {
-            // entra en la animacion final de muerte
             state = STATE_DIE;
             spriteNum = 1;
             spriteCounter = 0;
             isAttacking = false;
         } else {
-            // entra en hit, si estana en stun, lo cancela
             state = STATE_HIT;
             spriteNum = 1;
             spriteCounter = 0;
             isAttacking = false;
 
-            // calcula el empuje para salir despedido lejos del jugador
             float bossCenterX = worldX + solidArea.x + solidArea.width / 2f;
             float bossCenterY = worldY + solidArea.y + solidArea.height / 2f;
             float dx = bossCenterX - playerX;
@@ -449,13 +419,11 @@ public class MON_mushroom extends Entity {
         }
     }
 
-    // Invocación del Rey Hongo mediante el ítem Odd Mushroom
     public static boolean summon(GameScreen gp) {
         if (gp == null || gp.camera == null || gp.monster == null || gp.player == null || gp.mapGen == null) {
             return false;
         }
 
-        // Obtener la posición del jugador en el mapa
         int col = (int) ((gp.player.worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
         int row = (int) ((gp.player.worldY + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
 
@@ -463,9 +431,8 @@ public class MON_mushroom extends Entity {
             return false;
         }
 
-        // Permitir invocar solo en bosque y planicies comunes (rechazar nieve, pantano, playa y agua)
-        if (gp.mapGen.isSnowBiome[col][row] 
-                || gp.mapGen.isSwampBiome[col][row] 
+        if (gp.mapGen.isSnowBiome[col][row]
+                || gp.mapGen.isSwampBiome[col][row]
                 || gp.mapGen.isBeachBiome[col][row]
                 || gp.mapGen.isDeepWater[col][row]
                 || gp.mapGen.isShallowWater[col][row]) {
@@ -474,7 +441,6 @@ public class MON_mushroom extends Entity {
             return false;
         }
 
-        // Evitar invocar si ya hay un Rey Hongo vivo en el mapa
         for (Entity m : gp.monster) {
             if (m instanceof MON_mushroom) {
                 gp.showNotification("¡El Rey Hongo ya ha sido invocado!");
@@ -482,7 +448,6 @@ public class MON_mushroom extends Entity {
             }
         }
 
-        // Buscar un espacio libre en el array de monstruos
         int slotIndex = -1;
         for (int i = 0; i < gp.monster.length; i++) {
             if (gp.monster[i] == null) {
@@ -492,10 +457,9 @@ public class MON_mushroom extends Entity {
         }
         if (slotIndex == -1) {
             gp.showNotification("No hay espacio en el mundo para invocar al jefe.");
-            return false; // Array lleno
+            return false;
         }
 
-        // Obtener el área visible de la cámara
         float halfW = (gp.camera.viewportWidth * gp.camera.zoom) / 2f;
         float halfH = (gp.camera.viewportHeight * gp.camera.zoom) / 2f;
         float centerX = gp.camera.position.x;
@@ -509,19 +473,19 @@ public class MON_mushroom extends Entity {
         for (int attempt = 0; attempt < 8; attempt++) {
             int side = (int) (Math.random() * 4);
             switch (side) {
-                case 0: // ARRIBA
+                case 0:
                     spawnX = centerX + (float) ((Math.random() - 0.5) * halfW * 1.5);
                     spawnY = centerY - halfH - DRAW_HEIGHT - margin;
                     break;
-                case 1: // ABAJO
+                case 1:
                     spawnX = centerX + (float) ((Math.random() - 0.5) * halfW * 1.5);
                     spawnY = centerY + halfH + margin;
                     break;
-                case 2: // IZQUIERDA
+                case 2:
                     spawnX = centerX - halfW - DRAW_WIDTH - margin;
                     spawnY = centerY + (float) ((Math.random() - 0.5) * halfH * 1.5);
                     break;
-                default: // DERECHA
+                default:
                     spawnX = centerX + halfW + margin;
                     spawnY = centerY + (float) ((Math.random() - 0.5) * halfH * 1.5);
                     break;
@@ -543,13 +507,11 @@ public class MON_mushroom extends Entity {
             spawnY = gp.player.worldY;
         }
 
-        // Instanciar al jefe y ubicarlo
         MON_mushroom boss = new MON_mushroom(gp);
         boss.worldX = spawnX;
         boss.worldY = spawnY;
         boss.clampToBounds();
 
-        // Registrar en el juego
         gp.monster[slotIndex] = boss;
         gp.showNotification("El olor a esporas recorre tu nariz, El Rey Hongo ha aparecido...");
         Gdx.app.log("Rey Hongo", "Invocado exitosamente en slot " + slotIndex);
@@ -557,7 +519,6 @@ public class MON_mushroom extends Entity {
     }
 
     private void deleteBoss() {
-        // Entregar la recompensa única (Pieza de bote 1) protegida contra duplicados
         if (!rewardDelivered && gp != null) {
             rewardDelivered = true;
             DropManager.deliverBossReward("Rey Hongo", new BoatPiece1(), gp);

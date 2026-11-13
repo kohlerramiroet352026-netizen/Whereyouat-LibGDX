@@ -7,13 +7,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector3;
 
-/**
- * TileDecorationRenderer - Responsable del renderizado de árboles, arbustos, rocas,
- * vegetación sumergida y elementos acuáticos con soporte de ordenamiento en profundidad (Y-sorting)
- * y recorte por agua mediante tijera OpenGL (GL Scissor).
- */
 public class TileDecorationRenderer {
-
     private static final int TILE_SIZE = TileManager.TILE_SIZE;
     private static final int SCALE = TileManager.SCALE;
 
@@ -22,7 +16,6 @@ public class TileDecorationRenderer {
                                 float playerWorldY, boolean inFront, OrthographicCamera camera,
                                 TextureRegion[] tiles, TextureRegion[] illuminatedTreeCache,
                                 TileTintPipeline tintPipeline, FoliageSwayManager foliageSway) {
-
         int startCol = Math.max(0, (int) (minX / TILE_SIZE) - 2);
         int startRow = Math.max(0, (int) (minY / TILE_SIZE) - 2);
         int endCol = Math.min(map.mapCols - 1, (int) (maxX / TILE_SIZE) + 4);
@@ -288,7 +281,6 @@ public class TileDecorationRenderer {
                                   float minX, float minY, float maxX, float maxY,
                                   TextureRegion[] tiles, TextureRegion[] illuminatedTreeCache,
                                   TileTintPipeline tintPipeline) {
-
         int startCol = Math.max(0, (int) (minX / TILE_SIZE) - 2);
         int startRow = Math.max(0, (int) (minY / TILE_SIZE) - 2);
         int endCol = Math.min(map.mapCols - 1, (int) (maxX / TILE_SIZE) + 4);
@@ -349,4 +341,3 @@ public class TileDecorationRenderer {
         batch.setColor(1f, 1f, 1f, 1f);
     }
 }
-

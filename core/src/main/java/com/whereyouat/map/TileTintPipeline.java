@@ -10,30 +10,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-/**
- * TileTintPipeline - Responsable de la manipulación de píxeles a nivel de CPU (HSB),
- * generación de variantes de bioma para agua y vegetación (nieve y pantano),
- * espumas y sprites parcialmente sumergidos.
- */
 public class TileTintPipeline {
-
-    // Cachés de variantes tintadas
     private final TextureRegion[][] snowGrass = new TextureRegion[7][11];
     private final TextureRegion[][] swampGrass = new TextureRegion[7][11];
     private final TextureRegion[][][] tintedWater = new TextureRegion[4][11][11];
     private final TextureRegion[][][] tintedSwampWater = new TextureRegion[4][11][11];
 
-    // Caché de 12 variantes de espuma en bordes de agua
     private final TextureRegion[] foamCache = new TextureRegion[12];
 
-    // Caché de sprites sumergidos en agua o lodo
     private final TextureRegion[][][] submergedTileCache = new TextureRegion[60][5][2];
 
     private final List<Texture> generatedTextures = new ArrayList<>();
-
-    // =========================================================================
-    // ALGORITMOS DE TINTADO HSB A NIVEL DE PÍXEL (CPU)
-    // =========================================================================
 
     public static Pixmap tintGrass(Pixmap sourcePixmap, float blend) {
         if (sourcePixmap == null) return null;
@@ -325,10 +312,6 @@ public class TileTintPipeline {
         return region;
     }
 
-    // =========================================================================
-    // CONSTRUCCIÓN DE CACHÉS
-    // =========================================================================
-
     public void buildTintCaches(TextureRegion[] tiles, Pixmap[] tilePixmaps) {
         int[] grassIndices = { 0, 1, 2, 3, 23, 25, 26 };
         for (int tileIdx : grassIndices) {
@@ -488,8 +471,6 @@ public class TileTintPipeline {
         return dest;
     }
 
-    // --- Getters de regiones cacheadas ---
-
     public TextureRegion getSnowGrassRegion(int snowIdx, int step) {
         return snowGrass[snowIdx][step];
     }
@@ -518,4 +499,3 @@ public class TileTintPipeline {
         generatedTextures.clear();
     }
 }
-

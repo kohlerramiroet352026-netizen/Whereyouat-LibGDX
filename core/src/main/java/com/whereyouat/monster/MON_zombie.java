@@ -17,18 +17,15 @@ import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
 
 public class MON_zombie extends Entity {
-
 	public GameScreen gp;
 	public String name;
 
-	// Escala: 16x16 × 3 = 48px (exactamente 1 tile)
 	private static final float FRAME_W_NATIVE = 16f;
 	private static final float FRAME_H_NATIVE = 16f;
-	private static final float SCALE = 3.0f; // ×4.5 → 72×144 px en pantalla
-	public static final float DRAW_WIDTH = FRAME_W_NATIVE * SCALE; // 72
-	public static final float DRAW_HEIGHT = FRAME_H_NATIVE * SCALE; // 144
+	private static final float SCALE = 3.0f;
+	public static final float DRAW_WIDTH = FRAME_W_NATIVE * SCALE;
+	public static final float DRAW_HEIGHT = FRAME_H_NATIVE * SCALE;
 
-	// --- Estados (igual que Mushroom y Frogger) ---
 	public static final int STATE_WALK = 0;
 	public static final int STATE_HIT = 1;
 	public static final int STATE_DIE = 2;
@@ -41,31 +38,23 @@ public class MON_zombie extends Entity {
 	public int state = STATE_WALK;
 	private int previousState = STATE_WALK;
 
-	// Knockback (igual que Mushroom)
 	private float knockbackDx = 0f;
 	private float knockbackDy = 0f;
 
-	// Control de drops y causa de muerte
 	private boolean dropProcessed = false;
 	private boolean killedByPlayer = false;
 
-	// Texturas (para liberar memoria en dispose)
 	private final List<Texture> textures = new ArrayList<>();
 
-	// Frames por dirección (8 frames cada uno, tira vertical)
 	private TextureRegion[] downFrames;
 	private TextureRegion[] upFrames;
 	private TextureRegion[] leftFrames;
 	private TextureRegion[] rightFrames;
-	private TextureRegion[] dieFrames; // ← nuevo: gohst_die.png
+	private TextureRegion[] dieFrames;
 	private TextureRegion[] idleFrames;
 
-	// Contador para el deambular aleatorio (cuando el jugador está lejos)
 	private int actionLockCounter = 0;
 
-	// -------------------------------------------------------
-	// CONSTRUCTOR
-	// -------------------------------------------------------
 	public MON_zombie(GameScreen gp) {
 		super(0, 0, 80f);
 		this.gp = gp;
@@ -75,7 +64,6 @@ public class MON_zombie extends Entity {
 		life = maxLife;
 		direction = "down";
 
-		// Hitbox centrada dentro del tile 48x48
 		float hitW = DRAW_WIDTH * 0.55f;
 		float hitH = DRAW_HEIGHT * 0.22f;
 		solidArea.set(
@@ -89,10 +77,6 @@ public class MON_zombie extends Entity {
 		loadSprites();
 	}
 
-	// -------------------------------------------------------
-	// CARGA DE SPRITES
-	// Sin cambios respecto a antes, solo se agrega dieFrames
-	// -------------------------------------------------------
 	private void loadSprites() {
 		downFrames = loadColumn("monster/zomb_walk_down.png", FRAMES_DOWN);
 		idleFrames = loadColumn("monster/zomb_idle.png", FRAMES_IDLE);
@@ -102,7 +86,6 @@ public class MON_zombie extends Entity {
 		dieFrames = loadColumn("monster/zomb_die.png", FRAMES_DIE);
 	}
 
-	//cargar columna de sprites
 	private TextureRegion[] loadColumn(String path, int frameCount) {
 		Texture tex = new Texture(Gdx.files.internal(path));
 		tex.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
@@ -114,21 +97,16 @@ public class MON_zombie extends Entity {
 
 		for (int i = 0; i < frameCount; i++) {
 			TextureRegion r = new TextureRegion(tex, 0, i * fh, fw, fh);
-			r.flip(false, true); // Y-down → Y-up para LibGDX
+			r.flip(false, true);
 			frames[i] = r;
 		}
 		return frames;
 	}
 
-	// -------------------------------------------------------
-	// RECIBIR DAÑO — igual que Mushroom.takeDamage()
-	// Lo llama Player.attack() cuando el ataque conecta
-	// -------------------------------------------------------
 	public void takeDamage(int damage, float playerX, float playerY) {
 		if (state == STATE_DIE)
-			return; // ya muerto, ignorar
+			return;
 
-		// Solo marcar como muerto por el jugador si el daño no es el kill del sol (9999)
 		if (damage < 9000) {
 			killedByPlayer = true;
 		}
@@ -137,17 +115,14 @@ public class MON_zombie extends Entity {
 		Gdx.app.log("Zombie", "Vida restante: " + life + "/" + maxLife);
 
 		if (life <= 0) {
-			// Pasa a animación de muerte
 			state = STATE_DIE;
 			spriteNum = 1;
 			spriteCounter = 0;
 		} else {
-			// Pasa a estado golpeado con knockback
 			state = STATE_HIT;
 			spriteNum = 1;
 			spriteCounter = 0;
 
-			// Dirección del knockback: empuja al Ghost LEJOS del jugador
 			float ghostCX = worldX + solidArea.x + solidArea.width / 2f;
 			float ghostCY = worldY + solidArea.y + solidArea.height / 2f;
 			float dx = ghostCX - playerX;
@@ -163,19 +138,13 @@ public class MON_zombie extends Entity {
 		}
 	}
 
-	// -------------------------------------------------------
-	// UPDATE — máquina de estados
-	// -------------------------------------------------------
 	@Override
 	public void update(float delta) {
-
-		// DIE: solo reproduce la animación y espera que updateAnimation lo elimine
 		if (state == STATE_DIE) {
 			updateAnimation(delta);
 			return;
 		}
 
-		// HIT: retrocede con knockback, luego vuelve a WALK
 		if (state == STATE_HIT) {
 			float knockbackSpeed = 100f;
 			float moveX = knockbackDx * knockbackSpeed * delta;
@@ -188,7 +157,6 @@ public class MON_zombie extends Entity {
 			return;
 		}
 
-		// WALK: persigue al jugador si está cerca, deambula si está lejos
 		if (gp != null && gp.player != null && !gp.player.dead) {
 			float ghostCX = worldX + solidArea.x + solidArea.width / 2f;
 			float ghostCY = worldY + solidArea.y + solidArea.height / 2f;
@@ -200,8 +168,6 @@ public class MON_zombie extends Entity {
 			float dist = (float) Math.hypot(dx, dy);
 
 			if (dist <= 1200f && !gp.player.isHiddenInBush) {
-				// --- PERSECUCIÓN ---
-				// Mueve al Ghost hacia el jugador
 				if (dist > 1f) {
 					float moveX = (dx / dist) * speed * delta;
 					float moveY = (dy / dist) * speed * delta;
@@ -211,14 +177,12 @@ public class MON_zombie extends Entity {
 						worldY += moveY;
 				}
 
-				// La dirección visual sigue al eje dominante
 				if (Math.abs(dx) >= Math.abs(dy)) {
 					direction = dx > 0 ? "right" : "left";
 				} else {
 					direction = dy > 0 ? "down" : "up";
 				}
 			} else {
-				// --- DEAMBULAR (igual que antes) ---
 				setRandomAction(delta);
 			}
 		} else {
@@ -228,7 +192,6 @@ public class MON_zombie extends Entity {
 		updateAnimation(delta);
 	}
 
-	// Lógica de movimiento aleatorio (sacada del update original)
 	private void setRandomAction(float delta) {
 		actionLockCounter++;
 		if (actionLockCounter >= 120) {
@@ -272,11 +235,7 @@ public class MON_zombie extends Entity {
 				solidArea.height);
 	}
 
-	// -------------------------------------------------------
-	// ANIMACIÓN — igual que Mushroom.updateAnimation()
-	// -------------------------------------------------------
 	private void updateAnimation(float delta) {
-		// Resetear al cambiar de estado
 		if (state != previousState) {
 			previousState = state;
 			spriteNum = 1;
@@ -284,7 +243,7 @@ public class MON_zombie extends Entity {
 		}
 
 		float animSpeed;
-		int maxFrames = 4; // los spritesheets de zombie tienen 4 frames
+		int maxFrames = 4;
 
 		switch (state) {
 			case STATE_HIT:
@@ -295,7 +254,7 @@ public class MON_zombie extends Entity {
 				break;
 			default:
 				animSpeed = 6f;
-				break; // WALK
+				break;
 		}
 
 		spriteCounter += delta * 60f;
@@ -303,11 +262,11 @@ public class MON_zombie extends Entity {
 			spriteNum++;
 			if (spriteNum > maxFrames) {
 				if (state == STATE_DIE) {
-					spriteNum = maxFrames; // congela en el último frame
-					deleteGhost(); // se elimina del mundo
+					spriteNum = maxFrames;
+					deleteGhost();
 					return;
 				} else if (state == STATE_HIT) {
-					state = STATE_WALK; // vuelve a caminar
+					state = STATE_WALK;
 				}
 				spriteNum = 1;
 			}
@@ -315,10 +274,7 @@ public class MON_zombie extends Entity {
 		}
 	}
 
-	// Se elimina a sí mismo del array de monstruos de GameScreen
-	// (igual que deleteBoss en Mushroom)
 	private void deleteGhost() {
-		// Solo procesar drop si fue el jugador quien lo mató
 		if (killedByPlayer && !dropProcessed && gp != null) {
 			dropProcessed = true;
 			DropManager.processMonsterDrop(this, gp);
@@ -335,14 +291,10 @@ public class MON_zombie extends Entity {
 		dispose();
 	}
 
-	// -------------------------------------------------------
-	// DIBUJADO
-	// -------------------------------------------------------
 	@Override
 	public void draw(SpriteBatch batch) {
 		TextureRegion[] frames;
 
-		// En muerte usa dieFrames sin importar la dirección
 		if (state == STATE_DIE) {
 			frames = dieFrames;
 		} else {
@@ -373,14 +325,12 @@ public class MON_zombie extends Entity {
 		if (region == null)
 			return;
 
-		// Parpadeo cuando recibe daño
 		if (state == STATE_HIT && (spriteNum / 2) % 2 == 0) {
 			batch.setColor(1f, 1f, 1f, 0.3f);
 		} else {
 			batch.setColor(1f, 1f, 1f, 1f);
 		}
 
-		// Detección de nivel de agua para sumersión
 		int waterLevel = 0;
 		if (gp != null && gp.tileM != null && gp.mapGen != null) {
 			float footX = worldX + solidArea.x + solidArea.width / 2f;
@@ -390,7 +340,6 @@ public class MON_zombie extends Entity {
 			waterLevel = gp.tileM.getWaterLevel(gp.mapGen, col, row);
 		}
 
-		// Sumersión en agua con OpenGL Scissor Test
 		if (waterLevel > 0 && gp != null && gp.camera != null) {
 			float cutOff = (waterLevel == 1) ? 16f : 26f;
 			float yShift = (waterLevel == 1) ? 4f : 8f;
@@ -414,7 +363,6 @@ public class MON_zombie extends Entity {
 			batch.flush();
 			Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
 
-			// Espuma en la línea de agua
 			TextureRegion foam = gp.tileM.getFoamRegion();
 			if (foam != null) {
 				float foamY = drawY + DRAW_HEIGHT - cutOff - 3f;
@@ -426,12 +374,9 @@ public class MON_zombie extends Entity {
 			batch.draw(region, worldX, worldY, DRAW_WIDTH, DRAW_HEIGHT);
 		}
 
-		batch.setColor(1f, 1f, 1f, 1f); // siempre restaurar el color
+		batch.setColor(1f, 1f, 1f, 1f);
 	}
 
-	// -------------------------------------------------------
-	// DISPOSE
-	// -------------------------------------------------------
 	@Override
 	public void dispose() {
 		for (Texture tex : textures) {

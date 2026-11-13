@@ -2,17 +2,7 @@ package com.whereyouat.map;
 
 import java.util.Random;
 
-/**
- * RiverGenerator - Responsable de la generación de ríos procedimentales y sus bancos de arena.
- * Extraído de MapGenerator para mejorar la modularidad y legibilidad.
- */
 public class RiverGenerator {
-
-    /**
-     * Genera cursos de agua y bancos de arena fluviales sobre la matriz del mapa.
-     *
-     * @param map Instancia de MapGenerator donde se registrarán el agua y arena de los ríos.
-     */
     public void generateRivers(MapGenerator map) {
         int cols = map.mapCols;
         int rows = map.mapRows;
@@ -22,11 +12,10 @@ public class RiverGenerator {
         map.riverWater = new boolean[cols][rows];
         map.riverSand = new boolean[cols][rows];
 
-        int numRivers = rand.nextInt(3) + 1; // 1, 2 o 3 ríos
+        int numRivers = rand.nextInt(3) + 1;
 
         if (numRivers == 1) {
-            // Un río largo que atraviesa el mapa de un extremo al opuesto
-            int riverOrientation = rand.nextInt(6); // 0-1: Vertical, 2-3: Horizontal, 4-5: Diagonal
+            int riverOrientation = rand.nextInt(6);
             int startX = 5, startY = 5, endX = 5, endY = 5;
 
             int minBoundX = cols / 4;
@@ -37,36 +26,35 @@ public class RiverGenerator {
             int maxBoundY = rows * 3 / 4;
             int rangeY = maxBoundY - minBoundY;
 
-            if (riverOrientation == 0 || riverOrientation == 1) { // Vertical
+            if (riverOrientation == 0 || riverOrientation == 1) {
                 startX = minBoundX + rand.nextInt(rangeX);
                 startY = (riverOrientation == 0) ? 5 : rows - 5;
                 endX = minBoundX + rand.nextInt(rangeX);
                 endY = (riverOrientation == 0) ? rows - 5 : 5;
-            } else if (riverOrientation == 2 || riverOrientation == 3) { // Horizontal
+            } else if (riverOrientation == 2 || riverOrientation == 3) {
                 startX = (riverOrientation == 2) ? 5 : cols - 5;
                 startY = minBoundY + rand.nextInt(rangeY);
                 endX = (riverOrientation == 2) ? cols - 5 : 5;
                 endY = minBoundY + rand.nextInt(rangeY);
-            } else if (riverOrientation == 4) { // Diagonal \
+            } else if (riverOrientation == 4) {
                 startX = rand.nextInt(minBoundX);
                 startY = 5;
                 endX = maxBoundX + rand.nextInt(minBoundX);
                 endY = rows - 5;
-            } else if (riverOrientation == 5) { // Diagonal /
+            } else if (riverOrientation == 5) {
                 startX = maxBoundX + rand.nextInt(minBoundX);
                 startY = 5;
                 endX = rand.nextInt(minBoundX);
                 endY = rows - 5;
             }
 
-            drawRiver(map, startX, startY, endX, endY, true); // Arena garantizada en las orillas
+            drawRiver(map, startX, startY, endX, endY, true);
         } else {
-            // Múltiples ríos que nacen en las tierras altas del centro y fluyen hacia el océano
             int centerOriginX = cols / 2 + (rand.nextInt(80) - 40);
             int centerOriginY = rows / 2 + (rand.nextInt(80) - 40);
 
             for (int riverIndex = 0; riverIndex < numRivers; riverIndex++) {
-                int outEdge = rand.nextInt(4); // 0: Norte, 1: Sur, 2: Oeste, 3: Este
+                int outEdge = rand.nextInt(4);
                 int targetX, targetY;
                 if (outEdge == 0) {
                     targetX = centerOriginX + (rand.nextInt(160) - 80);
@@ -82,7 +70,7 @@ public class RiverGenerator {
                     targetY = centerOriginY + (rand.nextInt(160) - 80);
                 }
 
-                drawRiver(map, centerOriginX, centerOriginY, targetX, targetY, false); // Arena parcheada
+                drawRiver(map, centerOriginX, centerOriginY, targetX, targetY, false);
             }
         }
     }
@@ -94,7 +82,7 @@ public class RiverGenerator {
         long seed = map.seed;
 
         double distance = Math.hypot(endX - startX, endY - startY);
-        int steps = (int) (distance * 2.0); // Pasos densos para tallar completamente
+        int steps = (int) (distance * 2.0);
         double noiseOffsetX = rand.nextDouble() * 1000.0;
 
         PerlinNoise riverWiggle = new PerlinNoise(seed + rand.nextInt());
@@ -111,15 +99,14 @@ public class RiverGenerator {
             double normalX = -deltaY / length;
             double normalY = deltaX / length;
 
-            // Desplazamiento lateral sinuoso mediante ruido Perlin
             double wiggle = riverWiggle.octaveNoise(progress * 3.0, noiseOffsetX, 3, 0.5, 2.0) - 0.5;
-            wiggle *= 120.0; // Desplazamiento lateral máximo de +/- 60 celdas
+            wiggle *= 120.0;
 
             double currentX = baseX + normalX * wiggle;
             double currentY = baseY + normalY * wiggle;
 
-            double waterRadius = 2.2; // ~4 a 5 celdas de ancho de agua
-            double sandRadius = forceSand ? 6.0 : 5.0; // Márgenes anchos de arena
+            double waterRadius = 2.2;
+            double sandRadius = forceSand ? 6.0 : 5.0;
 
             int maxRadius = (int) Math.ceil(Math.max(waterRadius, sandRadius));
             int centerTileX = (int) currentX;
@@ -146,4 +133,3 @@ public class RiverGenerator {
         }
     }
 }
-

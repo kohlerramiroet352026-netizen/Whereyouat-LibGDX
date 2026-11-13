@@ -16,13 +16,10 @@ import com.whereyouat.items.DropManager;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
 
-//jefe rey frogger
 public class MON_frogger extends Entity {
-
     public GameScreen gp;
     public String name;
 
-    // estados
     public static final int STATE_IDLE = 0;
     public static final int STATE_RUN = 1;
     public static final int STATE_ATTACK = 2;
@@ -44,7 +41,6 @@ public class MON_frogger extends Entity {
     public int state = STATE_IDLE;
     private int previousState = STATE_IDLE;
 
-    // control de si esta atacando o no
     private boolean isAttacking = false;
     private boolean attackDamageDealt = false;
 
@@ -71,7 +67,6 @@ public class MON_frogger extends Entity {
         maxLife = 22;
         life = maxLife;
 
-        // hitbox
         solidArea.set(38f * SCALE, 96f * SCALE, 52f * SCALE, 26f * SCALE);
         solidAreaDefaultX = solidArea.x;
         solidAreaDefaultY = solidArea.y;
@@ -81,7 +76,7 @@ public class MON_frogger extends Entity {
 
     @Override
     public boolean dealsContactDamage() {
-        return false; // hace daño con su lengua
+        return false;
     }
 
     public MON_frogger(float worldX, float worldY) {
@@ -90,7 +85,6 @@ public class MON_frogger extends Entity {
         this.worldY = worldY;
     }
 
-    //cargar sprites
     private void loadSprites() {
         idleFrames = loadFrames("monster/frogger_idle.png", 128);
         moveFrames = loadFrames("monster/frogger_move.png", 384);
@@ -108,11 +102,9 @@ public class MON_frogger extends Entity {
         TextureRegion[][] frames = new TextureRegion[2][count];
 
         for (int i = 0; i < count; i++) {
-            // el sprite original mira hacia la derecha
             TextureRegion right = new TextureRegion(sheet[0][i]);
             right.flip(false, true);
 
-            // darlo vuelta hacia la derecha
             TextureRegion left = new TextureRegion(sheet[0][i]);
             left.flip(true, true);
 
@@ -139,9 +131,8 @@ public class MON_frogger extends Entity {
 
             updateAnimation(delta);
             return;
-
         }
-        // si el jugador no existe o esta muerto se queda en idle
+
         if (gp == null || gp.player == null || gp.player.dead) {
             state = STATE_IDLE;
             isAttacking = false;
@@ -155,7 +146,6 @@ public class MON_frogger extends Entity {
             float deltaY = playerCenterY - frogCenterY;
             float distanceToPlayer = (float) Math.hypot(deltaX, deltaY);
 
-            // orientacion segun donde este el jugador
             if (!isAttacking && deltaX != 0) {
                 lastHorizontal = (deltaX < 0) ? "left" : "right";
             }
@@ -163,9 +153,7 @@ public class MON_frogger extends Entity {
             if (isAttacking) {
                 state = STATE_ATTACK;
 
-                // daño con la lengua, cada 4 frames (osea cuando se sale por completo)
                 if (spriteNum == 4 && !attackDamageDealt) {
-                    // si el jugador esa dentro del rango y en la direccion correcta
                     boolean inFront = ("right".equals(lastHorizontal) && deltaX > -20f)
                             || ("left".equals(lastHorizontal) && deltaX < 20f);
 
@@ -173,10 +161,8 @@ public class MON_frogger extends Entity {
                         gp.player.contactMonster();
                     }
                     attackDamageDealt = true;
-
                 }
             } else {
-                // rango de la legua, ataca desde 190 pixeles
                 if (distanceToPlayer <= 220f && attackCooldown <= 0f) {
                     isAttacking = true;
                     attackDamageDealt = false;
@@ -203,7 +189,6 @@ public class MON_frogger extends Entity {
                         movedY = true;
                     }
 
-                    // evasion de arboles
                     if (!movedX && !movedY) {
                         float slide = speed * delta;
                         if (Math.abs(deltaY) >= Math.abs(deltaX)) {
@@ -211,7 +196,6 @@ public class MON_frogger extends Entity {
                                 worldX += slide;
                             else if (!collides(worldX - slide, worldY))
                                 worldX -= slide;
-
                         } else {
                             if (!collides(worldX, worldY + slide))
                                 worldY += slide;
@@ -270,7 +254,7 @@ public class MON_frogger extends Entity {
                 maxFrames = 8;
                 animSpeed = 6f;
                 break;
-            default: // idle
+            default:
                 maxFrames = 5;
                 animSpeed = 10f;
                 break;
@@ -323,7 +307,7 @@ public class MON_frogger extends Entity {
                 drawW = SHEET_WIDTH;
                 drawX = worldX - BODY_SIZE;
                 break;
-            default: // idle
+            default:
                 sheet = idleFrames;
                 maxFrames = 5;
                 drawW = BODY_SIZE;
@@ -367,19 +351,14 @@ public class MON_frogger extends Entity {
             batch.flush();
             Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
 
-            // Espuma en la línea de agua
-            // --- Espuma adaptada con Mosaico (Tiling) ---
             TextureRegion foam = gp.tileM.getFoamRegion();
             if (foam != null) {
-                // 1. Línea de flotación exacta donde el scissor corta el sprite
                 float foamY = submergedY + drawH - cutOff - 4f;
 
-                // 2. Centro real del cuerpo de Frogger según su solidArea
                 float bodyCenterX = worldX + solidArea.x + (solidArea.width / 2f);
 
-                // 3. Cantidad de baldosas de espuma (3 baldosas = 144px, 4 baldosas = 192px)
                 int tileCount = 3;
-                float foamTileSize = TileManager.TILE_SIZE; // 48px
+                float foamTileSize = TileManager.TILE_SIZE;
                 float startX = bodyCenterX - (tileCount * foamTileSize) / 2f;
 
                 batch.setColor(1f, 1f, 1f, 0.9f);
@@ -388,7 +367,6 @@ public class MON_frogger extends Entity {
                 }
                 batch.setColor(1f, 1f, 1f, 1f);
             }
-
         } else {
             batch.draw(region, drawX, drawY, drawW, drawH);
         }
@@ -409,10 +387,8 @@ public class MON_frogger extends Entity {
             spriteCounter = 0;
             isAttacking = false;
 
-            // Al recibir daño, forzar cooldown de ataque para dar tiempo al jugador de alejarse
             attackCooldown = Math.max(attackCooldown, ATTACK_COOLDOWN);
 
-            // Retroceso (knockback) alejándose del jugador
             float centerX = worldX + 64f;
             float centerY = worldY + 96f;
             float dx = centerX - playerX;
@@ -429,13 +405,11 @@ public class MON_frogger extends Entity {
         }
     }
 
-    // Invocación del Rey Frogger mediante el ítem FrogEggs
     public static boolean summon(GameScreen gp) {
         if (gp == null || gp.camera == null || gp.monster == null || gp.player == null || gp.mapGen == null) {
             return false;
         }
 
-        // Obtener la posición del jugador en el mapa
         int col = (int) ((gp.player.worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
         int row = (int) ((gp.player.worldY + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
 
@@ -443,14 +417,12 @@ public class MON_frogger extends Entity {
             return false;
         }
 
-        // Comprobar que el jugador se encuentre en el pantano
         if (!gp.mapGen.isSwampBiome[col][row] || gp.mapGen.isDeepWater[col][row]) {
             gp.showNotification("¡Debes estar en el pantano para usar los Huevos de Rana!");
             Gdx.app.log("Frogger", "Invocación rechazada: fuera del pantano.");
             return false;
         }
 
-        // Evitar invocar dos veces si ya hay un Rey Frogger vivo en el mapa
         for (Entity m : gp.monster) {
             if (m instanceof MON_frogger) {
                 gp.showNotification("¡El Rey Frogger ya ha sido invocado!");
@@ -458,7 +430,6 @@ public class MON_frogger extends Entity {
             }
         }
 
-        // Buscar un espacio libre en el array de monstruos
         int slotIndex = -1;
         for (int i = 0; i < gp.monster.length; i++) {
             if (gp.monster[i] == null) {
@@ -468,10 +439,9 @@ public class MON_frogger extends Entity {
         }
         if (slotIndex == -1) {
             gp.showNotification("No hay espacio en el mundo para invocar al jefe.");
-            return false; // Array lleno
+            return false;
         }
 
-        // Obtener el área visible de la cámara
         float halfW = (gp.camera.viewportWidth * gp.camera.zoom) / 2f;
         float halfH = (gp.camera.viewportHeight * gp.camera.zoom) / 2f;
         float centerX = gp.camera.position.x;
@@ -485,19 +455,19 @@ public class MON_frogger extends Entity {
         for (int attempt = 0; attempt < 8; attempt++) {
             int side = (int) (Math.random() * 4);
             switch (side) {
-                case 0: // ARRIBA
+                case 0:
                     spawnX = centerX + (float) ((Math.random() - 0.5) * halfW * 1.5);
                     spawnY = centerY - halfH - DRAW_HEIGHT - margin;
                     break;
-                case 1: // ABAJO
+                case 1:
                     spawnX = centerX + (float) ((Math.random() - 0.5) * halfW * 1.5);
                     spawnY = centerY + halfH + margin;
                     break;
-                case 2: // IZQUIERDA
+                case 2:
                     spawnX = centerX - halfW - DRAW_WIDTH - margin;
                     spawnY = centerY + (float) ((Math.random() - 0.5) * halfH * 1.5);
                     break;
-                default: // DERECHA
+                default:
                     spawnX = centerX + halfW + margin;
                     spawnY = centerY + (float) ((Math.random() - 0.5) * halfH * 1.5);
                     break;
@@ -519,13 +489,11 @@ public class MON_frogger extends Entity {
             spawnY = gp.player.worldY;
         }
 
-        // Instanciar al jefe y ubicarlo
         MON_frogger boss = new MON_frogger(gp);
         boss.worldX = spawnX;
         boss.worldY = spawnY;
         boss.clampToBounds();
 
-        // Ponerlo en el juego
         gp.monster[slotIndex] = boss;
         gp.showNotification("Un chapoteo descomunal agita las aguas, El Rey Frogger ha emergido...");
         Gdx.app.log("Frogger", "Invocado exitosamente en slot " + slotIndex);
@@ -533,7 +501,6 @@ public class MON_frogger extends Entity {
     }
 
     private void deleteFrogger() {
-        // Entregar la recompensa única (Pieza de bote 2) protegida contra duplicados
         if (!rewardDelivered && gp != null) {
             rewardDelivered = true;
             DropManager.deliverBossReward("Rey Frogger", new BoatPiece2(), gp);

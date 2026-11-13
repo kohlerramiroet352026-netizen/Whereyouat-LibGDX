@@ -5,5 +5,4 @@ buildscript {
   }
 }
 
-// GraalVM native image configuration (optional desktop packaging)
 

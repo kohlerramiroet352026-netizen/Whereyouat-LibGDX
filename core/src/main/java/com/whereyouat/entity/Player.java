@@ -27,20 +27,7 @@ import com.whereyouat.monster.MON_snowGhost;
 import com.whereyouat.monster.MON_zombie;
 import com.whereyouat.screens.GameScreen;
 
-/**
- * Player entity for Where you at (LibGDX Edition).
- *
- * Implements:
- * - 4-direction walk cycles (up1..13, down1..13, left1..8, right1..8)
- * - Idle looking-around cycle (idle0..8)
- * - Obstacle and tree trunk collision
- * - Water wading and drowning mechanics with depth clipping and foam
- * - Step cadence and vegetation interaction callbacks
- * - Health, lives, damage, and regeneration systems
- */
 public class Player extends Entity {
-
-    // Listener interface for decoupled audio and particle/footprint triggers
     public interface PlayerStepListener {
         void onStep(float footX, float footY, double angle, boolean isLeftFoot, int footCol, int footRow);
 
@@ -49,7 +36,6 @@ public class Player extends Entity {
 
     private PlayerStepListener stepListener;
 
-    // Sprite textures and regions
     private final List<Texture> textures = new ArrayList<>();
     private final TextureRegion[] downWalk = new TextureRegion[13];
     private final TextureRegion[] upWalk = new TextureRegion[13];
@@ -57,22 +43,18 @@ public class Player extends Entity {
     private final TextureRegion[] rightWalk = new TextureRegion[8];
     private final TextureRegion[] idleAnim = new TextureRegion[9];
 
-    // Footstep pacing
     private long lastStepMs = 0;
     private boolean isLeftFootStep = true;
     private static final long STEP_INTERVAL_MS = 400;
     private static final long STEP_INTERVAL_SHALLOW_WATER_MS = 640;
     private static final long STEP_INTERVAL_DEEP_WATER_MS = 950;
 
-    // Vegetation state
     private boolean wasInBush = false;
     private boolean wasInTallGrass = false;
 
-    // Movement state
     public boolean moving = false;
     public boolean isHiddenInBush = false;
 
-    // Life and health system
     public int maxLives = 3;
     public int lives = 3;
     public int maxHealth = 100;
@@ -82,29 +64,23 @@ public class Player extends Entity {
     private int healCooldown = 0;
     private int regenTick = 0;
 
-    // Drowning mechanic
     private int drownCounter = 0;
-    public static final int DROWN_TICKS_DEEP = 180; // 3 seconds at 60fps
+    public static final int DROWN_TICKS_DEEP = 180;
 
-    // Invincibility
-    public static final int INVINCIBLE_DURATION = 120; // 2 seconds at 60fps
+    public static final int INVINCIBLE_DURATION = 120;
 
-    // Monster contact damage
     public static final int MONSTER_DAMAGE = 20;
 
-    // Movement speeds (pixels per second)
-    private static final float BASE_SPEED = 1000f; // 240
+    private static final float BASE_SPEED = 1000f;
     private static final float BUSH_SPEED = 180f;
     private static final float SHALLOW_SPEED = 120f;
     private static final float DEEP_SPEED = 60f;
 
-    // Foot hitbox offsets (relative to worldX, worldY)
     public static final float HIT_OFFSET_X = 14f;
     public static final float HIT_OFFSET_Y = 34f;
     public static final float HIT_W = 20f;
     public static final float HIT_H = 12f;
 
-    // deteción de ataque y mounstros
     public GameScreen gp;
     public Entity[] currentMonsters;
     public boolean attacking = false;
@@ -129,7 +105,6 @@ public class Player extends Entity {
         addItem(new devsword());
         addItem(new ItemPotion());
         addItem(new boat());
-
     }
 
     public boolean hasSword() {
@@ -175,7 +150,6 @@ public class Player extends Entity {
         if (currentMonsters == null)
             return;
 
-        // area de impacto (24x24px en frente del jugador);
         float attackW = 24f;
         float attackH = 24f;
         float attackX = worldX;
@@ -200,22 +174,17 @@ public class Player extends Entity {
                 break;
         }
 
-        // revisar si le pega a algun mounstro
-
         for (int i = 0; i < currentMonsters.length; i++) {
             Entity m = currentMonsters[i];
             if (m != null && m.life > 0) {
-                // hitbox del mounstro
                 float mX = (m instanceof MON_mushroom) ? m.worldX + 130f : m.worldX + m.solidArea.x;
                 float mY = (m instanceof MON_mushroom) ? m.worldY + 160f : m.worldY + m.solidArea.y;
                 float mW = (m instanceof MON_mushroom) ? 90f : m.solidArea.width;
                 float mH = (m instanceof MON_mushroom) ? 80f : m.solidArea.height;
 
-                // colision entre el ataque y el mounstro
                 if (attackX < mX + mW && attackX + attackW > mX && attackY < mY + mH && attackY + attackH > mY) {
                     if (m instanceof MON_mushroom) {
                         ((MON_mushroom) m).takeDamage(damage, worldX, worldY);
-
                     } else if (m instanceof MON_frogger) {
                         ((MON_frogger) m).takeDamage(damage, worldX, worldY);
                     } else if (m instanceof MON_Ghost) {
@@ -264,7 +233,6 @@ public class Player extends Entity {
             idleAnim[i] = loadRegion("player/idle" + i + ".png");
         }
 
-        // cargar sprites de ataque
         attackUp = loadRegion("player/attack_up.png");
         attackDown = loadRegion("player/attack_down.png");
         attackLeft = loadRegion("player/attack_left.png");
@@ -305,9 +273,6 @@ public class Player extends Entity {
         worldY = 256 * TileManager.TILE_SIZE;
     }
 
-    /**
-     * Respawns the player at a safe random land position on the map.
-     */
     public void randomSpawn(MapGenerator mapGen) {
         health = maxHealth;
         dead = false;
@@ -345,31 +310,22 @@ public class Player extends Entity {
 
     @Override
     public void update(float delta) {
-        // Concrete method called when MapGenerator context is not provided
     }
 
-    /**
-     * Main tick update with world map collision, water depth, and foliage reaction.
-     * Backwards compatible overload without monster array.
-     */
     public void update(float delta, MapGenerator mapGen, TileManager tileM) {
         update(delta, mapGen, tileM, null);
     }
 
-    /**
-     * Main tick update with world map collision, monster contact checking, water
-     * depth, and foliage reaction.
-     */
     public void update(float delta, MapGenerator mapGen, TileManager tileM, Entity[] monsters) {
         if (dead)
             return;
 
         this.currentMonsters = monsters;
-        // cooldown de 2 segundos
+
         if (attackCooldown > 0f) {
             attackCooldown -= delta;
         }
-        // la animacion de ataque dura 0.2 segundos
+
         if (attacking) {
             attackTimer -= delta;
             if (attackTimer <= 0f) {
@@ -377,7 +333,6 @@ public class Player extends Entity {
             }
         }
 
-        // Current tile under player feet
         int footCol = (int) ((worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
         int footRow = (int) ((worldY + HIT_OFFSET_Y + HIT_H / 2f) / TileManager.TILE_SIZE);
         int waterLevel = tileM.getWaterLevel(mapGen, footCol, footRow);
@@ -385,7 +340,6 @@ public class Player extends Entity {
         boolean inBush = tileM.isPlayerInBush(mapGen, worldX + HIT_OFFSET_X, worldY + HIT_OFFSET_Y, HIT_W, HIT_H);
         isHiddenInBush = inBush;
 
-        // Adjust speed according to terrain
         if (waterLevel == 2) {
             speed = DEEP_SPEED;
         } else if (waterLevel == 1) {
@@ -396,7 +350,6 @@ public class Player extends Entity {
             speed = BASE_SPEED;
         }
 
-        // Deep water drowning
         if (waterLevel == 2 && invincibleCounter == 0) {
             drownCounter++;
             if (drownCounter > 10) {
@@ -408,7 +361,6 @@ public class Player extends Entity {
             }
         }
 
-        // Natural health regeneration
         if (health > 0 && health < maxHealth && !dead) {
             if (healCooldown > 0) {
                 healCooldown--;
@@ -428,13 +380,11 @@ public class Player extends Entity {
         }
         invincible = (invincibleCounter > 0);
 
-        // Check collision with monsters
         if (monsters != null) {
             int monsterIndex = checkMonster(monsters);
             contactMonster(monsterIndex);
         }
 
-        // Read movement input
         float inputX = 0f;
         float inputY = 0f;
         if (Gdx.input.isKeyPressed(Keys.W))
@@ -460,7 +410,6 @@ public class Player extends Entity {
                     direction = "right";
             }
 
-            // Diagonal normalization
             float inputLength = (float) Math.hypot(inputX, inputY);
             float moveX = (inputX / inputLength) * speed * delta;
             float moveY = (inputY / inputLength) * speed * delta;
@@ -468,7 +417,6 @@ public class Player extends Entity {
             float prevX = worldX;
             float prevY = worldY;
 
-            // X axis movement with collision check
             if (inputX != 0f) {
                 float targetX = worldX + moveX;
                 float hitBoxX = targetX + HIT_OFFSET_X;
@@ -478,7 +426,6 @@ public class Player extends Entity {
                 }
             }
 
-            // Y axis movement with collision check
             if (inputY != 0f) {
                 float targetY = worldY + moveY;
                 float hitBoxX = worldX + HIT_OFFSET_X;
@@ -488,7 +435,6 @@ public class Player extends Entity {
                 }
             }
 
-            // Keep within map boundaries
             int margin = 30;
             float minBoundX = margin * TileManager.TILE_SIZE;
             float minBoundY = margin * TileManager.TILE_SIZE;
@@ -515,7 +461,6 @@ public class Player extends Entity {
                     triggerStep(movedX, movedY, waterLevel);
                 }
 
-                // Vegetation transitions
                 boolean nowInBush = tileM.isPlayerInBush(mapGen, worldX + HIT_OFFSET_X, worldY + HIT_OFFSET_Y, HIT_W,
                         HIT_H);
                 boolean nowInTallGrass = tileM.isPlayerInTallGrass(mapGen, worldX + HIT_OFFSET_X, worldY + HIT_OFFSET_Y,
@@ -530,11 +475,9 @@ public class Player extends Entity {
                 wasInTallGrass = nowInTallGrass;
             }
 
-            // Trigger bush sway
             tileM.checkBushInteraction(mapGen, worldX + HIT_OFFSET_X, worldY + HIT_OFFSET_Y, HIT_W, HIT_H, moveX,
                     moveY);
 
-            // Walk animation
             spriteCounter += delta * 60f;
             if (direction.equals("up") || direction.equals("down")) {
                 if (spriteCounter >= 2.5f) {
@@ -551,9 +494,7 @@ public class Player extends Entity {
                     spriteCounter = 0;
                 }
             }
-
         } else {
-            // Idle state
             if (moving) {
                 spriteNum = 1;
                 spriteCounter = 0;
@@ -603,12 +544,6 @@ public class Player extends Entity {
         isLeftFootStep = !isLeftFootStep;
     }
 
-    /**
-     * Checks collision with an array of monster entities using solidArea hitboxes.
-     *
-     * @param monsters Array of monsters
-     * @return Index of contacted monster, or 999 if no collision
-     */
     public int checkMonster(Entity[] monsters) {
         if (monsters == null)
             return 999;
@@ -620,33 +555,18 @@ public class Player extends Entity {
         return 999;
     }
 
-    /**
-     * Handles contact damage with a monster by index.
-     *
-     * @param i Index of contacted monster in monsters array
-     */
     public void contactMonster(int i) {
         if (i != 999 && i != -1) {
             contactMonster();
         }
     }
 
-    /**
-     * Handles contact damage with a specific monster entity.
-     *
-     * @param monster Monster entity
-     */
     public void contactMonster(Entity monster) {
         if (monster != null) {
             contactMonster();
         }
     }
 
-    /**
-     * Handles contact damage from monsters using the player's health system.
-     * Activates invincibility to prevent taking damage repeatedly or from
-     * multiple monsters in the same instant.
-     */
     public void contactMonster() {
         if (invincibleCounter > 0 || dead)
             return;
@@ -707,7 +627,6 @@ public class Player extends Entity {
     }
 
     public TextureRegion getCurrentSprite() {
-        // si el jugador esta atacando, devuelve el sprite de ataque hacia su dirección
         if (attacking) {
             switch (direction) {
                 case "up":
@@ -721,7 +640,6 @@ public class Player extends Entity {
             }
         }
 
-        // si no esta atacando continua con la animacion normal
         switch (direction) {
             case "up":
                 int upFrameIndex = Math.max(0, Math.min(12, spriteNum - 1));
@@ -749,10 +667,6 @@ public class Player extends Entity {
         draw(batch, 0, null);
     }
 
-    /**
-     * Returns how many world-pixels the sprite should shift DOWN when in water.
-     * Mirrors the original yShift logic from v0.3.
-     */
     public int getWaterYShift(int waterLevel) {
         if (waterLevel == 1)
             return 4;
@@ -761,11 +675,6 @@ public class Player extends Entity {
         return 0;
     }
 
-    /**
-     * Returns how many screen-pixels to clip from the BOTTOM of the sprite for
-     * water submersion.
-     * Mirrors the original cutOff logic from v0.3 (tileSize = 48).
-     */
     public int getWaterCutOff(int waterLevel) {
         if (waterLevel == 1)
             return 16;
@@ -774,37 +683,23 @@ public class Player extends Entity {
         return 0;
     }
 
-    /**
-     * Draws the full player sprite at the given world position (no clipping applied
-     * here).
-     * Water submersion clipping is handled by the caller (GameScreen) via GL
-     * scissor test,
-     * matching the original g2.clipRect approach from v0.3.
-     */
     public void draw(SpriteBatch batch, int waterLevel, TextureRegion foamRegion) {
         TextureRegion current = getCurrentSprite();
         if (current == null)
             return;
 
-        // Invincibility blink
         if (invincibleCounter > 0 && (invincibleCounter / 10) % 2 == 0) {
             batch.setColor(1f, 1f, 1f, 0.4f);
         } else {
             batch.setColor(1f, 1f, 1f, 1f);
         }
 
-        // yShift sinks the sprite slightly into water so feet meet the waterline
         float drawY = worldY + getWaterYShift(waterLevel);
-
-        // Draw full sprite — clipping of the submerged portion is done in GameScreen
-        // with GL scissor
 
         float drawX = worldX;
         float drawW = current.getRegionWidth() * 3f;
         float drawH = current.getRegionHeight() * 3f;
 
-        // si ataca a la izquierda o arriba desplaza el origen para que la espada
-        // sobresalga
         if (attacking) {
             if ("left".equals(direction)) {
                 drawX = worldX - (drawW - TileManager.TILE_SIZE);
@@ -815,7 +710,6 @@ public class Player extends Entity {
 
         batch.draw(current, drawX, drawY, drawW, drawH);
 
-        // Foam overlay at the waist line (positioned at: drawY + tileSize - cutOff - 3)
         if (waterLevel > 0 && foamRegion != null) {
             int cutOff = getWaterCutOff(waterLevel);
             float foamY = drawY + TileManager.TILE_SIZE - cutOff - 3f;
@@ -838,21 +732,15 @@ public class Player extends Entity {
         return false;
     }
 
-    /**
-    * Si el inventario contiene las 3 piezas de barco, las remueve
-    * y agrega el Barco ensamblado.
-    * @return true si se ensambló el barco esta llamada.
-    */
     public boolean tryAssembleBoat() {
         boolean hasPiece1 = false, hasPiece2 = false, hasPiece3 = false;
         for (Item it : inventory) {
             if (it instanceof BoatPiece1) hasPiece1 = true;
             if (it instanceof BoatPiece2) hasPiece2 = true;
-            if (it instanceof BoatPiece3) hasPiece3 =     true;    
+            if (it instanceof BoatPiece3) hasPiece3 =     true;
         }
         if (!hasPiece1 || !hasPiece2 || !hasPiece3) return     false;
 
-        // Ya tiene las 3 → remover y dar el barco
         inventory.removeIf(it -> it instanceof BoatPiece1 || it instanceof BoatPiece2 || it instanceof BoatPiece3);
         addItem(new boat());
         return true;

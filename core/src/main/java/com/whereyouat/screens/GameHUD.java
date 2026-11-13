@@ -21,13 +21,7 @@ import com.whereyouat.audio.AudioManager;
 import com.whereyouat.entity.Player;
 import com.whereyouat.items.Item;
 
-/**
- * GameHUD - Responsable de la carga y renderizado de la interfaz de usuario en el juego (HUD):
- * contenedor de corazones, barra de salud, textos informativos, menú de pausa,
- * pantalla de muerte y pantalla de reaparición.
- */
 public class GameHUD {
-
     public interface HUDCallback {
         void onReturnToTitle();
         void onSaveProgress();
@@ -39,12 +33,10 @@ public class GameHUD {
     private final AudioManager audio;
     private final HUDCallback callback;
 
-    // Fuentes tipográficas
     private BitmapFont fontSmall;
     private BitmapFont fontMedium;
     private BitmapFont fontLarge;
 
-    // Texturas de la interfaz
     private Texture heartTexture;
     private TextureRegion heartRegion;
     private Texture whiteTex;
@@ -64,7 +56,6 @@ public class GameHUD {
     public int slotCol = 0;
     public int slotRow = 0;
 
-    // Mensaje de notificación flotante en pantalla
     private String notificationMessage = null;
     private float notificationTimer = 0f;
 
@@ -94,7 +85,6 @@ public class GameHUD {
     }
 
     private void loadAssets() {
-        // Cargar fuente pixel art TrueType
         if (Gdx.files.internal("fonts/PressStart2P-Regular.ttf").exists()) {
             FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/PressStart2P-Regular.ttf"));
             FreeTypeFontParameter parameter = new FreeTypeFontParameter();
@@ -123,7 +113,6 @@ public class GameHUD {
             fontLarge = new BitmapFont();
         }
 
-        // Píxel blanco para fondos geométricos limpios
         Pixmap pixelPixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pixelPixmap.drawPixel(0, 0, Color.rgba8888(1f, 1f, 1f, 1f));
         whiteTex = new Texture(pixelPixmap);
@@ -131,7 +120,6 @@ public class GameHUD {
         hudTextures.add(whiteTex);
         whitePixel = new TextureRegion(whiteTex);
 
-        // Texturas de botones
         String slotPath = Gdx.files.internal("buttons/button_slot.png").exists() ? "buttons/button_slot.png" : "button_slot.png";
         if (Gdx.files.internal(slotPath).exists()) {
             buttonSlotTex = new Texture(Gdx.files.internal(slotPath));
@@ -150,7 +138,6 @@ public class GameHUD {
             backButtonRegion.flip(false, true);
         }
 
-        // Sprite de corazón (13x12)
         if (Gdx.files.internal("player/heart.png").exists()) {
             heartTexture = new Texture(Gdx.files.internal("player/heart.png"));
             heartTexture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
@@ -159,7 +146,6 @@ public class GameHUD {
             heartRegion.flip(false, true);
         }
 
-        // Hoja de frames del contenedor de corazones (128x96, 2 cols x 6 rows, cada frame 64x16)
         if (Gdx.files.internal("player/heartcontainer.png").exists()) {
             heartContainerSheet = new Texture(Gdx.files.internal("player/heartcontainer.png"));
             heartContainerSheet.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
@@ -173,7 +159,6 @@ public class GameHUD {
             }
         }
 
-        // Hoja de frames de la barra de salud (70x144, 9 frames de 70x16)
         if (Gdx.files.internal("player/healthbar.png").exists()) {
             healthBarSheet = new Texture(Gdx.files.internal("player/healthbar.png"));
             healthBarSheet.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
@@ -186,24 +171,20 @@ public class GameHUD {
     }
 
     public void renderInventory(SpriteBatch batch, Player player, float screenW, float screenH) {
-        // Dimensiones de la ventana de slots
         float slotSize = 42f;
         float slotPadding = 8f;
         float padding = 16f;
 
-        // 5 columnas x 4 filas = 242px ancho x 192px alto de contenido
         float gridW = (5 * slotSize) + (4 * slotPadding);
         float gridH = (4 * slotSize) + (3 * slotPadding);
 
-        float frameW = gridW + (padding * 2f); // 274 px
-        float frameH = gridH + (padding * 2f); // 224 px
-        float frameX = screenW - frameW - 20f; // Margen derecho
-        float frameY = 24f;                    // Margen superior
+        float frameW = gridW + (padding * 2f);
+        float frameH = gridH + (padding * 2f);
+        float frameX = screenW - frameW - 20f;
+        float frameY = 24f;
 
-        // 1. VENTANA PRINCIPAL (Grid de ítems)
         drawSubWindow(batch, frameX, frameY, frameW, frameH);
 
-        // 2. DIBUJAR ÍTEMS (flotando sin cajas grises, como RyiSnow)
         float startSlotsX = frameX + padding;
         float startSlotsY = frameY + padding;
 
@@ -218,7 +199,6 @@ public class GameHUD {
                     if (item.icon != null) {
                         batch.draw(item.icon, slotX + 3f, slotY + 3f, slotSize - 6f, slotSize - 6f);
                     } else {
-                        // Ícono provisorio si el ítem aún no tiene textura cargada
                         batch.setColor(0.9f, 0.25f, 0.25f, 0.9f);
                         batch.draw(whitePixel, slotX + 8f, slotY + 8f, slotSize - 16f, slotSize - 16f);
                         batch.setColor(1f, 1f, 1f, 1f);
@@ -227,29 +207,24 @@ public class GameHUD {
             }
         }
 
-        // 3. CURSOR SELECTOR REDONDEADO
         float cursorX = startSlotsX + (slotCol * (slotSize + slotPadding));
         float cursorY = startSlotsY + (slotRow * (slotSize + slotPadding));
         drawCursor(batch, cursorX, cursorY, slotSize);
 
-        // 4. VENTANA INFERIOR DE DESCRIPCIÓN (Siempre visible justo abajo)
         float descX = frameX;
-        float descY = frameY + frameH + 8f; // 8px de separación
+        float descY = frameY + frameH + 8f;
         float descW = frameW;
         float descH = 120f;
         drawSubWindow(batch, descX, descY, descW, descH);
 
-        // Texto de descripción del ítem seleccionado
         int selectedIndex = slotCol + (slotRow * 5);
         if (selectedIndex < player.inventory.size()) {
             Item selectedItem = player.inventory.get(selectedIndex);
 
             if (fontSmall != null) {
-                // Nombre en dorado / amarillo
                 fontSmall.setColor(Color.GOLD);
                 fontSmall.draw(batch, selectedItem.name, descX + 16f, descY + 24f);
 
-                // Descripción en blanco con soporte multilínea (\n)
                 fontSmall.setColor(Color.WHITE);
                 float lineY = descY + 48f;
                 for (String line : selectedItem.description.split("\n")) {
@@ -263,7 +238,6 @@ public class GameHUD {
     public void drawSubWindow(SpriteBatch batch, float x, float y, float width, float height){
         if (whitePixel == null) return;
 
-        //fondo semitransparente
         batch.setColor(0f, 0f, 0f, 0.82f);
         batch.draw(whitePixel, x + 5f, y, width - 10f, height);
         batch.draw(whitePixel, x, y +5f, width, height - 10f);
@@ -272,23 +246,20 @@ public class GameHUD {
         batch.setColor(1f, 1f, 1f, 1f);
         float b = 3f;
 
-        //tramos rectos
         batch.draw(whitePixel, x + 6f, y, width - 12f, b);
         batch.draw(whitePixel, x + 6f, y + height - b, width -12f, b);
         batch.draw(whitePixel, x, y + 6f, b, height - 12f);
         batch.draw(whitePixel, x + width - b, y + 6f, b, height - 12f);
 
-        //puntos de redondeo
-        //superior izquierda
         batch.draw(whitePixel, x + 3f, y + 1f, 3f, b);
         batch.draw(whitePixel, x + 1f, y + 3f, b, 3f);
-        //superior derecha
+
         batch.draw(whitePixel, x + width - 6f, y + 1f, 3f, b);
         batch.draw(whitePixel, x + width - 1f - b, y + 3f, b, 3f);
-        //inferior izquierda
+
         batch.draw(whitePixel, x + 3f, y + height - 1f - b, 3f, b);
         batch.draw(whitePixel, x + 1f, y + height - 6f, b, 3f);
-        //inferior derecha
+
         batch.draw(whitePixel, x + width - 6f, y + height - 1f - b, 3f, b);
         batch.draw(whitePixel, x + width - 1f - b, y + height - 6f, b, 3f);
 
@@ -301,13 +272,11 @@ public class GameHUD {
         batch.setColor(1f, 1f, 1f, 0.95f);
         float b = 2.5f;
 
-        //bordes rectos
         batch.draw(whitePixel, x + 4f, y, size - 8f, b);
         batch.draw(whitePixel, x + 4f, y + size - b, size - 8f, b);
         batch.draw(whitePixel, x, y + 4f, b, size - 8f);
         batch.draw(whitePixel, x + size - b, y + 4f, b, size - 8f);
 
-        //esquinas redondeadas
         batch.draw(whitePixel, x + 2f, y + 1f, 2f, 2f);
         batch.draw(whitePixel, x + size - 4f, y + 1f, 2f, 2f);
         batch.draw(whitePixel, x + 2f, y + size - 3f, 2f, 2f);
@@ -321,7 +290,6 @@ public class GameHUD {
     }
 
     public void render(SpriteBatch batch, Player player, boolean isPaused, boolean showDeathScreen, boolean showRespawnScreen, float saveFeedbackTimer, float animTime, boolean showInventory, GameScreen gameScreen) {
-
         hudCamera.update();
         batch.setProjectionMatrix(hudCamera.combined);
         batch.begin();
@@ -329,7 +297,6 @@ public class GameHUD {
         float screenWidth = hudCamera.viewportWidth;
         float screenHeight = hudCamera.viewportHeight;
 
-        // Escala adaptativa según altura de pantalla
         float hcScale;
         if (screenHeight >= 1300f) {
             hcScale = 4.0f;
@@ -346,7 +313,6 @@ public class GameHUD {
         float startX = Math.round(10f * hcScale);
         float startY = Math.round(9f * hcScale);
 
-        // 1. Contenedor de corazones y vidas (Esquina superior izquierda)
         int hcFrame = (int) (animTime * 8f) % 11;
         float hcW = Math.round(64f * hcScale);
         float hcH = Math.round(16f * hcScale);
@@ -379,7 +345,6 @@ public class GameHUD {
             batch.draw(heartContainerFrames[hcFrame], hcX, hcY, hcW, hcH);
         }
 
-        // 2. Barra de salud centrada debajo del contenedor
         int hbFrame = (int) (animTime * 8f) % 9;
         float hbW = Math.round(70f * hbScale);
         float hbH = Math.round(16f * hbScale);
@@ -394,11 +359,9 @@ public class GameHUD {
         float curInnerW = Math.round(maxInnerW * player.getHealthRatio());
 
         if (whitePixel != null) {
-            // Fondo oscuro de la barra
             batch.setColor(0.14f, 0.05f, 0.05f, 0.86f);
             batch.draw(whitePixel, innerX, innerY, maxInnerW, innerH);
 
-            // Relleno de salud con relieve de 3 capas
             if (curInnerW > 0) {
                 float topH = Math.max(1f, Math.round(1f * hbScale));
                 float botH = Math.max(1f, Math.round(1f * hbScale));
@@ -418,32 +381,26 @@ public class GameHUD {
             batch.draw(healthBarFrames[hbFrame], hbX, hbY, hbW, hbH);
         }
 
-        // 3. Menú de pausa
         if (isPaused) {
             renderPauseMenu(batch, screenWidth, screenHeight, saveFeedbackTimer, gameScreen);
         }
 
-        // 4. Pantalla de muerte definitiva (0 vidas)
         if (showDeathScreen) {
             renderDeathScreen(batch, screenWidth, screenHeight);
         }
 
-        // 5. Pantalla de reaparición (perdió vida pero aún tiene restantes)
         if (showRespawnScreen) {
             renderRespawnScreen(batch, screenWidth, screenHeight, player.lives);
         }
 
-        //renderizar inventario
         if(showInventory){
             renderInventory(batch, player, screenWidth, screenHeight);
         }
 
-        // 6. CHAT (siempre por encima, incluso en pausa)
         if (gameScreen != null && gameScreen.netManager != null) {
             renderChat(batch, gameScreen, screenWidth, screenHeight);
         }
 
-        // Pista visual para zarpar si el jugador tiene el barco y está cerca del océano
         if (gameScreen != null && gameScreen.showSailHint && !showInventory && !isPaused && fontSmall != null) {
             String hint = "Apreta B para zarpar";
             glyphLayout.setText(fontSmall, hint);
@@ -457,7 +414,6 @@ public class GameHUD {
             fontSmall.setColor(Color.WHITE);
         }
 
-        // Renderizar notificación en pantalla si existe
         if (notificationMessage != null && notificationTimer > 0f && fontSmall != null) {
             glyphLayout.setText(fontSmall, notificationMessage);
             float boxW = glyphLayout.width + 32f;
@@ -472,9 +428,6 @@ public class GameHUD {
 
         batch.end();
 
-        // IMPORTANTE: ejecutar acciones que cambian de pantalla DESPUÉS de batch.end().
-        // Si se llamaran dentro de batch.begin/end, LibGDX llamaría hide()→dispose()
-        // con el batch aún activo, crasheando el render.
         if (pendingAction != null) {
             Runnable action = pendingAction;
             pendingAction = null;
@@ -485,35 +438,21 @@ public class GameHUD {
     private void renderChat(SpriteBatch batch, GameScreen gs, float screenW, float screenH) {
         if (fontSmall == null || whitePixel == null) return;
 
-        // Con camera.setToOrtho(true): Y=0 es arriba, Y=screenH es abajo.
-        // fontSmall.draw(batch, text, x, y) dibuja con y = esquina SUPERIOR-izquierda del texto.
-        // batch.draw(tex, x, y, w, h) dibuja con y = esquina SUPERIOR-izquierda del rectángulo.
-        //
-        // Layout del chat (de abajo hacia arriba):
-        //   [input box]      ← solo si está abierto (más abajo)
-        //   [mensaje 0]      ← más reciente, más abajo
-        //   [mensaje 1]
-        //   [mensaje 2]      ← más arriba
-
         final float chatX    = 10f;
         final float chatW    = 290f;
-        final float lineH    = 18f;   // separación entre líneas
-        final float fontH    = 11f;   // altura aproximada del glyph
+        final float lineH    = 18f;
+        final float fontH    = 11f;
         final float chatPad  = 5f;
-        final float marginBottom = 72f; // margen desde el borde inferior de pantalla
+        final float marginBottom = 72f;
 
         int count = Math.min(gs.chatMessages.size(), GameScreen.CHAT_MAX_VISIBLE);
         boolean inputOpen = gs.isChatOpen;
 
         if (count == 0 && !inputOpen) return;
 
-        // anchorY = Y del mensaje más reciente (índice 0).
-        // En Y-down, "más abajo" = mayor Y → el más reciente está en mayor Y.
         float anchorY = screenH - marginBottom - fontH;
 
-        // ── Fondo de mensajes ──────────────────────────────────────────────────────
         if (count > 0) {
-            // El mensaje más viejo está en anchorY - (count-1)*lineH
             float bgTop    = anchorY - (count - 1) * lineH - chatPad;
             float bgBottom = anchorY + fontH + chatPad;
             batch.setColor(0f, 0f, 0f, 0.48f);
@@ -521,26 +460,23 @@ public class GameHUD {
             batch.setColor(1f, 1f, 1f, 1f);
         }
 
-        // ── Mensajes ──────────────────────────────────────────────────────────────
         java.util.List<GameScreen.ChatMessage> msgs = new java.util.ArrayList<>(gs.chatMessages);
         for (int i = 0; i < count; i++) {
             GameScreen.ChatMessage cm = msgs.get(i);
             float alpha = Math.min(1f, cm.timer / 1.5f);
-            float msgY = anchorY - i * lineH;  // i=0 abajo, i>0 sube
+            float msgY = anchorY - i * lineH;
             fontSmall.setColor(cm.color.r, cm.color.g, cm.color.b, alpha);
             fontSmall.draw(batch, cm.text, chatX, msgY);
         }
 
-        // ── Caja de entrada ───────────────────────────────────────────────────────
         if (inputOpen) {
             handleChatKeyInput(gs);
 
-            // La caja va DEBAJO del mensaje más reciente
             float inputTop    = anchorY + fontH + chatPad + 2f;
             float inputBottom = inputTop + fontH + chatPad * 2f;
             batch.setColor(0f, 0f, 0f, 0.72f);
             batch.draw(whitePixel, chatX - chatPad, inputTop, chatW, inputBottom - inputTop);
-            // borde blanco superior de la caja
+
             batch.setColor(0.7f, 0.7f, 0.7f, 0.9f);
             batch.draw(whitePixel, chatX - chatPad, inputTop, chatW, 1f);
             batch.setColor(1f, 1f, 1f, 1f);
@@ -553,13 +489,11 @@ public class GameHUD {
         fontSmall.setColor(Color.WHITE);
     }
 
-    /** Captura las teclas de escritura del chat directamente desde el polling de LibGDX. */
     private void handleChatKeyInput(GameScreen gs) {
-        // Backspace
         if (Gdx.input.isKeyJustPressed(Keys.BACKSPACE) && gs.chatInput.length() > 0) {
             gs.chatInput = gs.chatInput.substring(0, gs.chatInput.length() - 1);
         }
-        // Letras y caracteres imprimibles (A-Z, 0-9, espacio, signos)
+
         for (int k = Keys.A; k <= Keys.Z; k++) {
             if (Gdx.input.isKeyJustPressed(k)) {
                 boolean shift = Gdx.input.isKeyPressed(Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Keys.SHIFT_RIGHT);
@@ -582,11 +516,8 @@ public class GameHUD {
         if (Gdx.input.isKeyJustPressed(Keys.SLASH) && gs.chatInput.length() < 60) gs.chatInput += '?';
     }
 
-    // Acción pendiente diferida: se ejecuta DESPUÉS de batch.end() para evitar
-    // el crash causado por cambiar de pantalla mientras el SpriteBatch está activo.
     private Runnable pendingAction = null;
 
-    // Guardamos el roomCode copiado recientemente para feedback visual
     private float roomCodeCopiedTimer = 0f;
 
     private void renderPauseMenu(SpriteBatch batch, float screenW, float screenH, float saveFeedbackTimer, GameScreen gameScreen) {
@@ -611,7 +542,7 @@ public class GameHUD {
         float buttonX = (screenW - buttonWidth) / 2f;
         float menuButtonY = 250f;
         float saveButtonY = menuButtonY + buttonHeight + 16f;
-        // Botón de código de sala: solo visible si es host y tiene código
+
         boolean showCodeBtn = (gameScreen != null && gameScreen.netManager != null
                 && gameScreen.netManager.isHost && gameScreen.roomCode != null
                 && !gameScreen.roomCode.isEmpty());
@@ -651,7 +582,6 @@ public class GameHUD {
                     saveButtonY + (buttonHeight - glyphLayout.height) / 2f);
         }
 
-        // Botón "Copiar código de sala" (solo host)
         if (showCodeBtn) {
             if (backButtonRegion != null) {
                 batch.setColor(hoverCode ? 0.85f : 1f, hoverCode ? 0.85f : 1f, hoverCode ? 0.85f : 1f, 1f);
@@ -803,4 +733,3 @@ public class GameHUD {
         hudTextures.clear();
     }
 }
-

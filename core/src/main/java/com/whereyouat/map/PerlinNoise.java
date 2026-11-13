@@ -1,15 +1,9 @@
 package com.whereyouat.map;
 
-/**
- * Perlin Noise implementation for procedural map generation.
- * Based on Ken Perlin's improved noise algorithm.
- */
 public class PerlinNoise {
-
     private final int[] permutation;
 
     public PerlinNoise(long seed) {
-        // Use seed to build a deterministic permutation table
         java.util.Random rand = new java.util.Random(seed);
         int[] source = new int[256];
         for (int i = 0; i < 256; i++) source[i] = i;
@@ -51,10 +45,6 @@ public class PerlinNoise {
         );
     }
 
-    /**
-     * Octave (fractal) noise for more natural terrain.
-     * Returns a value in approximately [0, 1].
-     */
     public double octaveNoise(double x, double y, int octaves, double persistence, double lacunarity) {
         double total = 0;
         double frequency = 1;
@@ -66,6 +56,6 @@ public class PerlinNoise {
             amplitude *= persistence;
             frequency *= lacunarity;
         }
-        return (total / maxValue + 1) / 2.0; // normalize to [0,1]
+        return (total / maxValue + 1) / 2.0;
     }
 }

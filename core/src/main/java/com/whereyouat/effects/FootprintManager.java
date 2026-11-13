@@ -10,10 +10,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-//gestor de huellas
 public class FootprintManager {
-
-    //datos de huella
     public static class Footprint {
         public float worldX;
         public float worldY;
@@ -22,7 +19,6 @@ public class FootprintManager {
         public float life;
         public static final float MAX_LIFE = 1.83f;
 
-        //crear huella
         public Footprint(float worldX, float worldY, float angleDegrees, boolean isLeftFoot) {
             this.worldX = worldX;
             this.worldY = worldY;
@@ -31,7 +27,6 @@ public class FootprintManager {
             this.life = MAX_LIFE;
         }
 
-        //opacidad de huella
         public float getAlpha() {
             if (life > 0.66f) {
                 return 0.80f;
@@ -49,12 +44,10 @@ public class FootprintManager {
     public static final float DRAW_WIDTH = 12f;
     public static final float DRAW_HEIGHT = 12f;
 
-    //iniciar huellas
     public FootprintManager() {
         loadSprite();
     }
 
-    //cargar textura
     private void loadSprite() {
         if (Gdx.files.internal("player/footprint.png").exists()) {
             footprintTexture = new Texture(Gdx.files.internal("player/footprint.png"));
@@ -68,7 +61,6 @@ public class FootprintManager {
         }
     }
 
-    //agregar huella
     public void addFootprint(float worldX, float worldY, double angleRadians, boolean isLeftFoot) {
         float minDistanceSq = 12f * 12f;
         for (Footprint footprint : footprints) {
@@ -86,7 +78,6 @@ public class FootprintManager {
         footprints.add(new Footprint(worldX, worldY, angleDegrees, isLeftFoot));
     }
 
-    //actualizar huellas
     public void update(float delta) {
         if (footprints.isEmpty()) return;
         Iterator<Footprint> iterator = footprints.iterator();
@@ -99,7 +90,6 @@ public class FootprintManager {
         }
     }
 
-    //dibujar huellas
     public void draw(SpriteBatch batch, float minX, float minY, float maxX, float maxY) {
         if (footprintRegion == null || footprints.isEmpty()) return;
 
@@ -126,12 +116,10 @@ public class FootprintManager {
         batch.setColor(1f, 1f, 1f, 1f);
     }
 
-    //limpiar huellas
     public void clear() {
         footprints.clear();
     }
 
-    //liberar memoria
     public void dispose() {
         if (footprintTexture != null) {
             footprintTexture.dispose();

@@ -14,22 +14,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * TileManager - Administrador central de tiles, texturas y renderizado de capas del mundo.
- *
- * Delega responsabilidades específicas en:
- * - TileTintPipeline: tintado HSB de píxeles, variantes de bioma y texturas de espuma/sumergidas.
- * - TileShadowRenderer: siluetas de sombra proyectadas sobre el suelo.
- * - FoliageSwayManager: simulación de ráfagas de viento, balanceo de follaje y colisiones de arbustos.
- * - TileDecorationRenderer: renderizado de decoraciones, ordenamiento en profundidad y recorte en agua.
- */
 public class TileManager {
-
     public static final int ORIGINAL_TILE_SIZE = 16;
     public static final int SCALE = 3;
-    public static final int TILE_SIZE = ORIGINAL_TILE_SIZE * SCALE; // 48 px
+    public static final int TILE_SIZE = ORIGINAL_TILE_SIZE * SCALE;
 
-    // Caja de colisión para el tronco de los árboles
     public static final int TRUNK_HIT_OFFSET_X = 40;
     public static final int TRUNK_HIT_OFFSET_Y = 32;
     public static final int TRUNK_HIT_W = 16;
@@ -41,21 +30,17 @@ public class TileManager {
         public int cooldown = 0;
     }
 
-    // Componentes delegados
     private final TileTintPipeline tintPipeline = new TileTintPipeline();
     private final TileShadowRenderer shadowRenderer = new TileShadowRenderer();
     private final FoliageSwayManager foliageSway = new FoliageSwayManager();
     private final TileDecorationRenderer decorationRenderer = new TileDecorationRenderer();
 
-    // Expuesto para acceso directo desde subsistemas de decoración
     public final Map<Long, BushSway> swayingBushes = foliageSway.swayingBushes;
 
-    // Texturas base y pixmaps
     private final TextureRegion[] tiles = new TextureRegion[65];
     private final Pixmap[] tilePixmaps = new Pixmap[65];
     private final List<Texture> loadedTextures = new ArrayList<>();
 
-    // Caché de iluminación direccional de árboles
     private final TextureRegion[] illuminatedTreeCache = new TextureRegion[96];
     private float lastIllumSunDirX = -999f;
     private float lastIllumSunDirY = -999f;
@@ -64,7 +49,6 @@ public class TileManager {
 
     public final TransitionRenderer transRenderer = new TransitionRenderer();
 
-    // Animación de agua
     private float waterAnimTimer = 0f;
     private int waterFrame = 0;
     private static final float WATER_ANIM_SPEED = 18f / 60f;
@@ -82,10 +66,6 @@ public class TileManager {
         this.snowPS = ps;
     }
 
-    // =========================================================================
-    // MÉTODOS ESTÁTICOS DE TINTADO (Delegados en TileTintPipeline para compatibilidad)
-    // =========================================================================
-
     public static Pixmap tintGrass(Pixmap src, float blend) {
         return TileTintPipeline.tintGrass(src, blend);
     }
@@ -101,10 +81,6 @@ public class TileManager {
     public static Pixmap tintSwampWater(Pixmap src, float swampBlend, float deepBlend) {
         return TileTintPipeline.tintSwampWater(src, swampBlend, deepBlend);
     }
-
-    // =========================================================================
-    // CARGA DE TEXTURAS Y PIXMAPS
-    // =========================================================================
 
     private Texture loadTex(String path) {
         Texture tex = new Texture(Gdx.files.internal(path));
@@ -153,7 +129,6 @@ public class TileManager {
         loadTileWithPixmap(24, "tiles/sand_border.png");
         loadTileWithPixmap(25, "tiles/sandgrass_border.png");
 
-        // Sandgrass_border espejado
         if (tilePixmaps[25] != null) {
             Pixmap src = tilePixmaps[25];
             int w = src.getWidth();
@@ -221,10 +196,6 @@ public class TileManager {
         return tr;
     }
 
-    // =========================================================================
-    // ACCESORES PÚBLICOS
-    // =========================================================================
-
     public TextureRegion getTileRegion(int idx) {
         return (idx >= 0 && idx < tiles.length) ? tiles[idx] : null;
     }
@@ -270,10 +241,6 @@ public class TileManager {
     public float getWindGustDirX() {
         return foliageSway.getWindGustDirX();
     }
-
-    // =========================================================================
-    // UPDATE
-    // =========================================================================
 
     public void update(float delta, MapGenerator map, DayNightCycle cycle) {
         waterAnimTimer += delta;
@@ -363,10 +330,6 @@ public class TileManager {
         }
     }
 
-    // =========================================================================
-    // DIBUJO DE SUELO Y BORDES
-    // =========================================================================
-
     public void drawGround(SpriteBatch batch, MapGenerator map, float minX, float minY, float maxX, float maxY) {
         int startCol = Math.max(0, (int) (minX / TILE_SIZE));
         int startRow = Math.max(0, (int) (minY / TILE_SIZE));
@@ -415,7 +378,6 @@ public class TileManager {
                     if (tiles[tileIndex] != null) batch.draw(tiles[tileIndex], screenX, screenY, TILE_SIZE, TILE_SIZE);
                 }
 
-                // Bordes de profundidad (acantilados costeros)
                 if (!isWater && worldRow < map.mapRows - 1) {
                     int nextTileIndex = map.mapTileNum[worldCol][worldRow + 1];
                     boolean waterBelow = (nextTileIndex >= 5 && nextTileIndex <= 8);
@@ -453,7 +415,6 @@ public class TileManager {
                     }
                 }
 
-                // Transición universal de pasto
                 int transType = map.mapTransType[worldCol][worldRow];
                 if (transType != TransitionRenderer.TRANS_NONE) {
                     boolean isSwampTrans = (swampBlendValue > 0.01f);
@@ -463,7 +424,6 @@ public class TileManager {
                     transRenderer.draw(batch, transType, rot, screenX, screenY, TILE_SIZE, step, isSwampTrans);
                 }
 
-                // Espuma en bordes de agua
                 if (isWater) {
                     boolean landNorth     = (worldRow > 0) && (getWaterLevel(map, worldCol, worldRow - 1) == 0);
                     boolean landSouth     = (worldRow < map.mapRows - 1) && (getWaterLevel(map, worldCol, worldRow + 1) == 0);
@@ -492,10 +452,6 @@ public class TileManager {
         batch.setColor(1f, 1f, 1f, 1f);
     }
 
-    // =========================================================================
-    // DIBUJO DE DECORACIONES Y FOLLAJE (Delegado en TileDecorationRenderer)
-    // =========================================================================
-
     public void drawDecorations(SpriteBatch batch, MapGenerator map, float minX, float minY, float maxX, float maxY,
                                 float playerWorldY, boolean inFront, OrthographicCamera camera) {
         decorationRenderer.drawDecorations(batch, map, minX, minY, maxX, maxY, playerWorldY, inFront, camera,
@@ -517,10 +473,6 @@ public class TileManager {
                 tiles, illuminatedTreeCache, tintPipeline);
     }
 
-    // =========================================================================
-    // SOMBRAS EN EL SUELO (Delegadas en TileShadowRenderer)
-    // =========================================================================
-
     public void drawGroundShadows(SpriteBatch batch, MapGenerator map, DayNightCycle cycle,
                                   float minX, float minY, float maxX, float maxY) {
         shadowRenderer.drawGroundShadows(batch, map, cycle, tilePixmaps, minX, minY, maxX, maxY, null, 0f, 0f);
@@ -531,10 +483,6 @@ public class TileManager {
                                   TextureRegion playerSprite, float playerX, float playerY) {
         shadowRenderer.drawGroundShadows(batch, map, cycle, tilePixmaps, minX, minY, maxX, maxY, playerSprite, playerX, playerY);
     }
-
-    // =========================================================================
-    // COLISIONES E INTERACCIONES
-    // =========================================================================
 
     public boolean collidesWithTree(MapGenerator map, float wx, float wy, float ww, float wh) {
         int leftTile = Math.max(0, (int) (wx / TILE_SIZE) - 1);
@@ -598,10 +546,6 @@ public class TileManager {
     public void trackVisibleForWind(MapGenerator map, float minX, float minY, float maxX, float maxY) {
         foliageSway.trackVisibleForWind(map, minX, minY, maxX, maxY);
     }
-
-    // =========================================================================
-    // LIBERACIÓN DE RECURSOS (DISPOSE)
-    // =========================================================================
 
     public void dispose() {
         tintPipeline.dispose();

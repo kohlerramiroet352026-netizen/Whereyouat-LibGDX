@@ -8,13 +8,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-/**
- * FoliageSwayManager - Responsable de la simulación física del viento orgánico,
- * la deformación geométrica por cizallamiento (shear) de arbustos/árboles/pastos
- * y la interacción física del jugador con la vegetación.
- */
 public class FoliageSwayManager {
-
     private static final int TILE_SIZE = TileManager.TILE_SIZE;
 
     public final Map<Long, TileManager.BushSway> swayingBushes = new HashMap<>();
@@ -292,4 +286,3 @@ public class FoliageSwayManager {
         }
     }
 }
-

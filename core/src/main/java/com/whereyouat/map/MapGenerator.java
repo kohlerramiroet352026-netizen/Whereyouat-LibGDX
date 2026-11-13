@@ -2,19 +2,7 @@ package com.whereyouat.map;
 
 import java.util.Random;
 
-/**
- * MapGenerator - Generador procedural del terreno de 512x512 celdas.
- *
- * Administra las capas del mundo:
- * - mapTileNum[col][row]: tiles de terreno (pasto, arena, agua, piedra, tierra).
- * - mapTreeNum[col][row]: tiles de vegetación y decoraciones superpuestas.
- *
- * Las responsabilidades de ríos, costas y distribución de decoraciones están delegadas
- * en RiverGenerator, ShorelineProcessor y FeaturePlacer respectivamente.
- */
 public class MapGenerator {
-
-    // Constantes de tiles de terreno
     public static final int TILE_GRASS1 = 0;
     public static final int TILE_GRASS2 = 1;
     public static final int TILE_GRASS3 = 2;
@@ -25,24 +13,20 @@ public class MapGenerator {
     public static final int TILE_SAND2 = 10;
     public static final int TILE_DIRT1 = 11;
 
-    // Constantes de árboles y follaje
     public static final int TILE_TREE1 = 12;
     public static final int TILE_TREE2 = 13;
     public static final int TILE_TREE3 = 14;
     public static final int TILE_TREE4 = 15;
 
-    // Pinos (bioma de nieve)
     public static final int TILE_PINE1 = 16;
     public static final int TILE_PINE2 = 17;
     public static final int TILE_PINE3 = 18;
     public static final int TILE_PINE4 = 19;
     public static final int TILE_PINE5 = 20;
 
-    // Palmeras (playa)
     public static final int TILE_PALM1 = 21;
     public static final int TILE_PALM2 = 22;
 
-    // Decoraciones naturales y rocas
     public static final int TILE_BUSH1 = 27;
     public static final int TILE_BUSH2 = 28;
     public static final int TILE_BUSH3 = 29;
@@ -64,7 +48,6 @@ public class MapGenerator {
     public static final int TILE_SHORT_SAND_GRASS = 45;
     public static final int TILE_TALL_SAND_GRASS = 46;
 
-    // Pantano y elementos acuáticos
     public static final int TILE_MUD = 47;
     public static final int TILE_WILLOW1 = 48;
     public static final int TILE_WILLOW2 = 49;
@@ -78,13 +61,11 @@ public class MapGenerator {
     public static final int TILE_MUD_BORDER = 57;
     public static final int TILE_WET_MUD_BORDER = 58;
 
-    // Umbrales de elevación
     public static final double DEEP_WATER_THRESHOLD = 0.30;
     public static final double SHALLOW_WATER_THRESHOLD = 0.38;
     public static final double SAND_THRESHOLD = 0.45;
     public static final double GRASS_THRESHOLD = 0.78;
 
-    // Umbrales de biomas
     public static final double SNOW_THRESHOLD = 0.28;
     public static final double SNOW_BLEND_EDGE = 0.32;
     public static final double FOREST_THRESHOLD = 0.60;
@@ -101,7 +82,6 @@ public class MapGenerator {
 
     final double[][] grassVarCache;
 
-    // Matrices públicas del mapa
     public int[][] mapTileNum;
     public int[][] mapTreeNum;
     public boolean[][] isShallowWater;
@@ -116,7 +96,6 @@ public class MapGenerator {
     public int[][] mapTransType;
     public int[][] mapTransRot;
 
-    // Máscaras de ríos (visibles a nivel de paquete para RiverGenerator y ShorelineProcessor)
     boolean[][] riverWater;
     boolean[][] riverSand;
 
@@ -164,7 +143,6 @@ public class MapGenerator {
         double scaleClear = 0.040;
         double scaleGrassVar = 0.080;
 
-        // Configuración de biomas Nieve y Pantano en esquinas opuestas
         Random biomeRand = new Random(seed + 98765L);
         int snowCorner = biomeRand.nextInt(4);
         int swampCorner = (snowCorner + 2) % 4;
@@ -185,7 +163,6 @@ public class MapGenerator {
         int swampCenterY = cornerCoords[swampCorner][1] + (biomeRand.nextInt(21) - 10);
         double maxSwampRadius = 120 + biomeRand.nextDouble() * 15;
 
-        // Configuración de playas en bordes
         Random beachRand = new Random(seed + 12345L);
         int numBeaches = 3;
         int[][] beachCenters = new int[numBeaches][2];
@@ -211,17 +188,14 @@ public class MapGenerator {
             beachRadii[i] = 40 + beachRand.nextDouble() * 30;
         }
 
-        // 1. Generación de ríos
         new RiverGenerator().generateRivers(this);
 
-        // 2. Asignación inicial de terreno celda por celda
         for (int col = 0; col < mapCols; col++) {
             for (int row = 0; row < mapRows; row++) {
                 double elev = elevNoise.octaveNoise(col * scaleElev, row * scaleElev, 6, 0.55, 2.0);
                 double detail = detailNoise.octaveNoise(col * scaleDetail, row * scaleDetail, 3, 0.4, 2.0);
                 elev = elev * 0.85 + detail * 0.15;
 
-                // Caída de elevación hacia el océano en los bordes
                 double distX = Math.min(col, mapCols - 1 - col);
                 double distY = Math.min(row, mapRows - 1 - row);
                 double dist = Math.min(distX, distY);
@@ -233,7 +207,6 @@ public class MapGenerator {
                     }
                 }
 
-                // Ríos y lagos
                 double lake = lakeNoise.octaveNoise(col * 0.02, row * 0.02, 2, 0.5, 2.0);
                 boolean isLake = (lake > 0.82);
 
@@ -250,7 +223,6 @@ public class MapGenerator {
 
                 grassVarCache[col][row] = grassVar;
 
-                // Bioma Nieve
                 boolean snow = false;
                 float sBlend = 0f;
                 if (isSnowyDay) {
@@ -273,7 +245,6 @@ public class MapGenerator {
                 isSnowBiome[col][row] = snow;
                 snowBlend[col][row] = sBlend;
 
-                // Bioma Pantano
                 boolean swamp = false;
                 float swBlend = 0f;
                 if (!isSnowyDay) {
@@ -293,7 +264,6 @@ public class MapGenerator {
                 isSwampBiome[col][row] = swamp;
                 swampBlend[col][row] = swBlend;
 
-                // Canales y lagunas del pantano
                 boolean isSwampMud = false;
                 if (swamp && dist >= 70) {
                     double channel = Math.abs(swampChannelNoise.octaveNoise(col * 0.038, row * 0.038, 3, 0.5, 2.0) - 0.5);
@@ -310,7 +280,6 @@ public class MapGenerator {
                     }
                 }
 
-                // Bioma Playa
                 boolean beach = false;
                 for (int i = 0; i < numBeaches; i++) {
                     double distToBeach = Math.hypot(col - beachCenters[i][0], row - beachCenters[i][1]);
@@ -327,7 +296,6 @@ public class MapGenerator {
             }
         }
 
-        // 3. Pases de post-procesamiento delegados
         ShorelineProcessor shoreline = new ShorelineProcessor();
         FeaturePlacer features = new FeaturePlacer();
 
@@ -348,7 +316,6 @@ public class MapGenerator {
                             boolean isSwamp, boolean isSwampMud, double distFromEdge) {
         mapTreeNum[col][row] = 0;
 
-        // --- Zonas de agua profunda y poco profunda ---
         if (elev < DEEP_WATER_THRESHOLD) {
             mapTileNum[col][row] = TILE_WATER0;
             isDeepWater[col][row] = true;
@@ -368,19 +335,16 @@ public class MapGenerator {
 
         double localSandThreshold = isBeach ? 0.52 : SAND_THRESHOLD;
 
-        // --- Bioma Pantano: Solo lodo a lo largo de costas y canales, CERO arena en pantano ---
         if (isSwamp && (isSwampMud || elev < localSandThreshold)) {
             mapTileNum[col][row] = TILE_MUD;
             isForestBiome[col][row] = false;
             return;
         }
 
-        // --- Costa / Arena (franja costera y playas oceánicas) ---
         if (elev < localSandThreshold) {
             mapTileNum[col][row] = pickSand();
             isForestBiome[col][row] = false;
 
-            // Generar palmeras en playas del bioma costero (1 de cada 50)
             if (isBeach && rand.nextInt(50) == 0) {
                 if (canPlaceTree(col, row)) {
                     mapTreeNum[col][row] = rand.nextBoolean() ? TILE_PALM1 : TILE_PALM2;
@@ -389,7 +353,6 @@ public class MapGenerator {
             return;
         }
 
-        // Bioma Nieve: tundra abierta o densos bosques de pinos
         if (isSnow) {
             boolean inForest = forest >= FOREST_THRESHOLD;
             boolean inTransition = !inForest && forest >= FOREST_BLEND_LOW;
@@ -417,11 +380,9 @@ public class MapGenerator {
                     }
                 }
             } else {
-                // Tundra abierta
                 isForestBiome[col][row] = false;
                 mapTileNum[col][row] = pickGrass(grassVar, isSnow);
 
-                // Arbustos nevados (~2% de probabilidad, nunca pegados al agua)
                 if (canPlaceTree(col, row) && !isNearWater(col, row, 1) && rand.nextInt(100) < 2) {
                     int bushRoll = rand.nextInt(3);
                     if (bushRoll == 0) {
@@ -436,7 +397,6 @@ public class MapGenerator {
             return;
         }
 
-        // Bioma Pantano: bosques tupidos de sauces y densa vegetación baja
         if (isSwamp) {
             isForestBiome[col][row] = true;
             boolean inWillowForest = (forest >= 0.38);
@@ -452,7 +412,6 @@ public class MapGenerator {
                     }
                 }
             } else {
-                // Claros en el pantano: vegetación exuberante (~15% de probabilidad)
                 mapTileNum[col][row] = pickGrass(grassVar, false);
                 if (canPlaceTree(col, row) && !isNearWater(col, row, 1)) {
                     if (rand.nextInt(100) < 15) {
@@ -482,7 +441,6 @@ public class MapGenerator {
             return;
         }
 
-        // Bioma Templado / Llanura
         boolean inForest = forest >= FOREST_THRESHOLD;
         boolean inTransition = !inForest && forest >= FOREST_BLEND_LOW;
 
@@ -509,17 +467,14 @@ public class MapGenerator {
                 }
             }
         } else {
-            // Llanuras abiertas
             isForestBiome[col][row] = false;
             mapTreeNum[col][row] = 0;
 
-            // Parches de tierra fértil sólo si la elevación está suficientemente por encima de la arena
             if (elev > SAND_THRESHOLD + 0.05 && dirt > 0.82) {
                 mapTileNum[col][row] = TILE_DIRT1;
             } else {
                 mapTileNum[col][row] = pickGrass(grassVar, isSnow);
 
-                // Vegetación natural de llanura (~6% de probabilidad, troncos caídos 1 en 2000)
                 if (canPlaceTree(col, row) && !isNearWater(col, row, 1)) {
                     if (rand.nextInt(2000) == 0) {
                         mapTreeNum[col][row] = rand.nextBoolean() ? TILE_LOG1 : TILE_LOG2;
@@ -547,8 +502,6 @@ public class MapGenerator {
             }
         }
     }
-
-    // --- Consultas espaciales y de tipos ---
 
     boolean isTransitionTarget(int col, int row) {
         if (col < 0 || col >= mapCols || row < 0 || row >= mapRows) return false;
@@ -636,12 +589,10 @@ public class MapGenerator {
     }
 
     private boolean canPlaceTree(int col, int row) {
-        // Validación de límites del mapa para el footprint 2x3 del árbol: [col, col+1] x [row-2, row]
         if (col < 1 || col + 2 >= mapCols || row - 3 < 0 || row + 1 >= mapRows) {
             return false;
         }
 
-        // No colocar pegado a ríos o masas de agua conocidas
         for (int checkCol = col - 1; checkCol <= col + 2; checkCol++) {
             for (int checkRow = row - 3; checkRow <= row + 1; checkRow++) {
                 if (riverWater[checkCol][checkRow]) return false;
@@ -649,7 +600,6 @@ public class MapGenerator {
             }
         }
 
-        // Lógica de espaciado orgánico para evitar paredes impenetrables
         int adjacentTreesCount = 0;
         boolean hasLeft = (col > 0 && mapTreeNum[col - 1][row] != 0);
         boolean hasUp = (row > 0 && mapTreeNum[col][row - 1] != 0);
@@ -661,16 +611,12 @@ public class MapGenerator {
         if (hasUpLeft) adjacentTreesCount++;
         if (hasUpRight) adjacentTreesCount++;
 
-        // 1. Nunca permitir más de 1 árbol vecino directo ya colocado
         if (adjacentTreesCount > 1) return false;
 
-        // 2. Desalentar vecinos horizontales directos (85% de rechazo)
         if (hasLeft && rand.nextInt(100) < 85) return false;
 
-        // 3. Desalentar vecinos verticales directos (60% de rechazo)
         if (hasUp && rand.nextInt(100) < 60) return false;
 
-        // 4. Vecinos en diagonal (30% de rechazo)
         if ((hasUpLeft || hasUpRight) && rand.nextInt(100) < 30) return false;
 
         return true;

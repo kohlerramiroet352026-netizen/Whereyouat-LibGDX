@@ -26,26 +26,20 @@ import com.whereyouat.net.NetworkManager;
 import com.whereyouat.save.WorldSaveManager;
 import com.whereyouat.save.WorldSaveManager.WorldInfo;
 
-/**
- * WorldCreateScreen for LibGDX.
- * Interactive text input for world name and seed,
- * with random seed generation, input validation, and direct launch into GameScreen.
- */
 public class WorldCreateScreen extends ScreenAdapter {
-
     private final WhereYouAtGame game;
     private final OrthographicCamera camera;
     private final Viewport viewport;
     private final Vector3 mousePos = new Vector3();
 
-    private boolean isMultiplayer = false; // Modo Host
-    private boolean isJoiningMode = false; // Modo Cliente (unirse)
-    private String joinCodeInput = "";     // Código pegado por el jugador 2
-    private String connectionError = "";   // Mensaje de error si falla
+    private boolean isMultiplayer = false;
+    private boolean isJoiningMode = false;
+    private String joinCodeInput = "";
+    private String connectionError = "";
 
     private String nameInput = "Nuevo Mundo";
     private String seedInput = "";
-    private int activeField = 0; // 0=name, 1=seed
+    private int activeField = 0;
     private final Random rand = new Random();
 
     private Texture buttonTexture;
@@ -71,7 +65,6 @@ public class WorldCreateScreen extends ScreenAdapter {
         camera.setToOrtho(true, 768, 576);
         viewport = new FitViewport(768, 576, camera);
 
-        // Generate default random seed
         seedInput = String.valueOf(Math.abs(rand.nextLong() % 1_000_000_000L));
 
         loadAssets();
@@ -96,7 +89,6 @@ public class WorldCreateScreen extends ScreenAdapter {
             buttonSound = Gdx.audio.newSound(Gdx.files.internal("sounds/button_sound.mp3"));
         }
 
-        // button_slot.png texture used as background for the name and seed input fields
         String slotPath = Gdx.files.internal("buttons/button_slot.png").exists() ? "buttons/button_slot.png" : "button_slot.png";
         if (Gdx.files.internal(slotPath).exists()) {
             slotTexture = new Texture(Gdx.files.internal(slotPath));
@@ -105,7 +97,6 @@ public class WorldCreateScreen extends ScreenAdapter {
             slotRegion.flip(false, true);
         }
 
-        // White pixel for drawing plain input field backgrounds (fallback if slot texture missing)
         Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pixmap.drawPixel(0, 0, Color.rgba8888(1f, 1f, 1f, 1f));
         whiteTex = new Texture(pixmap);
@@ -154,9 +145,6 @@ public class WorldCreateScreen extends ScreenAdapter {
         try {
             String clip = Gdx.app.getClipboard().getContents();
             if (clip != null) {
-                // Solo mantener caracteres válidos de Base64-URL (A-Za-z0-9 _ - =)
-                // Esto evita que basura del portapapeles (stacktraces, espacios, etc.)
-                // llegue al campo y produzca IPs corruptas al decodificar.
                 String sanitized = clip.trim().replaceAll("[^A-Za-z0-9_=-]", "");
                 if (sanitized.length() > 32) {
                     sanitized = sanitized.substring(0, 32);
@@ -167,7 +155,6 @@ public class WorldCreateScreen extends ScreenAdapter {
                 }
             }
         } catch (Throwable ignored) {
-            // Previene errores en Windows si el portapapeles no está en formato string
         }
     }
 
@@ -186,7 +173,7 @@ public class WorldCreateScreen extends ScreenAdapter {
 
             @Override
             public boolean keyTyped(char character) {
-                if (character == '\b') { // Backspace
+                if (character == '\b') {
                     if (activeField == 0 && nameInput.length() > 0) {
                         nameInput = nameInput.substring(0, nameInput.length() - 1);
                     } else if (activeField == 1 && seedInput.length() > 0) {
@@ -200,7 +187,7 @@ public class WorldCreateScreen extends ScreenAdapter {
                         createWorldAndPlay();
                     }
                     return true;
-                } else if (character >= 32 && character < 127) { // Printable characters
+                } else if (character >= 32 && character < 127) {
                     if (activeField == 0 && nameInput.length() < 24) {
                         nameInput += character;
                     } else if (activeField == 1 && seedInput.length() < 18) {
@@ -230,41 +217,34 @@ public class WorldCreateScreen extends ScreenAdapter {
         float boxWidth = 480f;
         float boxHeight = 44f;
 
-        // Cajas de texto en modo normal
         float nameBoxY = 132f;
         float seedBoxY = 214f;
 
-        // Boton ALEATORIO justo debajo de la semilla
         float randomButtonWidth = 140f;
         float randomButtonHeight = 32f;
         float randomButtonX = formX + boxWidth - randomButtonWidth;
-        float randomButtonY = seedBoxY + boxHeight + 8f; // 266f, termina en 298f
+        float randomButtonY = seedBoxY + boxHeight + 8f;
 
-        // Botones de multijugador bien separados hacia abajo (terminan en 383f)
         float multiBtnX = formX;
         float multiBtnY = 345f;
         float multiBtnW = 230f;
         float multiBtnH = 38f;
 
-        // Boton para cambiar de modo (Unirse a sala o Volver a crear)
         float joinModeBtnX = isJoiningMode ? ((768f - 240f) / 2f) : (formX + 250f);
         float joinModeBtnY = isJoiningMode ? 375f : 345f;
         float joinModeBtnW = isJoiningMode ? 240f : 230f;
         float joinModeBtnH = 38f;
 
-        // Boton PEGAR en modo unirse
         float pasteBtnX = (768f - 240f) / 2f;
         float pasteBtnY = 215f;
         float pasteBtnW = 240f;
         float pasteBtnH = 36f;
 
-        // Boton de accion (Crear Mundo o Conectar)
         float createButtonX = (768f - 240f) / 2f;
         float createButtonY = isJoiningMode ? 305f : 415f;
         float createButtonWidth = 240f;
         float createButtonHeight = 48f;
 
-        // Boton Volver
         float backButtonX = formX;
         float backButtonY = 495f;
         float backButtonWidth = 140f;
@@ -323,7 +303,6 @@ public class WorldCreateScreen extends ScreenAdapter {
             }
         }
 
-        // Draw screen
         Gdx.gl.glClearColor(0.06f, 0.08f, 0.07f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
@@ -332,19 +311,16 @@ public class WorldCreateScreen extends ScreenAdapter {
         game.batch.setProjectionMatrix(camera.combined);
         game.batch.begin();
 
-        // 1. Title
         String screenTitle = isJoiningMode ? "UNIRSE A SALA" : "CREAR NUEVO MUNDO";
         layout.setText(fontTitle, screenTitle);
         fontTitle.setColor(Color.GOLD);
         fontTitle.draw(game.batch, screenTitle, (768f - layout.width) / 2f, 65f);
 
-        // 2. Form fields
         if (isJoiningMode) {
             fontLabel.setColor(new Color(0.85f, 0.85f, 0.85f, 1f));
             fontLabel.draw(game.batch, "Pegar Codigo de Sala:", formX, 135f);
             drawInputBox(formX, 155f, boxWidth, boxHeight, joinCodeInput, activeField == 2);
 
-            // Boton para pegar comodamente desde el portapapeles
             drawSmallButton("PEGAR CODIGO", pasteBtnX, pasteBtnY, pasteBtnW, pasteBtnH, hoverPaste);
 
             if (!connectionError.isEmpty()) {
@@ -353,32 +329,25 @@ public class WorldCreateScreen extends ScreenAdapter {
                 fontLabel.draw(game.batch, connectionError, (768f - layout.width) / 2f, 280f);
             }
         } else {
-            // Name field
             fontLabel.setColor(new Color(0.85f, 0.85f, 0.85f, 1f));
             fontLabel.draw(game.batch, "Nombre del Mundo:", formX, nameBoxY - 18f);
             drawInputBox(formX, nameBoxY, boxWidth, boxHeight, nameInput, activeField == 0);
 
-            // Seed field
             fontLabel.draw(game.batch, "Semilla (Texto o Número):", formX, seedBoxY - 18f);
             drawInputBox(formX, seedBoxY, boxWidth, boxHeight, seedInput, activeField == 1);
 
-            // Random Seed button
             drawSmallButton("ALEATORIO", randomButtonX, randomButtonY, randomButtonWidth, randomButtonHeight, hoverRandom);
 
-            // Multiplayer toggle button
             String multiText = isMultiplayer ? "MULTI: [SI]" : "MULTI: [NO]";
             drawSmallButton(multiText, multiBtnX, multiBtnY, multiBtnW, multiBtnH, hoverMulti);
         }
 
-        // 3. Toggle Mode button ("UNIRSE A SALA" or "VOLVER A CREAR")
         String joinText = isJoiningMode ? "VOLVER A CREAR" : "UNIRSE A SALA";
         drawSmallButton(joinText, joinModeBtnX, joinModeBtnY, joinModeBtnW, joinModeBtnH, hoverJoinMode);
 
-        // 4. Action Button (Create World or Connect)
         String actionBtnText = isJoiningMode ? "CONECTAR" : "CREAR MUNDO";
         drawLargeButton(actionBtnText, createButtonX, createButtonY, createButtonWidth, createButtonHeight, hoverCreate);
 
-        // 5. Back Button
         if (backBtnRegion != null) {
             game.batch.setColor(hoverBack ? 1.15f : 1f, hoverBack ? 1.15f : 1f, hoverBack ? 1.15f : 1f, 1f);
             game.batch.draw(backBtnRegion, backButtonX, backButtonY, backButtonWidth, backButtonHeight);
@@ -392,9 +361,6 @@ public class WorldCreateScreen extends ScreenAdapter {
     }
 
     private void drawInputBox(float x, float y, float width, float height, String text, boolean focused) {
-        // Draw button_slot.png at its native pixel dimensions, centered over the hitbox.
-        // The texture is 576x48 — no stretching to preserve pixel art quality.
-        // If the texture is unavailable, fall back to a plain dark rectangle.
         if (slotRegion != null) {
             float slotWidth = slotRegion.getRegionWidth();
             float slotHeight = slotRegion.getRegionHeight();
@@ -447,7 +413,6 @@ public class WorldCreateScreen extends ScreenAdapter {
     private void createWorldAndPlay() {
     connectionError = "";
 
-    // CASO A: EL JUGADOR 2 SE ESTÁ UNIENDO CON CÓDIGO
     if (isJoiningMode) {
         if (joinCodeInput.trim().isEmpty()) {
             connectionError = "Ingresa o pega un codigo de sala.";
@@ -462,9 +427,6 @@ public class WorldCreateScreen extends ScreenAdapter {
             return;
         }
 
-        // Conectado con éxito: esperar SEED: del host para garantizar seed y save consistentes.
-        // El host envía SEED:<valor> en su onConnected() apenas J2 se conecta.
-        // Se usa el roomCode como clave del save de J2 para encontrar siempre el mismo archivo.
         final String roomKey = "j2_" + joinCodeInput.trim();
         connectionError = "Conectado. Esperando datos del host...";
         net.setListener(new NetworkManager.NetworkListener() {
@@ -477,7 +439,6 @@ public class WorldCreateScreen extends ScreenAdapter {
                 catch (NumberFormatException ignored) { hostSeed = 42L; }
                 final long finalSeed = hostSeed;
                 Gdx.app.postRunnable(() -> {
-                    // Buscar save existente de J2 para esta sala (el fileName incluye timestamp)
                     WorldSaveManager.WorldInfo existing = null;
                     for (WorldSaveManager.WorldInfo w : WorldSaveManager.listWorlds()) {
                         if (w.fileName != null && w.fileName.startsWith(roomKey)) {
@@ -488,11 +449,9 @@ public class WorldCreateScreen extends ScreenAdapter {
                     String fileName;
                     long usedSeed;
                     if (existing != null) {
-                        // Reconexión: usar la misma seed y datos guardados
                         fileName = existing.fileName;
                         usedSeed = existing.seed;
                     } else {
-                        // Primera conexión: crear save con la seed del host
                         WorldSaveManager.WorldInfo saved = WorldSaveManager.saveWorld(roomKey, finalSeed);
                         fileName = (saved != null) ? saved.fileName : null;
                         usedSeed = finalSeed;
@@ -511,7 +470,6 @@ public class WorldCreateScreen extends ScreenAdapter {
         return;
     }
 
-    // CASO B: EL JUGADOR 1 ESTÁ CREANDO EL MUNDO (HOST O SOLO)
     String finalName = nameInput.trim().isEmpty() ? "Mundo" : nameInput.trim();
     long numericSeed;
     try {
@@ -527,14 +485,14 @@ public class WorldCreateScreen extends ScreenAdapter {
         String hostRoomCode = "";
         if (isMultiplayer) {
             net = new NetworkManager();
-            hostRoomCode = net.startHost(); // Inicia el servidor
+            hostRoomCode = net.startHost();
             if (hostRoomCode != null) {
                 try {
                     Gdx.app.getClipboard().setContents(hostRoomCode);
                 } catch (Throwable ignored) {}
                 Gdx.app.log("Multijugador", "Sala creada. Codigo copiado al portapapeles: " + hostRoomCode);
             }
-            // Guardar la bandera de multijugador en el archivo de guardado recién creado
+
             if (fileName != null) {
                 WorldSaveManager.saveGameProgress(fileName, finalName, numericSeed, System.currentTimeMillis(),
                         null, null, null, true);

@@ -11,12 +11,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.whereyouat.lighting.DayNightCycle;
 
-/**
- * TileShadowRenderer - Responsable de construir siluetas de sombra para tiles
- * y proyectarlas direccionalmente sobre el suelo según el ángulo del sol o la luna.
- */
 public class TileShadowRenderer {
-
     private static final int TILE_SIZE = TileManager.TILE_SIZE;
     private static final int SCALE = TileManager.SCALE;
 
@@ -56,7 +51,6 @@ public class TileShadowRenderer {
             shadowSilhouetteCache[i] = region;
             silhouette.dispose();
 
-            // Calcular padding inferior para el punto de apoyo en el suelo
             int lowestY = height - 1;
             for (int y = height - 1; y >= 0; y--) {
                 boolean hasOpaque = false;
@@ -102,7 +96,6 @@ public class TileShadowRenderer {
                 float screenX = col * TILE_SIZE;
                 float screenY = row * TILE_SIZE;
 
-                // 1. Árboles
                 if (((treeIdx >= 12 && treeIdx <= 22)
                         || (treeIdx >= MapGenerator.TILE_WILLOW1 && treeIdx <= MapGenerator.TILE_MANGROVE))
                         && treeIdx < shadowSilhouetteCache.length && shadowSilhouetteCache[treeIdx] != null) {
@@ -122,7 +115,6 @@ public class TileShadowRenderer {
                     drawShadowSheared(batch, silhouetteRegion, baseX, contactY, drawWidth, drawHeight, scaleY, xOffset);
                 }
 
-                // 2. Arbustos y Rocas
                 else if (((treeIdx >= 27 && treeIdx <= 31) || (treeIdx >= 36 && treeIdx <= 39)
                         || treeIdx == MapGenerator.TILE_ROCK1 || treeIdx == MapGenerator.TILE_SNOWY_ROCK1
                         || treeIdx == MapGenerator.TILE_SANDSTONE_ROCK || treeIdx == MapGenerator.TILE_WATER_ROCK)
@@ -141,7 +133,6 @@ public class TileShadowRenderer {
                     drawShadowSheared(batch, silhouetteRegion, baseX, baseY, drawWidth, drawHeight, scaleY, xOffset);
                 }
 
-                // 3. Pasto y espadañas
                 else if ((treeIdx == 34 || treeIdx == 35 || treeIdx == 40 || treeIdx == 41
                         || treeIdx == MapGenerator.TILE_SHORT_SAND_GRASS
                         || treeIdx == MapGenerator.TILE_TALL_SAND_GRASS
@@ -163,7 +154,6 @@ public class TileShadowRenderer {
                     drawShadowSheared(batch, silhouetteRegion, baseX, contactY, drawWidth, drawHeight, scaleY, xOffset);
                 }
 
-                // 4. Montañas de roca
                 if (tileIdx == 4 && shadowSilhouetteCache[4] != null) {
                     TextureRegion silhouetteRegion = shadowSilhouetteCache[4];
                     float baseX = screenX + TILE_SIZE / 2.0f;
@@ -178,7 +168,6 @@ public class TileShadowRenderer {
             }
         }
 
-        // 5. Sombra proyectada del jugador
         if (playerSprite != null) {
             float playerBaseX = playerX + TILE_SIZE / 2.0f;
             float playerBaseY = playerY + TILE_SIZE - 2f;
@@ -224,4 +213,3 @@ public class TileShadowRenderer {
         generatedTextures.clear();
     }
 }
-

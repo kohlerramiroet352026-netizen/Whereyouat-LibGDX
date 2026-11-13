@@ -3,16 +3,7 @@ package com.whereyouat.map;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 
-/**
- * ShorelineProcessor - Responsable de normalizar costas, playas, transiciones de terreno
- * y suavizado de bordes para garantizar que el mundo procedimental no tenga artefactos visuales.
- */
 public class ShorelineProcessor {
-
-    /**
-     * Asegura un ancho uniforme de arena (playas) mediante BFS desde el agua,
-     * evitando líneas finas de 1 solo tile y convirtiendo arena en lodo en el bioma pantano.
-     */
     public void normalizeSandWidth(MapGenerator map) {
         int cols = map.mapCols;
         int rows = map.mapRows;
@@ -23,7 +14,6 @@ public class ShorelineProcessor {
 
         ArrayDeque<Integer> queue = new ArrayDeque<>();
 
-        // 1. Sembrar el BFS desde cada tile de agua
         for (int col = 0; col < cols; col++) {
             for (int row = 0; row < rows; row++) {
                 if (map.isDeepWater[col][row] || map.isShallowWater[col][row] || map.isWater(col, row)) {
@@ -34,7 +24,6 @@ public class ShorelineProcessor {
             }
         }
 
-        // Direcciones cardinales (Este, Oeste, Sur, Norte)
         int[] deltaCol = { 0, 0, 1, -1 };
         int[] deltaRow = { 1, -1, 0, 0 };
 
@@ -62,7 +51,6 @@ public class ShorelineProcessor {
             }
         }
 
-        // Paso 1: Limitar el ancho máximo de la arena y convertir arena en pantano a lodo
         for (int col = 0; col < cols; col++) {
             for (int row = 0; row < rows; row++) {
                 if (!map.isSand(col, row)) {
@@ -76,14 +64,12 @@ public class ShorelineProcessor {
                 int dist = distFromWater[col * rows + row];
                 int maxWidth = map.isBeachBiome[col][row] ? 30 : MapGenerator.MAX_SAND_WIDTH;
                 if (dist > maxWidth) {
-                    // Demasiado lejos del agua: reemplazar por césped
                     map.mapTileNum[col][row] = map.pickGrass(map.grassVarCache[col][row], map.isSnowBiome[col][row]);
                     map.mapTreeNum[col][row] = 0;
                 }
             }
         }
 
-        // Paso 2: Identificar líneas de costa reales y limpiar fragmentos de arena aislados
         boolean[][] isShoreline = new boolean[cols][rows];
         for (int col = 0; col < cols; col++) {
             for (int row = 0; row < rows; row++) {
@@ -116,7 +102,6 @@ public class ShorelineProcessor {
                     }
                 }
 
-                // Si es un pixel de arena completamente aislado en orilla de pasto:
                 if (sandNeighbours == 0 && !map.isBeachBiome[col][row] && !map.riverSand[col][row]) {
                     map.mapTileNum[col][row] = map.pickGrass(map.grassVarCache[col][row], map.isSnowBiome[col][row]);
                     map.mapTreeNum[col][row] = 0;
@@ -126,7 +111,6 @@ public class ShorelineProcessor {
             }
         }
 
-        // Paso 3: Asegurar ancho mínimo de arena o lodo
         ArrayDeque<Integer> expandQueue = new ArrayDeque<>();
         boolean[] inExpandQueue = new boolean[totalTiles];
 
@@ -180,9 +164,6 @@ public class ShorelineProcessor {
         }
     }
 
-    /**
-     * Elimina tiles aislados mediante pasadas de suavizado celular en penínsulas y bordes de costa.
-     */
     public void removeIsolatedTiles(MapGenerator map) {
         cleanShoreline(map);
 
@@ -243,9 +224,6 @@ public class ShorelineProcessor {
         cleanShoreline(map);
     }
 
-    /**
-     * Limpia la línea de costa para asegurar que los bordes con agua sean limpios y continuos.
-     */
     public void cleanShoreline(MapGenerator map) {
         int cols = map.mapCols;
         int rows = map.mapRows;
@@ -304,9 +282,6 @@ public class ShorelineProcessor {
         }
     }
 
-    /**
-     * Convierte a pasto los bloques de tierra que toquen arena de forma cardinal.
-     */
     public void fixDirtPlacement(MapGenerator map) {
         int cols = map.mapCols;
         int rows = map.mapRows;
@@ -324,9 +299,6 @@ public class ShorelineProcessor {
         }
     }
 
-    /**
-     * Computa las transiciones gráficas (bordes y esquinas de autotiling) entre césped y otros terrenos.
-     */
     public void computeTransitions(MapGenerator map) {
         int cols = map.mapCols;
         int rows = map.mapRows;
@@ -364,9 +336,6 @@ public class ShorelineProcessor {
         }
     }
 
-    /**
-     * Calcula el degradado visual de agua profunda mediante BFS.
-     */
     public void calculateDeepWaterBlend(MapGenerator map) {
         int cols = map.mapCols;
         int rows = map.mapRows;
@@ -429,8 +398,6 @@ public class ShorelineProcessor {
         }
     }
 
-    // --- Métodos de conteo cardinal de vecinos ---
-
     private int countCardinalGrass(MapGenerator map, int col, int row) {
         return (map.isGrass(col, row - 1) ? 1 : 0) +
                (map.isGrass(col, row + 1) ? 1 : 0) +
@@ -466,4 +433,3 @@ public class ShorelineProcessor {
                (map.isMud(col + 1, row) ? 1 : 0);
     }
 }
-

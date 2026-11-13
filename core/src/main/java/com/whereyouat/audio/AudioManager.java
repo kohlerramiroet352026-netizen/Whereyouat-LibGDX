@@ -14,35 +14,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-//gestor de audio
 public class AudioManager {
-
     private final Random rand = new Random();
 
-    // Volume settings (matching original MusicManager and SoundManager)
     public float masterVolume = 1.0f;
-    public float musicVolume  = 0.12f; // Exact original targetVolume = 0.12f
+    public float musicVolume  = 0.12f;
     public float sfxVolume    = 1.0f;
 
-    // Surface footstep sounds
     private Sound grassStep;
     private Sound sandStep;
     private Sound snowStep;
     private Sound dirtStep;
     private Sound waterStep;
 
-    // Environmental and UI SFX
     private Sound bushRustle;
     private Sound buttonClick;
     private Sound owlSound;
     private Sound birdShortChirp;
 
-    // Ambient loopable/streaming sounds
     private Music birdAmbience;
     private Music nightAmbience;
     private Music cricketsAmbience;
 
-    // OST tracks & approximate lengths in seconds (matching original frame counts @ 38.28 fps)
     private final List<String> playlist = new ArrayList<>();
     private final Map<String, Float> trackLengths = new HashMap<>();
     private int currentTrackIndex = 0;
@@ -51,17 +44,14 @@ public class AudioManager {
     private float trackPlayTime = 0f;
     private float currentTrackDuration = 200f;
 
-    // Fade parameters (matching original MusicManager)
     private static final float FADE_IN_DURATION = 3.1f;
     private static final float FADE_OUT_DURATION = 4.1f;
     private boolean isFadingOut = false;
     private float manualFadeOutTimer = 0f;
 
-    // In-game silence timer: 5 to 7 minutes (300 to 420 seconds) like original
-    private float musicPauseTimer = 10f; // Initial 10s delay on game start
+    private float musicPauseTimer = 10f;
     private boolean isPausedBetweenTracks = true;
 
-    // Ambient timers
     private float ambientSoundTimer = 20f;
 
     public AudioManager() {
@@ -102,12 +92,6 @@ public class AudioManager {
     }
 
     private void setupPlaylist() {
-        // Track paths and durations (seconds) matching original frame counts:
-        // aviva.mp3: 8262 frames ~ 215s
-        // hope.mp3: 8107 frames ~ 211s
-        // TYWM.mp3: 11799 frames ~ 308s
-        // farlands.mp3: 11011 frames ~ 287s
-        // modulo.mp3: 10440 frames ~ 272s
         String[] tracks = {
             "ost/aviva.mp3",
             "ost/TYWM.mp3",
@@ -137,7 +121,6 @@ public class AudioManager {
         if (currentMusic != null && currentMusic.isPlaying()) {
             trackPlayTime += delta;
 
-            // Compute smooth fade-in and natural end-of-track fade-out
             float fadeMultiplier = 1.0f;
             if (trackPlayTime < FADE_IN_DURATION) {
                 fadeMultiplier = Math.max(0.01f, trackPlayTime / FADE_IN_DURATION);
@@ -158,7 +141,6 @@ public class AudioManager {
 
             currentMusic.setVolume(musicVolume * masterVolume * fadeMultiplier);
 
-            // Natural completion of track
             if (trackPlayTime >= currentTrackDuration) {
                 currentMusic.stop();
                 resetSilenceTimer();
@@ -179,7 +161,7 @@ public class AudioManager {
 
     private void resetSilenceTimer() {
         isPausedBetweenTracks = true;
-        // In-game silence period: 5 to 7 minutes (300 to 420 seconds) like original MusicManager
+
         musicPauseTimer = 300f + rand.nextFloat() * 120f;
         isFadingOut = false;
         if (currentMusic != null) {
@@ -202,7 +184,7 @@ public class AudioManager {
         currentMusic = safeLoadMusic(currentTrackPath);
         if (currentMusic != null) {
             currentMusic.setLooping(false);
-            currentMusic.setVolume(0.001f); // Starts at near zero, fades in smoothly
+            currentMusic.setVolume(0.001f);
             currentMusic.play();
         }
     }
@@ -214,7 +196,6 @@ public class AudioManager {
         }
     }
 
-    //liberar musica actual
     public Music releaseCurrentMusic() {
         Music releasedMusic = currentMusic;
         currentMusic = null;
@@ -227,10 +208,8 @@ public class AudioManager {
         if (ambientSoundTimer <= 0f) {
             boolean isNight = cycle.isNight();
             if (isNight) {
-                // Natural pause between night sounds: 15 to 35 seconds (matching original)
                 ambientSoundTimer = 15f + rand.nextFloat() * 20f;
 
-                // Night ambient sound: 50% owl, 50% night ambience atmosphere
                 if (rand.nextBoolean() && owlSound != null) {
                     owlSound.play(0.12f * sfxVolume * masterVolume);
                 } else if (nightAmbience != null && !nightAmbience.isPlaying()) {
@@ -238,10 +217,8 @@ public class AudioManager {
                     nightAmbience.play();
                 }
             } else {
-                // Natural pause between bird sounds: 25 to 65 seconds (matching original)
                 ambientSoundTimer = 25f + rand.nextFloat() * 40f;
 
-                // Day ambient sound: bird short chirp or bird ambience stream
                 if (rand.nextFloat() < 0.65f && birdShortChirp != null) {
                     float pitch = 0.95f + rand.nextFloat() * 0.1f;
                     birdShortChirp.play(0.28f * sfxVolume * masterVolume, pitch, 0f);
@@ -253,18 +230,17 @@ public class AudioManager {
         }
     }
 
-    //reproducir pasos segun suelo
     public void playFootstep(MapGenerator map, TileManager tileM, int col, int row) {
         int waterLevel = tileM.getWaterLevel(map, col, row);
         Sound stepSound = grassStep;
-        float volume = 0.048f; // Default grass volume from SoundManager
+        float volume = 0.048f;
 
         if (waterLevel > 0) {
             stepSound = waterStep;
             volume = 0.045f;
         } else if (col >= 0 && col < map.mapCols && row >= 0 && row < map.mapRows) {
             int groundTile = map.mapTileNum[col][row];
-            // Check tile type first (before biome) — matches original SoundManager logic
+
             if (groundTile == MapGenerator.TILE_SAND1 || groundTile == MapGenerator.TILE_SAND2 ||
                        groundTile == 24 || groundTile == 25 || groundTile == 26) {
                 stepSound = sandStep;
@@ -273,7 +249,6 @@ public class AudioManager {
                 stepSound = (dirtStep != null) ? dirtStep : grassStep;
                 volume = 0.052f;
             } else if (map.isSwampBiome[col][row]) {
-                // Swamp grass/mud tiles play dirt/mud sound
                 stepSound = (dirtStep != null) ? dirtStep : grassStep;
                 volume = 0.052f;
             } else if (map.isSnowBiome[col][row]) {
@@ -286,7 +261,6 @@ public class AudioManager {
         }
 
         if (stepSound != null) {
-            // Subtle pitch modulation (0.96 .. 1.04)
             float pitch = 0.96f + rand.nextFloat() * 0.08f;
             stepSound.play(volume * sfxVolume * masterVolume, pitch, 0f);
         }

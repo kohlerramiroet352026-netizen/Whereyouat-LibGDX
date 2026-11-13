@@ -11,9 +11,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 
-//motor de iluminacion
 public class LightingEngine {
-
     private FrameBuffer lightFbo;
     private TextureRegion lightFboRegion;
     private Texture lightCircleTex;
@@ -37,7 +35,7 @@ public class LightingEngine {
                 float deltaY = y - center;
                 float distance = (float) Math.hypot(deltaX, deltaY);
                 float falloff = Math.max(0f, 1f - distance / radius);
-                // Cubic Hermite smoothstep curve
+
                 falloff = falloff * falloff * (3f - 2f * falloff);
                 pixmap.drawPixel(x, y, Color.rgba8888(1f, 0.90f, 0.70f, falloff));
             }
@@ -67,10 +65,9 @@ public class LightingEngine {
         Texture fboTexture = lightFbo.getColorBufferTexture();
         fboTexture.setFilter(TextureFilter.Linear, TextureFilter.Linear);
         lightFboRegion = new TextureRegion(fboTexture);
-        lightFboRegion.flip(false, true); // OpenGL FBOs have inverted Y
+        lightFboRegion.flip(false, true);
     }
 
-    //renderizar mapa luz
     public void renderLightmap(SpriteBatch batch, DayNightCycle cycle, float playerScreenX, float playerScreenY) {
         if (lightFbo == null) return;
 
@@ -83,11 +80,10 @@ public class LightingEngine {
         Gdx.gl.glClearColor(ambientRed, ambientGreen, ambientBlue, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        // Player nighttime aura
         float nightFactor = 1f - cycle.getAmbientIntensity();
         if (nightFactor > 0.08f) {
             batch.begin();
-            batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE); // Additive blending
+            batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);
             batch.setColor(1f, 0.88f, 0.65f, Math.min(1f, nightFactor * 0.95f));
             float lightSize = 340f;
             batch.draw(lightCircleTex, playerScreenX - lightSize / 2f, playerScreenY - lightSize / 2f, lightSize, lightSize);
@@ -98,14 +94,13 @@ public class LightingEngine {
         lightFbo.end();
     }
 
-    //dibujar iluminacion mundo
     public void drawLightmap(SpriteBatch batch, float minX, float minY, float viewportWidth, float viewportHeight) {
         if (lightFboRegion == null) return;
 
-        batch.setBlendFunction(GL20.GL_DST_COLOR, GL20.GL_ZERO); // Hardware multiplicative blend
+        batch.setBlendFunction(GL20.GL_DST_COLOR, GL20.GL_ZERO);
         batch.setColor(1f, 1f, 1f, 1f);
         batch.draw(lightFboRegion, minX, minY, viewportWidth, viewportHeight);
-        batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA); // Restore normal blend
+        batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     public void dispose() {
