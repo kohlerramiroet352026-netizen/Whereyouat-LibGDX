@@ -164,11 +164,7 @@ public class NetworkManager {
         }
     }
 
-    /**
-     * Solo para el HOST: reabre el ServerSocket para que el cliente pueda
-     * reconectarse con el mismo código de sala después de haberse desconectado.
-     * Resetea todos los flags y streams del cliente anterior, mantiene isHost = true.
-     */
+    //reabrir servidor host
     public void reopenServer() {
         // Resetear flags de la conexión anterior
         synchronized (this) {
@@ -229,12 +225,7 @@ public class NetworkManager {
         }
     }
 
-    /**
-     * Cierra la conexión de forma segura.
-     * Garantizado idempotente: aunque sea llamado simultáneamente desde
-     * el hilo principal (dispose) y el listenerThread, solo ejecuta el
-     * bloque de limpieza una vez gracias al flag 'disconnecting'.
-     */
+    //desconectar red
     public void disconnect() {
         // Comparar-y-asignar atómico: solo el primer caller entra al bloque
         synchronized (this) {
@@ -303,10 +294,7 @@ public class NetworkManager {
         }
     }
 
-    /**
-     * Envuelve Gdx.app.postRunnable() en un try-catch para que nunca crashee
-     * si Gdx.app ya fue destruido (ej: la aplicación está cerrando).
-     */
+    //ejecutar en hilo principal
     private static void safePost(Runnable r) {
         try {
             if (Gdx.app != null) {
@@ -315,10 +303,7 @@ public class NetworkManager {
         } catch (Throwable ignored) {}
     }
 
-    /**
-     * Envuelve Gdx.app.log() en un try-catch para que nunca crashee
-     * si Gdx.app ya fue destruido.
-     */
+    //log seguro
     private static void safeLog(String tag, String msg) {
         try {
             if (Gdx.app != null) {

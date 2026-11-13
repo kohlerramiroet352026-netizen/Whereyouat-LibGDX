@@ -10,5 +10,6 @@ if (JavaVersion.current().isJava9Compatible()) {
 dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
   api "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+  api "com.badlogicgames.gdx-video:gdx-video:1.3.4"
 }
 

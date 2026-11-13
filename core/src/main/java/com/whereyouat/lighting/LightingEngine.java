@@ -11,12 +11,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 
-/**
- * LightingEngine for LibGDX.
- * High-performance GPU-accelerated 2D dynamic lighting system.
- * Uses a FrameBuffer lightmap with multiplicative blending (GL_DST_COLOR, GL_ZERO),
- * smooth radial player illumination aura for nighttime, and ambient DayNightCycle integration.
- */
+//motor de iluminacion
 public class LightingEngine {
 
     private FrameBuffer lightFbo;
@@ -75,9 +70,7 @@ public class LightingEngine {
         lightFboRegion.flip(false, true); // OpenGL FBOs have inverted Y
     }
 
-    /**
-     * Renders the lightmap into the FBO.
-     */
+    //renderizar mapa luz
     public void renderLightmap(SpriteBatch batch, DayNightCycle cycle, float playerScreenX, float playerScreenY) {
         if (lightFbo == null) return;
 
@@ -105,9 +98,7 @@ public class LightingEngine {
         lightFbo.end();
     }
 
-    /**
-     * Multiplies the lightmap onto the rendered world scene.
-     */
+    //dibujar iluminacion mundo
     public void drawLightmap(SpriteBatch batch, float minX, float minY, float viewportWidth, float viewportHeight) {
         if (lightFboRegion == null) return;
 

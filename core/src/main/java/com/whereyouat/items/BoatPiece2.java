@@ -2,25 +2,24 @@ package com.whereyouat.items;
 
 import com.whereyouat.entity.Player;
 
-/**
- * Recompensa única obtenida al derrotar al Rey Frogger en el bioma del pantano.
- * Segunda parte del bote requerida para escapar de la isla.
- */
+//pieza 2 del barco
 public class BoatPiece2 extends Item {
 
+    //crear pieza
     public BoatPiece2() {
         super(
             "Pieza de bote 2",
-            "Mástil y vela impermeable.\nEntregado por el Rey Frogger.",
+            "Mastil y vela impermeable.",
             loadIcon("items/boat_piece2.png")
         );
     }
 
+    //usar pieza
     @Override
     public boolean use(Player player) {
         if (player != null && player.gp != null) {
             player.gp.showNotification("Pieza 2 del bote. Necesitas las 3 para reparar el barco.");
         }
-        return false; // Es un objeto de misión, no se consume al usarlo
+        return false; //no consumir
     }
 }

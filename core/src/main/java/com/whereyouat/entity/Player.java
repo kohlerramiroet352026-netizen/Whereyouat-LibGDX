@@ -9,19 +9,22 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.whereyouat.items.FrogEggs;
+import com.whereyouat.items.BoatPiece1;
+import com.whereyouat.items.BoatPiece2;
+import com.whereyouat.items.BoatPiece3;
 import com.whereyouat.items.Item;
 import com.whereyouat.items.ItemPotion;
-import com.whereyouat.items.OddMushroom;
 import com.whereyouat.items.Sword;
+import com.whereyouat.items.boat;
+import com.whereyouat.items.devsword;
 import com.whereyouat.map.MapGenerator;
 import com.whereyouat.map.TileManager;
-import com.whereyouat.monster.MON_frogger;
-import com.whereyouat.monster.MON_mushroom;
-import com.whereyouat.monster.MON_zombie;
 import com.whereyouat.monster.MON_Ghost;
 import com.whereyouat.monster.MON_bat;
+import com.whereyouat.monster.MON_frogger;
+import com.whereyouat.monster.MON_mushroom;
 import com.whereyouat.monster.MON_snowGhost;
+import com.whereyouat.monster.MON_zombie;
 import com.whereyouat.screens.GameScreen;
 
 /**
@@ -123,17 +126,39 @@ public class Player extends Entity {
 
         loadSprites();
 
-        addItem(new Sword());
+        addItem(new devsword());
         addItem(new ItemPotion());
+        addItem(new boat());
+
     }
 
     public boolean hasSword() {
         for (Item item : inventory) {
-            if (item instanceof Sword) {
+            if (item == null) continue;
+            if (item instanceof Sword || item instanceof devsword) {
+                return true;
+            }
+            if (item.name != null && (item.name.toLowerCase().contains("espada") || item.name.toLowerCase().contains("sword"))) {
                 return true;
             }
         }
         return false;
+    }
+
+    public boolean hasDevSword() {
+        for (Item item : inventory) {
+            if (item == null) continue;
+            if (item instanceof devsword) return true;
+            if (item.name != null && item.name.toLowerCase().contains("developer")) return true;
+        }
+        return false;
+    }
+
+    public int getAttackDamage() {
+        if (hasDevSword()) {
+            return 999;
+        }
+        return 2;
     }
 
     public void attack(String targetDir, int damage) {
@@ -142,7 +167,7 @@ public class Player extends Entity {
         if (attackCooldown > 0f)
             return;
 
-        this.attackCooldown = ATTACK_COOLDOWN;
+        this.attackCooldown = hasDevSword() ? 0.25f : ATTACK_COOLDOWN;
         this.direction = targetDir;
         this.attacking = true;
         this.attackTimer = ATTACK_DURATION;
@@ -809,6 +834,37 @@ public class Player extends Entity {
         if (inventory.size() < MAX_INVENTORY_SIZE) {
             inventory.add(item);
             return true;
+        }
+        return false;
+    }
+
+    /**
+    * Si el inventario contiene las 3 piezas de barco, las remueve
+    * y agrega el Barco ensamblado.
+    * @return true si se ensambló el barco esta llamada.
+    */
+    public boolean tryAssembleBoat() {
+        boolean hasPiece1 = false, hasPiece2 = false, hasPiece3 = false;
+        for (Item it : inventory) {
+            if (it instanceof BoatPiece1) hasPiece1 = true;
+            if (it instanceof BoatPiece2) hasPiece2 = true;
+            if (it instanceof BoatPiece3) hasPiece3 =     true;    
+        }
+        if (!hasPiece1 || !hasPiece2 || !hasPiece3) return     false;
+
+        // Ya tiene las 3 → remover y dar el barco
+        inventory.removeIf(it -> it instanceof BoatPiece1 || it instanceof BoatPiece2 || it instanceof BoatPiece3);
+        addItem(new boat());
+        return true;
+    }
+
+    public boolean hasBoat() {
+        for (Item it : inventory) {
+            if (it == null) continue;
+            if (it instanceof boat) return true;
+            if (it.name != null && (it.name.equalsIgnoreCase("Barco") || it.name.equalsIgnoreCase("Bote") || it.name.equalsIgnoreCase("boat"))) {
+                return true;
+            }
         }
         return false;
     }

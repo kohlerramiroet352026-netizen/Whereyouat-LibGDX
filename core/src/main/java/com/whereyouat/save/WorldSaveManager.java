@@ -16,12 +16,7 @@ import com.whereyouat.entity.Player;
 import com.whereyouat.items.Item;
 import com.whereyouat.lighting.DayNightCycle;
 
-/**
- * WorldSaveManager for LibGDX.
- * Handles saving and loading world metadata, player position, health/lives,
- * and DayNightCycle simulation time.
- * Saves are stored as .properties files inside the "saves/" directory.
- */
+//gestor de guardado
 public class WorldSaveManager {
 
     public static final String SAVES_DIR = "saves";
@@ -79,7 +74,7 @@ public class WorldSaveManager {
         }
     }
 
-    /** Returns sorted list (most recently played first) of all saved worlds. */
+    //listar mundos
     public static List<WorldInfo> listWorlds() {
         List<WorldInfo> worlds = new ArrayList<>();
         File dir = new File(SAVES_DIR);
@@ -96,7 +91,7 @@ public class WorldSaveManager {
         return worlds;
     }
 
-    /** Loads a world by its filename (without extension). */
+    //cargar mundo archivo
     public static WorldInfo loadWorld(String fileName) {
         if (fileName == null || fileName.trim().isEmpty()) return null;
         File file = new File(SAVES_DIR, fileName + ".properties");
@@ -192,12 +187,7 @@ public class WorldSaveManager {
         }
     }
 
-    /**
-     * Saves a new world.
-     * @param name Display name for the world.
-     * @param seed The seed.
-     * @return the WorldInfo that was saved, or null on failure.
-     */
+    //guardar nuevo mundo
     public static WorldInfo saveWorld(String name, long seed) {
         File dir = new File(SAVES_DIR);
         if (!dir.exists()) {
@@ -231,10 +221,7 @@ public class WorldSaveManager {
         }
     }
 
-    /**
-     * Saves live player position and day/night cycle progress to world save file.
-     * @param isMultiplayer true si el mundo fue/es un mundo multijugador (host).
-     */
+    //guardar progreso juego
     public static void saveGameProgress(String fileName, String worldName, long seed, long created,
                                         Player player, DayNightCycle dayNight, Entity[] monsters,
                                         boolean isMultiplayer) {
@@ -320,9 +307,7 @@ public class WorldSaveManager {
         }
     }
 
-    /**
-     * Deletes a saved world by its fileName (without extension).
-     */
+    //eliminar mundo
     public static void deleteWorld(String fileName) {
         File file = new File(SAVES_DIR, fileName + ".properties");
         if (file.exists() && !file.delete()) {
@@ -330,7 +315,7 @@ public class WorldSaveManager {
         }
     }
 
-    /** Formats a timestamp nicely for display. */
+    //formatear fecha
     public static String formatDate(long millis) {
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yy HH:mm");
         return dateFormat.format(new Date(millis));

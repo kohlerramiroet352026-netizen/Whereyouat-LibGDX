@@ -96,11 +96,7 @@ public class MON_Ghost extends Entity {
 		dieFrames = loadColumn("monster/gohst_die.png", FRAMES_DIE);
 	}
 
-	/**
-	 * Carga un spritesheet de 1 columna y N filas.
-	 * Cada frame mide FRAME_W_NATIVE × FRAME_H_NATIVE px.
-	 * Las regiones se voltean verticalmente para el sistema Y-down de LibGDX.
-	 */
+	//cargar frames columna
 	private TextureRegion[] loadColumn(String path, int frameCount) {
 		Texture tex = new Texture(Gdx.files.internal(path));
 		tex.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
@@ -126,8 +122,8 @@ public class MON_Ghost extends Entity {
 		if (state == STATE_DIE)
 			return; // ya muerto, ignorar
 
-		// Si el daño proviene del combate contra el jugador (no por despawn matutino de 999)
-		if (damage < 900) {
+		// Si el daño proviene del combate contra el jugador (no por despawn matutino de 9999)
+		if (damage < 9000) {
 			killedByPlayer = true;
 		}
 

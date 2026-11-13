@@ -11,14 +11,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
-/**
- * SnowParticleSystem for LibGDX.
- * Renders atmospheric snow precipitation in snow biomes and falling leaves from shaken foliage.
- */
+//particulas de nieve y hojas
 public class SnowParticleSystem {
 
     private static final int   MAX_FLAKES     = 50;
-    private static final float MIN_SPEED      = 20f;  // px/s
+    private static final float MIN_SPEED      = 20f;
     private static final float MAX_SPEED      = 60f;
     private static final float MIN_DRIFT      = -18f;
     private static final float MAX_DRIFT      = 36f;
@@ -37,6 +34,7 @@ public class SnowParticleSystem {
     private float intensity = 0f;
     private float targetIntensity = 0f;
 
+    //particula de nieve
     private static class Snowflake {
         float screenX, screenY;
         float speed, drift, alpha;
@@ -44,6 +42,7 @@ public class SnowParticleSystem {
         float time;
     }
 
+    //particula de hoja
     private static class LeafParticle {
         float worldX, worldY;
         float velocityX, velocityY;
@@ -59,6 +58,7 @@ public class SnowParticleSystem {
         boolean facingRight = true;
     }
 
+    //iniciar particulas
     public SnowParticleSystem(long seed) {
         this.rand = new Random(seed + 55555);
         loadTextures();
@@ -68,6 +68,7 @@ public class SnowParticleSystem {
         }
     }
 
+    //cargar texturas
     private void loadTextures() {
         if (Gdx.files.internal("particles/snow_particle.png").exists()) {
             snowTexture = new Texture(Gdx.files.internal("particles/snow_particle.png"));
@@ -85,6 +86,7 @@ public class SnowParticleSystem {
         }
     }
 
+    //crear copo nieve
     private Snowflake createFlake(boolean randomY) {
         Snowflake flake = new Snowflake();
         flake.screenX = rand.nextFloat() * 768f;
@@ -99,11 +101,12 @@ public class SnowParticleSystem {
         return flake;
     }
 
+    //actualizar nieve
     public void update(float delta, boolean inSnowBiome, float blendFactor, float viewportWidth, float viewportHeight) {
         updateLeaves(delta);
 
         targetIntensity = inSnowBiome ? Math.min(1f, blendFactor * 1.5f) : 0f;
-        float step = delta / 1.5f; // ~1.5s fade
+        float step = delta / 1.5f;
         if (intensity < targetIntensity) {
             intensity = Math.min(targetIntensity, intensity + step);
         } else if (intensity > targetIntensity) {
@@ -133,6 +136,7 @@ public class SnowParticleSystem {
         }
     }
 
+    //generar hojas pisadas
     public void spawnLeafParticles(int tileCol, int tileRow, int tileSize) {
         int count = 4 + rand.nextInt(2);
         float centerX = tileCol * tileSize + tileSize / 2f;
@@ -163,11 +167,7 @@ public class SnowParticleSystem {
         }
     }
 
-
-    /**
-     * Spawns wind-blown leaves from tree canopies or bush tops during wind gusts.
-     * Leaves carry strong horizontal momentum from wind direction.
-     */
+    //generar hojas viento
     public void spawnWindLeaves(float spawnX, float spawnY, float groundY, int count, float windDirX) {
         for (int i = 0; i < count; i++) {
             if (leaves.size() >= MAX_LEAVES) {
@@ -185,7 +185,7 @@ public class SnowParticleSystem {
             leaf.worldX = spawnX + (rand.nextFloat() * 24f - 12f);
             leaf.worldY = spawnY + (rand.nextFloat() * 16f - 8f);
 
-            float baseWindSpeed = 132f + rand.nextFloat() * 90f; // pixels/sec
+            float baseWindSpeed = 132f + rand.nextFloat() * 90f;
             leaf.velocityX = windDirX * baseWindSpeed + (rand.nextFloat() * 24f - 12f);
             leaf.velocityY = -15f - rand.nextFloat() * 21f;
             leaf.windDir = windDirX;
@@ -202,6 +202,7 @@ public class SnowParticleSystem {
         }
     }
 
+    //actualizar hojas
     private void updateLeaves(float delta) {
         if (leaves.isEmpty()) return;
         Iterator<LeafParticle> iterator = leaves.iterator();
@@ -239,6 +240,7 @@ public class SnowParticleSystem {
         }
     }
 
+    //dibujar hojas
     public void drawWorldLeaves(SpriteBatch batch, float minX, float minY, float maxX, float maxY) {
         if (leaves.isEmpty() || leafRight == null) return;
 
@@ -254,6 +256,7 @@ public class SnowParticleSystem {
         batch.setColor(1f, 1f, 1f, 1f);
     }
 
+    //dibujar nieve pantalla
     public void drawScreenSnow(SpriteBatch batch, float camMinX, float camMinY) {
         if (intensity < 0.01f || snowRegion == null) return;
 
@@ -264,12 +267,12 @@ public class SnowParticleSystem {
 
             float drawAlpha = flake.alpha * intensity;
             batch.setColor(1f, 1f, 1f, drawAlpha);
-            // Drawn relative to camera frustum top-left
             batch.draw(snowRegion, camMinX + flake.screenX, camMinY + flake.screenY, 5f, 5f);
         }
         batch.setColor(1f, 1f, 1f, 1f);
     }
 
+    //liberar memoria
     public void dispose() {
         if (snowTexture != null) {
             snowTexture.dispose();

@@ -443,6 +443,20 @@ public class GameHUD {
             renderChat(batch, gameScreen, screenWidth, screenHeight);
         }
 
+        // Pista visual para zarpar si el jugador tiene el barco y está cerca del océano
+        if (gameScreen != null && gameScreen.showSailHint && !showInventory && !isPaused && fontSmall != null) {
+            String hint = "Apreta B para zarpar";
+            glyphLayout.setText(fontSmall, hint);
+            float hintW = glyphLayout.width + 32f;
+            float hintH = glyphLayout.height + 20f;
+            float hintX = (screenWidth - hintW) / 2f;
+            float hintY = (notificationMessage != null && notificationTimer > 0f) ? (screenHeight - hintH - 65f) : (screenHeight - hintH - 25f);
+            drawSubWindow(batch, hintX, hintY, hintW, hintH);
+            fontSmall.setColor(Color.CYAN);
+            fontSmall.draw(batch, hint, hintX + 16f, hintY + 14f);
+            fontSmall.setColor(Color.WHITE);
+        }
+
         // Renderizar notificación en pantalla si existe
         if (notificationMessage != null && notificationTimer > 0f && fontSmall != null) {
             glyphLayout.setText(fontSmall, notificationMessage);

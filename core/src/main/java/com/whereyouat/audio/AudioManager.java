@@ -14,17 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-/**
- * AudioManager for LibGDX.
- * 1:1 translation of the original Java Swing MusicManager and SoundManager.
- *
- * Exact volume specifications:
- * - OST Music: 0.12 (gentle, tranquil background volume) with ~3.1s fade-in, ~4.1s fade-out,
- *   and 5-7 minute contemplative silence period between tracks.
- * - Footsteps: Grass 0.048, Snow 0.044, Sand 0.220, Dirt 0.052, Water 0.045
- * - Vegetation & UI: Bush rustle 0.22, Button click 0.32
- * - Day/Night ambience: Birds ambient 0.10, Bird chirp 0.28, Night ambient 0.08, Owl 0.12
- */
+//gestor de audio
 public class AudioManager {
 
     private final Random rand = new Random();
@@ -224,10 +214,7 @@ public class AudioManager {
         }
     }
 
-    /**
-     * Releases the active OST music track without stopping it,
-     * so it can be smoothly faded out by WhereYouAtGame during screen transitions.
-     */
+    //liberar musica actual
     public Music releaseCurrentMusic() {
         Music releasedMusic = currentMusic;
         currentMusic = null;
@@ -266,10 +253,7 @@ public class AudioManager {
         }
     }
 
-    /**
-     * Surface-adaptive footsteps with exact volume levels matching original SoundManager.
-     * Tile type is checked BEFORE biome — sand always plays sand sound regardless of biome.
-     */
+    //reproducir pasos segun suelo
     public void playFootstep(MapGenerator map, TileManager tileM, int col, int row) {
         int waterLevel = tileM.getWaterLevel(map, col, row);
         Sound stepSound = grassStep;

@@ -1,14 +1,6 @@
 package com.whereyouat.lighting;
 
-/**
- * DayNightCycle - Manages a 24-minute real-time day/night cycle:
- * - Day: 15 real minutes (54,000 ticks at 60 fps)
- * - Night: 9 real minutes (32,400 ticks at 60 fps)
- * - Total: 24 real minutes (86,400 ticks at 60 fps)
- *
- * Provides ambient lighting color, intensity, simulated sun vector,
- * and top-down shadow properties with smooth continuous interpolation.
- */
+//ciclo dia y noche
 public class DayNightCycle {
 
     public static final int TICKS_PER_SEC = 60;

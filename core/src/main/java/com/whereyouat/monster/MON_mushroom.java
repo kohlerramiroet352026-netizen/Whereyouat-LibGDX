@@ -16,12 +16,7 @@ import com.whereyouat.items.DropManager;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
 
-/**
- * Entidad del Jefe Hongo Gigante (Mushroom Boss).
- * 
- * Implementa máquina de estados simple (Reposo, Persecución, Ataque),
- * animación de sprites con orientación horizontal y evasión de obstáculos.
- */
+//jefe rey hongo
 public class MON_mushroom extends Entity {
 
     public GameScreen gp;
@@ -556,7 +551,7 @@ public class MON_mushroom extends Entity {
 
         // Registrar en el juego
         gp.monster[slotIndex] = boss;
-        gp.showNotification("¡La tierra retumba con esporas gigantes! El Rey Hongo ha aparecido.");
+        gp.showNotification("El olor a esporas recorre tu nariz, El Rey Hongo ha aparecido...");
         Gdx.app.log("Rey Hongo", "Invocado exitosamente en slot " + slotIndex);
         return true;
     }

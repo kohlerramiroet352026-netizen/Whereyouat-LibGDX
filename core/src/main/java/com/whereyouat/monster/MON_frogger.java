@@ -16,16 +16,7 @@ import com.whereyouat.items.DropManager;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
 
-/**
- * Frogger monster entity for Where you at (LibGDX Edition).
- *
- * Implements:
- * - Random 4-direction AI movement (picks a new direction every ~2 seconds)
- * - 2-frame walk animation per direction
- * - Proper LibGDX texture loading via Gdx.files.internal
- * - Y-down TextureRegion flipping (consistent with Player/Bird)
- * - Disposable texture lifecycle
- */
+//jefe rey frogger
 public class MON_frogger extends Entity {
 
     public GameScreen gp;
@@ -99,15 +90,7 @@ public class MON_frogger extends Entity {
         this.worldY = worldY;
     }
 
-    /**
-     * Loads the frogger sprite sheets from the assets folder.
-     * Uses the same pattern as Player.loadRegion(): Gdx.files.internal,
-     * Nearest filtering, and Y-flip for the Y-down coordinate system.
-     *
-     * Expected assets:
-     * monster/frogger_move1.png (idle / frame 1)
-     * monster/frogger_move2.png (walk / frame 2)
-     */
+    //cargar sprites
     private void loadSprites() {
         idleFrames = loadFrames("monster/frogger_idle.png", 128);
         moveFrames = loadFrames("monster/frogger_move.png", 384);
@@ -426,6 +409,9 @@ public class MON_frogger extends Entity {
             spriteCounter = 0;
             isAttacking = false;
 
+            // Al recibir daño, forzar cooldown de ataque para dar tiempo al jugador de alejarse
+            attackCooldown = Math.max(attackCooldown, ATTACK_COOLDOWN);
+
             // Retroceso (knockback) alejándose del jugador
             float centerX = worldX + 64f;
             float centerY = worldY + 96f;
@@ -541,7 +527,7 @@ public class MON_frogger extends Entity {
 
         // Ponerlo en el juego
         gp.monster[slotIndex] = boss;
-        gp.showNotification("¡Un chapoteo descomunal agita las aguas! El Rey Frogger ha emergido.");
+        gp.showNotification("Un chapoteo descomunal agita las aguas, El Rey Frogger ha emergido...");
         Gdx.app.log("Frogger", "Invocado exitosamente en slot " + slotIndex);
         return true;
     }

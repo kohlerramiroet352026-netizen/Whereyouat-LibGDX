@@ -30,6 +30,8 @@ import com.whereyouat.items.Item;
 import com.whereyouat.items.ItemPotion;
 import com.whereyouat.items.OddMushroom;
 import com.whereyouat.items.Sword;
+import com.whereyouat.items.boat;
+import com.whereyouat.items.devsword;
 import com.whereyouat.lighting.DayNightCycle;
 import com.whereyouat.lighting.LightingEngine;
 import com.whereyouat.map.MapGenerator;
@@ -139,8 +141,6 @@ public class GameScreen extends ScreenAdapter {
     private boolean wasNightLastFrame = false; // para detectar la transición DÍA→NOCHE
     private float nightSpawnTimer = 0f; // temporizador para spawn continuo de noche
     private static final float NIGHT_SPAWN_INTERVAL = 10f; // cada 10s de noche intenta reponer fantasmas
-    private float snowSpawnTimer = 0f; // ← nuevo
-    private static final float SNOW_SPAWN_INTERVAL = 15f; // cada 15 segundos en clima nevado
     private static final int MAX_NIGHT_GHOSTS = 2; // cuántos fantasmas spawnear por noche
     private static final int MAX_NIGHT_ZOMBIES = 2;
     private static final int MAX_NIGHT_BATS = 2;
@@ -148,6 +148,11 @@ public class GameScreen extends ScreenAdapter {
     private float saveFeedbackTimer = 0f;
 
     public boolean showInventory = false;
+
+    // ── Zarpar en barco ──────────────────────────────────────────────────────
+    public boolean showSailHint = false; // true cuando el jugador tiene Barco y está cerca del océano
+    public boolean otherPlayerSailed = false; // multijugador: indica si el otro jugador ya zarpó
+    private boolean transitioningToEndGame = false; // evita desconectar la red al pasar a EndGameScreen
 
     public GameScreen(WhereYouAtGame game, long seed, String worldName, String worldFileName,
             NetworkManager netManager) {
@@ -258,6 +263,11 @@ public class GameScreen extends ScreenAdapter {
                         String sender = netManager.isHost ? "J2" : "J1";
                         addChatMessage("[" + sender + "] " + message.substring(5),
                                 com.badlogic.gdx.graphics.Color.WHITE);
+                    } else if ("SAILED".equals(message)) {
+                        otherPlayerSailed = true;
+                        String who = netManager.isHost ? "Jugador 2" : "Jugador 1 (host)";
+                        addChatMessage("[Aviso] " + who + " ya zarpó.", com.badlogic.gdx.graphics.Color.CYAN);
+                        showNotification(who + " ya zarpó de la isla.");
                     }
                 }
 
@@ -372,6 +382,18 @@ public class GameScreen extends ScreenAdapter {
             showInventory = !showInventory;
         }
 
+        // ── Zarpar con B (fuera de pausa/muerte) ──
+        if (!isPaused && !showDeathScreen && Gdx.input.isKeyJustPressed(Keys.B)) {
+            if (player.hasBoat() && isNearOcean()) {
+                transitioningToEndGame = true;
+                NetworkManager nm = (netManager != null && netManager.isConnected) ? netManager : null;
+                game.setScreen(new EndGameScreen(game, nm, otherPlayerSailed));
+                return;
+            } else if (player.hasBoat()) {
+                showNotification("Tenés que estar cerca del océano para zarpar.");
+            }
+        }
+
         // Navegacion del inventario
 
         if (showInventory) {
@@ -426,9 +448,8 @@ public class GameScreen extends ScreenAdapter {
                 attackDir = (dy > 0) ? "down" : "up"; // "Y" crece hacia abajo
             }
 
-            // ejecutar el ataque con 2 puntos de daño hacia la dirección del click
-
-            player.attack(attackDir, 2);
+            // ejecutar el ataque con el daño correspondiente (devsword = 999, espada normal = 2)
+            player.attack(attackDir, player.getAttackDamage());
         }
     }
 
@@ -473,17 +494,6 @@ public class GameScreen extends ScreenAdapter {
                 && mapGen.isSnowBiome[playerCol][playerRow];
         snowPS.update(delta, inSnow, 1.0f, hudCamera.viewportWidth, hudCamera.viewportHeight);
 
-        // Spawn dinámico de fantasmas en la nieve
-        if (inSnow) {
-            snowSpawnTimer += delta;
-            if (snowSpawnTimer >= SNOW_SPAWN_INTERVAL) {
-                spawnSnowGhost();
-                snowSpawnTimer = 0f;
-            }
-        } else {
-            snowSpawnTimer = 0f;
-        }
-
         // Limpiar fantasmas que quedaron demasiado lejos del jugador (> 25 tiles)
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] instanceof MON_Ghost && monster[i].distanceTo(player) > 35 * tileSize) {
@@ -515,6 +525,39 @@ public class GameScreen extends ScreenAdapter {
             autoSaveTimer = 60f;
             saveProgress();
         }
+
+        // ── Ensamblado de barco ──────────────────────────────────────────────
+        if (player.tryAssembleBoat()) {
+            showNotification("¡Obtuviste las 3 piezas del barco y lo armás!");
+        }
+
+        // ── Pista de zarpar: visible cuando tiene el Barco y está cerca del océano ──
+        showSailHint = player.hasBoat() && isNearOcean();
+    }
+
+    /**
+     * Verifica si el jugador está en la orilla, playa o agua costera cerca del océano abierto.
+     * El océano está delimitado por agua profunda (isDeepWater).
+     */
+    public boolean isNearOcean() {
+        if (mapGen == null || mapGen.isDeepWater == null || player == null) return false;
+
+        int centerCol = (int) ((player.worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
+        int centerRow = (int) ((player.worldY + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
+
+        int radius = 6; // ~6 tiles (288 px): detecta el océano desde la orilla o playa
+        for (int dc = -radius; dc <= radius; dc++) {
+            for (int dr = -radius; dr <= radius; dr++) {
+                int c = centerCol + dc;
+                int r = centerRow + dr;
+                if (c >= 0 && c < mapGen.mapCols && r >= 0 && r < mapGen.mapRows) {
+                    if (mapGen.isDeepWater[c][r]) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private void saveProgress() {
@@ -737,6 +780,10 @@ public class GameScreen extends ScreenAdapter {
                 if (item != null)
                     player.addItem(item);
             }
+            // Asegurar que devsword permanezca en el inventario si el jugador la configuró
+            if (!player.hasDevSword()) {
+                player.addItem(new devsword());
+            }
         }
 
         // 3. Restaurar monstruos guardados
@@ -779,6 +826,10 @@ public class GameScreen extends ScreenAdapter {
         switch (id) {
             case "Sword":
                 return new Sword();
+            case "devsword":
+                return new devsword();
+            case "boat":
+                return new boat();
             case "OddMushroom":
                 return new OddMushroom();
             case "FrogEggs":
@@ -879,7 +930,7 @@ public class GameScreen extends ScreenAdapter {
         // disconnect() se ejecuta en un hilo daemon para NO bloquear el GL thread
         // (cualquier operación de red bloqueante congelaría el juego con "No
         // responde").
-        if (netManager != null) {
+        if (netManager != null && !transitioningToEndGame) {
             netManager.setListener(null); // nullear listener en GL thread antes de lanzar el hilo
             final NetworkManager nm = netManager;
             Thread disconnectThread = new Thread(() -> {
@@ -1066,7 +1117,7 @@ public class GameScreen extends ScreenAdapter {
     private void despawnNightGhosts() {
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] instanceof MON_Ghost) {
-                ((MON_Ghost) monster[i]).takeDamage(999, 0, 0);
+                ((MON_Ghost) monster[i]).takeDamage(9999, 0, 0);
             }
         }
     }
@@ -1074,7 +1125,7 @@ public class GameScreen extends ScreenAdapter {
     private void despawnNightZombies() {
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] instanceof MON_zombie) {
-                ((MON_zombie) monster[i]).takeDamage(999, 0, 0);
+                ((MON_zombie) monster[i]).takeDamage(9999, 0, 0);
             }
         }
     }
@@ -1149,63 +1200,10 @@ public class GameScreen extends ScreenAdapter {
     private void despawnNightBats() {
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] instanceof MON_bat) {
-                ((MON_bat) monster[i]).takeDamage(999, 0, 0);
+                ((MON_bat) monster[i]).takeDamage(9999, 0, 0);
             }
         }
     }
 
 
-    private void spawnSnowGhost() {
-        if (mapGen == null || player == null)
-            return;
-
-        int playerCol = (int) (player.worldX / tileSize);
-        int playerRow = (int) (player.worldY / tileSize);
-
-        // Solo spawnear si el jugador está en zona nevada
-        if (playerCol < 0 || playerCol >= mapGen.mapCols ||
-                playerRow < 0 || playerRow >= mapGen.mapRows)
-            return;
-        if (!mapGen.isSnowBiome[playerCol][playerRow])
-            return;
-
-        // Buscar slot libre
-        int slotIndex = -1;
-        for (int i = 0; i < monster.length; i++) {
-            if (monster[i] == null) {
-                slotIndex = i;
-                break;
-            }
-        }
-        if (slotIndex == -1)
-            return;
-
-        java.util.Random rand = new java.util.Random();
-        // Spawn en un radio de 6-11 tiles
-        for (int attempt = 0; attempt < 30; attempt++) {
-            float halfW = (camera.viewportWidth * camera.zoom) / 2f;
-            float halfH = (camera.viewportHeight * camera.zoom) / 2f;
-            int minRadius = (int) (Math.hypot(halfW, halfH) / tileSize) + 2;
-            int radius = minRadius + rand.nextInt(5);
-            int angle = rand.nextInt(360);
-            int col = playerCol + (int) (Math.cos(Math.toRadians(angle)) * radius);
-            int row = playerRow + (int) (Math.sin(Math.toRadians(angle)) * radius);
-
-            if (col < 1 || col >= mapGen.mapCols - 1 || row < 1 || row >= mapGen.mapRows - 1)
-                continue;
-            if (mapGen.isDeepWater[col][row])
-                continue;
-            if (!mapGen.isSnowBiome[col][row])
-                continue;
-            if (tileM.collidesWithTree(mapGen, col * tileSize, row * tileSize, tileSize, tileSize))
-                continue;
-
-            MON_Ghost ghost = new MON_Ghost(this);
-            ghost.worldX = col * tileSize;
-            ghost.worldY = row * tileSize;
-            monster[slotIndex] = ghost;
-            Gdx.app.log("GameScreen", "Snow ghost spawned at (" + col + "," + row + ")");
-            return;
-        }
-    }
 }

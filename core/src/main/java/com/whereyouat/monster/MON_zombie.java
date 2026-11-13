@@ -12,6 +12,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector3;
 import com.whereyouat.entity.Entity;
+import com.whereyouat.items.DropManager;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
 
@@ -43,6 +44,10 @@ public class MON_zombie extends Entity {
 	// Knockback (igual que Mushroom)
 	private float knockbackDx = 0f;
 	private float knockbackDy = 0f;
+
+	// Control de drops y causa de muerte
+	private boolean dropProcessed = false;
+	private boolean killedByPlayer = false;
 
 	// Texturas (para liberar memoria en dispose)
 	private final List<Texture> textures = new ArrayList<>();
@@ -97,11 +102,7 @@ public class MON_zombie extends Entity {
 		dieFrames = loadColumn("monster/zomb_die.png", FRAMES_DIE);
 	}
 
-	/**
-	 * Carga un spritesheet de 1 columna y N filas.
-	 * Cada frame mide FRAME_W_NATIVE × FRAME_H_NATIVE px.
-	 * Las regiones se voltean verticalmente para el sistema Y-down de LibGDX.
-	 */
+	//cargar columna de sprites
 	private TextureRegion[] loadColumn(String path, int frameCount) {
 		Texture tex = new Texture(Gdx.files.internal(path));
 		tex.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
@@ -126,6 +127,11 @@ public class MON_zombie extends Entity {
 	public void takeDamage(int damage, float playerX, float playerY) {
 		if (state == STATE_DIE)
 			return; // ya muerto, ignorar
+
+		// Solo marcar como muerto por el jugador si el daño no es el kill del sol (9999)
+		if (damage < 9000) {
+			killedByPlayer = true;
+		}
 
 		life -= damage;
 		Gdx.app.log("Zombie", "Vida restante: " + life + "/" + maxLife);
@@ -312,6 +318,12 @@ public class MON_zombie extends Entity {
 	// Se elimina a sí mismo del array de monstruos de GameScreen
 	// (igual que deleteBoss en Mushroom)
 	private void deleteGhost() {
+		// Solo procesar drop si fue el jugador quien lo mató
+		if (killedByPlayer && !dropProcessed && gp != null) {
+			dropProcessed = true;
+			DropManager.processMonsterDrop(this, gp);
+		}
+
 		if (gp != null && gp.monster != null) {
 			for (int i = 0; i < gp.monster.length; i++) {
 				if (gp.monster[i] == this) {
