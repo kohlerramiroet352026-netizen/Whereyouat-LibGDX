@@ -11,6 +11,8 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector3;
 import com.whereyouat.entity.Entity;
+import com.whereyouat.items.BoatPiece1;
+import com.whereyouat.items.DropManager;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
 
@@ -61,6 +63,7 @@ public class MON_mushroom extends Entity {
     private float knockbackDy = 0f;
 
     private String lastHorizontal = "left";
+    private boolean rewardDelivered = false;
 
     public MON_mushroom(GameScreen gp) {
         super(0, 0, 230f);
@@ -451,39 +454,40 @@ public class MON_mushroom extends Entity {
         }
     }
 
-    // invocación del rey hongo para el item Odd Mushroom
+    // Invocación del Rey Hongo mediante el ítem Odd Mushroom
     public static boolean summon(GameScreen gp) {
-        if (gp == null || gp.camera == null || gp.monster == null)
+        if (gp == null || gp.camera == null || gp.monster == null || gp.player == null || gp.mapGen == null) {
             return false;
+        }
 
-        // obtener la posicion del jugador en el mapa
+        // Obtener la posición del jugador en el mapa
         int col = (int) ((gp.player.worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
         int row = (int) ((gp.player.worldY + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
-
-        // comprobar si esta en el bosque
 
         if (col < 0 || col >= gp.mapGen.mapCols || row < 0 || row >= gp.mapGen.mapRows) {
             return false;
         }
-        // Permitir invocar en bosque y planicies comunes (rechazar nieve, pantano,
-        // playa y agua)
-        if (gp.mapGen.isSnowBiome[col][row]
-                || gp.mapGen.isSwampBiome[col][row]
+
+        // Permitir invocar solo en bosque y planicies comunes (rechazar nieve, pantano, playa y agua)
+        if (gp.mapGen.isSnowBiome[col][row] 
+                || gp.mapGen.isSwampBiome[col][row] 
                 || gp.mapGen.isBeachBiome[col][row]
                 || gp.mapGen.isDeepWater[col][row]
                 || gp.mapGen.isShallowWater[col][row]) {
-            Gdx.app.log("Rey hongo", "No se puede invocar al rey hongo fuera del bosque y planicies");
+            gp.showNotification("¡Debes estar en el bosque o planicie para usar el Hongo Extraño!");
+            Gdx.app.log("Rey Hongo", "Invocación rechazada: fuera del bosque y planicies.");
             return false;
         }
 
-        // evitar invocar dos veces si ya hay un Rey Hongo vivo en el mapa
+        // Evitar invocar si ya hay un Rey Hongo vivo en el mapa
         for (Entity m : gp.monster) {
             if (m instanceof MON_mushroom) {
+                gp.showNotification("¡El Rey Hongo ya ha sido invocado!");
                 return false;
             }
         }
 
-        // buscar un espacio libre en el array de monstruos
+        // Buscar un espacio libre en el array de monstruos
         int slotIndex = -1;
         for (int i = 0; i < gp.monster.length; i++) {
             if (gp.monster[i] == null) {
@@ -491,53 +495,79 @@ public class MON_mushroom extends Entity {
                 break;
             }
         }
-        if (slotIndex == -1)
+        if (slotIndex == -1) {
+            gp.showNotification("No hay espacio en el mundo para invocar al jefe.");
             return false; // Array lleno
+        }
 
-        // obtener el área visible real de la cámara (funciona en fullscreen y
-        // minimizada)
+        // Obtener el área visible de la cámara
         float halfW = (gp.camera.viewportWidth * gp.camera.zoom) / 2f;
         float halfH = (gp.camera.viewportHeight * gp.camera.zoom) / 2f;
         float centerX = gp.camera.position.x;
         float centerY = gp.camera.position.y;
 
-        float spawnX, spawnY;
-        float margin = 60f; // margen para que no aparezca asomado en el borde
+        float spawnX = 0f;
+        float spawnY = 0f;
+        float margin = 60f;
+        boolean positionFound = false;
 
-        // 4. Elegir al azar uno de los 4 lados (0: Arriba, 1: Abajo, 2: Izquierda, 3:
-        // Derecha)
-        int side = (int) (Math.random() * 4);
-        switch (side) {
-            case 0: // ARRIBA
-                spawnX = centerX + (float) ((Math.random() - 0.5) * halfW * 1.5);
-                spawnY = centerY - halfH - DRAW_HEIGHT - margin;
-                break;
-            case 1: // ABAJO
-                spawnX = centerX + (float) ((Math.random() - 0.5) * halfW * 1.5);
-                spawnY = centerY + halfH + margin;
-                break;
-            case 2: // IZQUIERDA
-                spawnX = centerX - halfW - DRAW_WIDTH - margin;
-                spawnY = centerY + (float) ((Math.random() - 0.5) * halfH * 1.5);
-                break;
-            default: // DERECHA
-                spawnX = centerX + halfW + margin;
-                spawnY = centerY + (float) ((Math.random() - 0.5) * halfH * 1.5);
-                break;
+        for (int attempt = 0; attempt < 8; attempt++) {
+            int side = (int) (Math.random() * 4);
+            switch (side) {
+                case 0: // ARRIBA
+                    spawnX = centerX + (float) ((Math.random() - 0.5) * halfW * 1.5);
+                    spawnY = centerY - halfH - DRAW_HEIGHT - margin;
+                    break;
+                case 1: // ABAJO
+                    spawnX = centerX + (float) ((Math.random() - 0.5) * halfW * 1.5);
+                    spawnY = centerY + halfH + margin;
+                    break;
+                case 2: // IZQUIERDA
+                    spawnX = centerX - halfW - DRAW_WIDTH - margin;
+                    spawnY = centerY + (float) ((Math.random() - 0.5) * halfH * 1.5);
+                    break;
+                default: // DERECHA
+                    spawnX = centerX + halfW + margin;
+                    spawnY = centerY + (float) ((Math.random() - 0.5) * halfH * 1.5);
+                    break;
+            }
+
+            int spawnCol = (int) ((spawnX + DRAW_WIDTH / 2f) / TileManager.TILE_SIZE);
+            int spawnRow = (int) ((spawnY + DRAW_HEIGHT / 2f) / TileManager.TILE_SIZE);
+
+            if (spawnCol >= 10 && spawnCol < gp.mapGen.mapCols - 10 && spawnRow >= 10 && spawnRow < gp.mapGen.mapRows - 10) {
+                if (!gp.mapGen.isDeepWater[spawnCol][spawnRow]) {
+                    positionFound = true;
+                    break;
+                }
+            }
         }
 
-        // instanciar al jefe y ubicarlo
+        if (!positionFound) {
+            spawnX = gp.player.worldX + TileManager.TILE_SIZE * 4f;
+            spawnY = gp.player.worldY;
+        }
+
+        // Instanciar al jefe y ubicarlo
         MON_mushroom boss = new MON_mushroom(gp);
         boss.worldX = spawnX;
         boss.worldY = spawnY;
-        boss.clampToBounds(); // evita que quede fuera de los límites del mapa del mundo
+        boss.clampToBounds();
 
-        // ponerlo en el juego
+        // Registrar en el juego
         gp.monster[slotIndex] = boss;
+        gp.showNotification("¡La tierra retumba con esporas gigantes! El Rey Hongo ha aparecido.");
+        Gdx.app.log("Rey Hongo", "Invocado exitosamente en slot " + slotIndex);
         return true;
     }
 
     private void deleteBoss() {
+        // Entregar la recompensa única (Pieza de bote 1) protegida contra duplicados
+        if (!rewardDelivered && gp != null) {
+            rewardDelivered = true;
+            DropManager.deliverBossReward("Rey Hongo", new BoatPiece1(), gp);
+        }
+
         if (gp != null && gp.monster != null) {
             for (int i = 0; i < gp.monster.length; i++) {
                 if (gp.monster[i] == this) {

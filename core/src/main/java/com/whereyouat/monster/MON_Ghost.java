@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.whereyouat.entity.Entity;
+import com.whereyouat.items.DropManager;
 import com.whereyouat.screens.GameScreen;
 
 public class MON_Ghost extends Entity {
@@ -49,6 +50,10 @@ public class MON_Ghost extends Entity {
 	private TextureRegion[] leftFrames;
 	private TextureRegion[] rightFrames;
 	private TextureRegion[] dieFrames; // ← nuevo: gohst_die.png
+
+	// Control de recompensas y causa de muerte
+	private boolean dropProcessed = false;
+	private boolean killedByPlayer = false;
 
 	// Contador para el deambular aleatorio (cuando el jugador está lejos)
 	private int actionLockCounter = 0;
@@ -120,6 +125,11 @@ public class MON_Ghost extends Entity {
 	public void takeDamage(int damage, float playerX, float playerY) {
 		if (state == STATE_DIE)
 			return; // ya muerto, ignorar
+
+		// Si el daño proviene del combate contra el jugador (no por despawn matutino de 999)
+		if (damage < 900) {
+			killedByPlayer = true;
+		}
 
 		life -= damage;
 		Gdx.app.log("Ghost", "Vida restante: " + life + "/" + maxLife);
@@ -304,8 +314,14 @@ public class MON_Ghost extends Entity {
 	}
 
 	// Se elimina a sí mismo del array de monstruos de GameScreen
-	// (igual que deleteBoss en Mushroom)
+	// y procesa el drop de objetos de invocación si fue derrotado por el jugador
 	private void deleteGhost() {
+		// Procesar drop de forma protegida contra duplicados
+		if (killedByPlayer && !dropProcessed && gp != null) {
+			dropProcessed = true;
+			DropManager.processMonsterDrop(this, gp);
+		}
+
 		if (gp != null && gp.monster != null) {
 			for (int i = 0; i < gp.monster.length; i++) {
 				if (gp.monster[i] == this) {

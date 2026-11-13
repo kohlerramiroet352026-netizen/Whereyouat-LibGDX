@@ -21,6 +21,11 @@ import com.whereyouat.effects.FootprintManager;
 import com.whereyouat.effects.SnowParticleSystem;
 import com.whereyouat.entity.Entity;
 import com.whereyouat.entity.Player;
+import com.whereyouat.items.BoatPiece1;
+import com.whereyouat.items.BoatPiece2;
+import com.whereyouat.items.BoatPiece3;
+import com.whereyouat.items.FrogEggs;
+import com.whereyouat.items.IceGem;
 import com.whereyouat.items.Item;
 import com.whereyouat.items.ItemPotion;
 import com.whereyouat.items.OddMushroom;
@@ -32,6 +37,7 @@ import com.whereyouat.map.TileManager;
 import com.whereyouat.monster.MON_Ghost;
 import com.whereyouat.monster.MON_frogger;
 import com.whereyouat.monster.MON_mushroom;
+import com.whereyouat.monster.MON_snowGhost;
 import com.whereyouat.net.NetworkManager;
 import com.whereyouat.save.WorldSaveManager;
 import com.whereyouat.monster.MON_zombie;
@@ -467,6 +473,17 @@ public class GameScreen extends ScreenAdapter {
                 && mapGen.isSnowBiome[playerCol][playerRow];
         snowPS.update(delta, inSnow, 1.0f, hudCamera.viewportWidth, hudCamera.viewportHeight);
 
+        // Spawn dinámico de fantasmas en la nieve
+        if (inSnow) {
+            snowSpawnTimer += delta;
+            if (snowSpawnTimer >= SNOW_SPAWN_INTERVAL) {
+                spawnSnowGhost();
+                snowSpawnTimer = 0f;
+            }
+        } else {
+            snowSpawnTimer = 0f;
+        }
+
         // Limpiar fantasmas que quedaron demasiado lejos del jugador (> 25 tiles)
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] instanceof MON_Ghost && monster[i].distanceTo(player) > 35 * tileSize) {
@@ -491,6 +508,7 @@ public class GameScreen extends ScreenAdapter {
         }
 
         audio.update(delta, dayNight);
+        hud.update(delta);
 
         autoSaveTimer -= delta;
         if (autoSaveTimer <= 0f) {
@@ -749,6 +767,12 @@ public class GameScreen extends ScreenAdapter {
         }
     }
 
+    public void showNotification(String message) {
+        if (hud != null) {
+            hud.setNotification(message, 3.5f);
+        }
+    }
+
     private Item createItem(String id) {
         if (id == null)
             return null;
@@ -757,8 +781,18 @@ public class GameScreen extends ScreenAdapter {
                 return new Sword();
             case "OddMushroom":
                 return new OddMushroom();
+            case "FrogEggs":
+                return new FrogEggs();
+            case "IceGem":
+                return new IceGem();
             case "ItemPotion":
                 return new ItemPotion();
+            case "BoatPiece1":
+                return new BoatPiece1();
+            case "BoatPiece2":
+                return new BoatPiece2();
+            case "BoatPiece3":
+                return new BoatPiece3();
             default:
                 return null;
         }
@@ -773,11 +807,13 @@ public class GameScreen extends ScreenAdapter {
             case "MON_frogger":
                 return new MON_frogger(this);
             case "MON_Ghost":
-                return new MON_Ghost(this); // ← nuevo
+                return new MON_Ghost(this);
             case "MON_zombie":
                 return new MON_zombie(this);
             case "MON_bat":
                 return new MON_bat(this);
+            case "MON_snowGhost":
+                return new MON_snowGhost(this);
             default:
                 return null;
         }
@@ -1118,4 +1154,58 @@ public class GameScreen extends ScreenAdapter {
         }
     }
 
+
+    private void spawnSnowGhost() {
+        if (mapGen == null || player == null)
+            return;
+
+        int playerCol = (int) (player.worldX / tileSize);
+        int playerRow = (int) (player.worldY / tileSize);
+
+        // Solo spawnear si el jugador está en zona nevada
+        if (playerCol < 0 || playerCol >= mapGen.mapCols ||
+                playerRow < 0 || playerRow >= mapGen.mapRows)
+            return;
+        if (!mapGen.isSnowBiome[playerCol][playerRow])
+            return;
+
+        // Buscar slot libre
+        int slotIndex = -1;
+        for (int i = 0; i < monster.length; i++) {
+            if (monster[i] == null) {
+                slotIndex = i;
+                break;
+            }
+        }
+        if (slotIndex == -1)
+            return;
+
+        java.util.Random rand = new java.util.Random();
+        // Spawn en un radio de 6-11 tiles
+        for (int attempt = 0; attempt < 30; attempt++) {
+            float halfW = (camera.viewportWidth * camera.zoom) / 2f;
+            float halfH = (camera.viewportHeight * camera.zoom) / 2f;
+            int minRadius = (int) (Math.hypot(halfW, halfH) / tileSize) + 2;
+            int radius = minRadius + rand.nextInt(5);
+            int angle = rand.nextInt(360);
+            int col = playerCol + (int) (Math.cos(Math.toRadians(angle)) * radius);
+            int row = playerRow + (int) (Math.sin(Math.toRadians(angle)) * radius);
+
+            if (col < 1 || col >= mapGen.mapCols - 1 || row < 1 || row >= mapGen.mapRows - 1)
+                continue;
+            if (mapGen.isDeepWater[col][row])
+                continue;
+            if (!mapGen.isSnowBiome[col][row])
+                continue;
+            if (tileM.collidesWithTree(mapGen, col * tileSize, row * tileSize, tileSize, tileSize))
+                continue;
+
+            MON_Ghost ghost = new MON_Ghost(this);
+            ghost.worldX = col * tileSize;
+            ghost.worldY = row * tileSize;
+            monster[slotIndex] = ghost;
+            Gdx.app.log("GameScreen", "Snow ghost spawned at (" + col + "," + row + ")");
+            return;
+        }
+    }
 }

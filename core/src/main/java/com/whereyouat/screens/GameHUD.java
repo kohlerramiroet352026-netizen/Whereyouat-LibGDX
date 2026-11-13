@@ -64,6 +64,24 @@ public class GameHUD {
     public int slotCol = 0;
     public int slotRow = 0;
 
+    // Mensaje de notificación flotante en pantalla
+    private String notificationMessage = null;
+    private float notificationTimer = 0f;
+
+    public void setNotification(String message, float duration) {
+        this.notificationMessage = message;
+        this.notificationTimer = duration;
+    }
+
+    public void update(float delta) {
+        if (notificationTimer > 0f) {
+            notificationTimer -= delta;
+            if (notificationTimer <= 0f) {
+                notificationMessage = null;
+            }
+        }
+    }
+
     private final List<Texture> hudTextures = new ArrayList<>();
     private final GlyphLayout glyphLayout = new GlyphLayout();
 
@@ -423,6 +441,19 @@ public class GameHUD {
         // 6. CHAT (siempre por encima, incluso en pausa)
         if (gameScreen != null && gameScreen.netManager != null) {
             renderChat(batch, gameScreen, screenWidth, screenHeight);
+        }
+
+        // Renderizar notificación en pantalla si existe
+        if (notificationMessage != null && notificationTimer > 0f && fontSmall != null) {
+            glyphLayout.setText(fontSmall, notificationMessage);
+            float boxW = glyphLayout.width + 32f;
+            float boxH = glyphLayout.height + 20f;
+            float boxX = (screenWidth - boxW) / 2f;
+            float boxY = screenHeight - boxH - 25f;
+            drawSubWindow(batch, boxX, boxY, boxW, boxH);
+            fontSmall.setColor(Color.YELLOW);
+            fontSmall.draw(batch, notificationMessage, boxX + 16f, boxY + 14f);
+            fontSmall.setColor(Color.WHITE);
         }
 
         batch.end();

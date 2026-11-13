@@ -21,6 +21,7 @@ import com.whereyouat.monster.MON_mushroom;
 import com.whereyouat.monster.MON_zombie;
 import com.whereyouat.monster.MON_Ghost;
 import com.whereyouat.monster.MON_bat;
+import com.whereyouat.monster.MON_snowGhost;
 import com.whereyouat.screens.GameScreen;
 
 /**
@@ -122,10 +123,8 @@ public class Player extends Entity {
 
         loadSprites();
 
-        addItem(new OddMushroom());
         addItem(new Sword());
         addItem(new ItemPotion());
-        addItem(new FrogEggs());
     }
 
     public boolean hasSword() {
@@ -200,6 +199,8 @@ public class Player extends Entity {
                         ((MON_zombie) m).takeDamage(damage, worldX, worldY);
                     } else if (m instanceof MON_bat) {
                         ((MON_bat) m).takeDamage(damage, worldX, worldY);
+                    } else if (m instanceof MON_snowGhost) {
+                        ((MON_snowGhost) m).takeDamage(damage, worldX, worldY);
                     } else {
                         m.life -= damage;
                         if (m.life <= 0) {
