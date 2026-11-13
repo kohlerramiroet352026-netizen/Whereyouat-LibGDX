@@ -93,7 +93,7 @@ public class Player extends Entity {
     public static final int MONSTER_DAMAGE = 20;
 
     // Movement speeds (pixels per second)
-    private static final float BASE_SPEED = 1000f; // 240
+    private static final float BASE_SPEED = 240f; // 240
     private static final float BUSH_SPEED = 180f;
     private static final float SHALLOW_SPEED = 120f;
     private static final float DEEP_SPEED = 60f;
