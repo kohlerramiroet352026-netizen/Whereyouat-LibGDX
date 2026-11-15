@@ -10,6 +10,7 @@ public abstract class Item {
     public String name;
     public String description;
     public TextureRegion icon;
+    public int ironHearts = 0;
 
     public Item(String name, String description, TextureRegion icon) {
         this.name = name;

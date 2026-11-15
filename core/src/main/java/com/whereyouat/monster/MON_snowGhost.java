@@ -11,7 +11,6 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector3;
 import com.whereyouat.entity.Entity;
-import com.whereyouat.items.BoatPiece3;
 import com.whereyouat.items.DropManager;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
@@ -437,6 +436,11 @@ public class MON_snowGhost extends Entity {
             return false;
         }
 
+        if (!gp.isFroggerDefeated()) {
+            gp.showNotification("Primero tenes que matar a Rey Frogger!");
+            return false;
+        }
+
         int playerCol = (int) ((gp.player.worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
         int playerRow = (int) ((gp.player.worldY + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
 
@@ -530,7 +534,8 @@ public class MON_snowGhost extends Entity {
     private void deleteBoss() {
         if (!rewardDelivered && gp != null) {
             rewardDelivered = true;
-            DropManager.deliverBossReward("Espectro de las Nieves", new BoatPiece3(), gp);
+            gp.snowGhostDefeated = true;
+            DropManager.processBossDrop("Espectro de las Nieves", gp);
         }
 
         if (gp != null && gp.monster != null) {

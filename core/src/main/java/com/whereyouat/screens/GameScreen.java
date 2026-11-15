@@ -24,14 +24,21 @@ import com.whereyouat.entity.Player;
 import com.whereyouat.items.BoatPiece1;
 import com.whereyouat.items.BoatPiece2;
 import com.whereyouat.items.BoatPiece3;
+import com.whereyouat.items.CopperChestplate;
+import com.whereyouat.items.CopperHelmet;
+import com.whereyouat.items.CopperLeggings;
+import com.whereyouat.items.FrogBellyShield;
 import com.whereyouat.items.FrogEggs;
+import com.whereyouat.items.FrostHelmet;
 import com.whereyouat.items.IceGem;
 import com.whereyouat.items.Item;
 import com.whereyouat.items.ItemPotion;
 import com.whereyouat.items.OddMushroom;
+import com.whereyouat.items.SpeedPotion;
 import com.whereyouat.items.Sword;
 import com.whereyouat.items.boat;
 import com.whereyouat.items.devsword;
+import com.whereyouat.items.mushroomblade;
 import com.whereyouat.lighting.DayNightCycle;
 import com.whereyouat.lighting.LightingEngine;
 import com.whereyouat.map.MapGenerator;
@@ -122,10 +129,22 @@ public class GameScreen extends ScreenAdapter {
     private float saveFeedbackTimer = 0f;
 
     public boolean showInventory = false;
+    public boolean showMinimap = true;
 
     public boolean showSailHint = false;
     public boolean otherPlayerSailed = false;
     private boolean transitioningToEndGame = false;
+    public boolean mushroomDefeated = false;
+    public boolean froggerDefeated = false;
+    public boolean snowGhostDefeated = false;
+
+    public boolean isMushroomDefeated() {
+        return mushroomDefeated;
+    }
+
+    public boolean isFroggerDefeated() {
+        return froggerDefeated;
+    }
 
     public GameScreen(WhereYouAtGame game, long seed, String worldName, String worldFileName,
             NetworkManager netManager) {
@@ -336,6 +355,10 @@ public class GameScreen extends ScreenAdapter {
             showInventory = !showInventory;
         }
 
+        if (!isPaused && !showDeathScreen && !isChatOpen && Gdx.input.isKeyJustPressed(Keys.M)) {
+            showMinimap = !showMinimap;
+        }
+
         if (!isPaused && !showDeathScreen && Gdx.input.isKeyJustPressed(Keys.B)) {
             if (player.hasBoat() && isNearOcean()) {
                 transitioningToEndGame = true;
@@ -357,7 +380,7 @@ public class GameScreen extends ScreenAdapter {
             }
 
             if (Gdx.input.isKeyJustPressed(Keys.LEFT)) {
-                hud.slotCol = Math.max(0, hud.slotCol - 1);
+                hud.slotCol = Math.max(-1, hud.slotCol - 1);
             }
 
             if (Gdx.input.isKeyJustPressed(Keys.RIGHT)) {
@@ -365,12 +388,118 @@ public class GameScreen extends ScreenAdapter {
             }
 
             if (Gdx.input.isKeyJustPressed(Keys.ENTER) || Gdx.input.isKeyJustPressed(Keys.SPACE)) {
-                int itemIndex = hud.slotCol + (hud.slotRow * 5);
+                if (hud.slotCol == -1) {
+                    Item itemToMove = getSolitaryItem(hud.slotRow);
+                    if (itemToMove != null && player.addItem(itemToMove)) {
+                        setSolitaryItem(hud.slotRow, null);
+                    }
+                } else {
+                    int itemIndex = hud.slotCol + (hud.slotRow * 5);
+                    if (itemIndex < player.inventory.size()) {
+                        Item item = player.inventory.get(itemIndex);
+                        if (item != null) {
+                            if (item instanceof CopperHelmet || item instanceof FrostHelmet) {
+                                Item prev = player.helmetItem;
+                                player.helmetItem = item;
+                                player.inventory.set(itemIndex, prev);
+                            } else if (item instanceof CopperChestplate) {
+                                Item prev = player.chestplateItem;
+                                player.chestplateItem = item;
+                                player.inventory.set(itemIndex, prev);
+                            } else if (item instanceof CopperLeggings) {
+                                Item prev = player.leggingsItem;
+                                player.leggingsItem = item;
+                                player.inventory.set(itemIndex, prev);
+                            } else if (item.use(player)) {
+                                player.inventory.set(itemIndex, null);
+                            }
+                            while (!player.inventory.isEmpty() && player.inventory.get(player.inventory.size() - 1) == null) {
+                                player.inventory.remove(player.inventory.size() - 1);
+                            }
+                        }
+                    }
+                }
+            }
 
-                if (itemIndex < player.inventory.size()) {
-                    Item item = player.inventory.get(itemIndex);
-                    if (item.use(player)) {
-                        player.inventory.remove(itemIndex);
+            if (Gdx.input.isKeyJustPressed(Keys.Q)) {
+                if (hud.slotCol == -1) {
+                    setSolitaryItem(hud.slotRow, null);
+                } else {
+                    int itemIndex = hud.slotCol + (hud.slotRow * 5);
+                    if (itemIndex < player.inventory.size()) {
+                        Item item = player.inventory.get(itemIndex);
+                        if (item != null) {
+                            player.inventory.set(itemIndex, null);
+                            while (!player.inventory.isEmpty() && player.inventory.get(player.inventory.size() - 1) == null) {
+                                player.inventory.remove(player.inventory.size() - 1);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (Gdx.input.isKeyJustPressed(Keys.F)) {
+                if (hud.slotCol == -1) {
+                    Item itemToMove = getSolitaryItem(hud.slotRow);
+                    if (itemToMove != null && player.addItem(itemToMove)) {
+                        setSolitaryItem(hud.slotRow, null);
+                    }
+                } else {
+                    int currentIndex = hud.slotCol + (hud.slotRow * 5);
+                    if (currentIndex < player.inventory.size()) {
+                        Item item = player.inventory.get(currentIndex);
+                        if (item != null) {
+                            if (item instanceof FrogBellyShield || (item.name != null && item.name.toLowerCase().contains("escudo"))) {
+                                Item prevOffset = player.offsetItem;
+                                player.offsetItem = item;
+                                player.inventory.set(currentIndex, prevOffset);
+                            } else if (item instanceof CopperHelmet || item instanceof FrostHelmet) {
+                                Item prev = player.helmetItem;
+                                player.helmetItem = item;
+                                player.inventory.set(currentIndex, prev);
+                            } else if (item instanceof CopperChestplate) {
+                                Item prev = player.chestplateItem;
+                                player.chestplateItem = item;
+                                player.inventory.set(currentIndex, prev);
+                            } else if (item instanceof CopperLeggings) {
+                                Item prev = player.leggingsItem;
+                                player.leggingsItem = item;
+                                player.inventory.set(currentIndex, prev);
+                            }
+                            while (!player.inventory.isEmpty() && player.inventory.get(player.inventory.size() - 1) == null) {
+                                player.inventory.remove(player.inventory.size() - 1);
+                            }
+                        }
+                    }
+                }
+            }
+
+            int targetSlot = -1;
+            boolean shiftPressed = Gdx.input.isKeyPressed(Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Keys.SHIFT_RIGHT);
+
+            if (Gdx.input.isKeyJustPressed(Keys.NUM_1) || Gdx.input.isKeyJustPressed(Keys.NUMPAD_1)) targetSlot = shiftPressed ? 10 : 0;
+            else if (Gdx.input.isKeyJustPressed(Keys.NUM_2) || Gdx.input.isKeyJustPressed(Keys.NUMPAD_2)) targetSlot = shiftPressed ? 11 : 1;
+            else if (Gdx.input.isKeyJustPressed(Keys.NUM_3) || Gdx.input.isKeyJustPressed(Keys.NUMPAD_3)) targetSlot = shiftPressed ? 12 : 2;
+            else if (Gdx.input.isKeyJustPressed(Keys.NUM_4) || Gdx.input.isKeyJustPressed(Keys.NUMPAD_4)) targetSlot = shiftPressed ? 13 : 3;
+            else if (Gdx.input.isKeyJustPressed(Keys.NUM_5) || Gdx.input.isKeyJustPressed(Keys.NUMPAD_5)) targetSlot = shiftPressed ? 14 : 4;
+            else if (Gdx.input.isKeyJustPressed(Keys.NUM_6) || Gdx.input.isKeyJustPressed(Keys.NUMPAD_6)) targetSlot = shiftPressed ? 15 : 5;
+            else if (Gdx.input.isKeyJustPressed(Keys.NUM_7) || Gdx.input.isKeyJustPressed(Keys.NUMPAD_7)) targetSlot = shiftPressed ? 16 : 6;
+            else if (Gdx.input.isKeyJustPressed(Keys.NUM_8) || Gdx.input.isKeyJustPressed(Keys.NUMPAD_8)) targetSlot = shiftPressed ? 17 : 7;
+            else if (Gdx.input.isKeyJustPressed(Keys.NUM_9) || Gdx.input.isKeyJustPressed(Keys.NUMPAD_9)) targetSlot = shiftPressed ? 18 : 8;
+            else if (Gdx.input.isKeyJustPressed(Keys.NUM_0) || Gdx.input.isKeyJustPressed(Keys.NUMPAD_0)) targetSlot = shiftPressed ? 19 : 9;
+
+            if (targetSlot != -1 && targetSlot < player.MAX_INVENTORY_SIZE && hud.slotCol >= 0) {
+                int currentIndex = hud.slotCol + (hud.slotRow * 5);
+                if (currentIndex < player.inventory.size() && player.inventory.get(currentIndex) != null && currentIndex != targetSlot) {
+                    Item sourceItem = player.inventory.get(currentIndex);
+                    while (player.inventory.size() <= targetSlot) {
+                        player.inventory.add(null);
+                    }
+                    Item targetItem = player.inventory.get(targetSlot);
+                    player.inventory.set(targetSlot, sourceItem);
+                    player.inventory.set(currentIndex, targetItem);
+                    while (!player.inventory.isEmpty() && player.inventory.get(player.inventory.size() - 1) == null) {
+                        player.inventory.remove(player.inventory.size() - 1);
                     }
                 }
             }
@@ -394,6 +523,26 @@ public class GameScreen extends ScreenAdapter {
             }
 
             player.attack(attackDir, player.getAttackDamage());
+        }
+
+        if (!isPaused && !showInventory && !showDeathScreen && Gdx.input.isButtonJustPressed(1)
+                && player.shieldCooldown <= 0f && !player.isShielding && player.hasShieldEquipped()) {
+            Vector3 clickWorld = camera.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
+
+            float playerCenterX = player.worldX + TileManager.TILE_SIZE / 2f;
+            float playerCenterY = player.worldY + TileManager.TILE_SIZE / 2f;
+
+            float dx = clickWorld.x - playerCenterX;
+            float dy = clickWorld.y - playerCenterY;
+
+            String shieldDir;
+            if (Math.abs(dx) >= Math.abs(dy)) {
+                shieldDir = (dx > 0) ? "right" : "left";
+            } else {
+                shieldDir = (dy > 0) ? "down" : "up";
+            }
+
+            player.block(shieldDir);
         }
     }
 
@@ -494,7 +643,7 @@ public class GameScreen extends ScreenAdapter {
         if (worldFileName != null && !worldFileName.isEmpty()) {
             boolean isHost = (netManager != null && netManager.isHost);
             WorldSaveManager.saveGameProgress(worldFileName, worldName, seed, createdTime, player, dayNight, monster,
-                    isHost);
+                    isHost, mushroomDefeated, froggerDefeated, snowGhostDefeated);
         }
     }
 
@@ -522,7 +671,7 @@ public class GameScreen extends ScreenAdapter {
         footprintM.draw(game.batch, minX, minY, maxX, maxY);
 
         tileM.drawGroundShadows(game.batch, mapGen, dayNight, minX, minY, maxX, maxY,
-                player.getCurrentSprite(), player.worldX, player.worldY);
+                player.getShadowSprite(), player.worldX, player.worldY);
 
         snowPS.drawWorldLeaves(game.batch, minX, minY, maxX, maxY);
 
@@ -615,11 +764,22 @@ public class GameScreen extends ScreenAdapter {
 
             float visibleWorldH = TileManager.TILE_SIZE - cutOff;
 
-            float clipWorldY = player.worldY;
+            float clipMinX = player.worldX;
+            float clipMaxX = player.worldX + TileManager.TILE_SIZE;
+            float clipMinY = player.worldY;
+            if (player.attacking || player.isShielding) {
+                if ("left".equals(player.direction)) {
+                    clipMinX -= 30f;
+                } else if ("right".equals(player.direction)) {
+                    clipMaxX += 30f;
+                } else if ("up".equals(player.direction)) {
+                    clipMinY -= 25f;
+                }
+            }
 
-            Vector3 topLeft = camera.project(new Vector3(player.worldX, clipWorldY, 0));
+            Vector3 topLeft = camera.project(new Vector3(clipMinX, clipMinY, 0));
             Vector3 bottomRight = camera
-                    .project(new Vector3(player.worldX + TileManager.TILE_SIZE, clipWorldY + visibleWorldH, 0));
+                    .project(new Vector3(clipMaxX, player.worldY + visibleWorldH, 0));
 
             int sx = (int) Math.min(topLeft.x, bottomRight.x);
             int sy = (int) Math.min(topLeft.y, bottomRight.y);
@@ -667,11 +827,35 @@ public class GameScreen extends ScreenAdapter {
                 if (item != null)
                     player.addItem(item);
             }
-
-            if (!player.hasDevSword()) {
-                player.addItem(new devsword());
-            }
         }
+
+        if (info.offsetItemId != null && !info.offsetItemId.isEmpty()) {
+            player.offsetItem = createItem(info.offsetItemId);
+        } else {
+            player.offsetItem = null;
+        }
+
+        if (info.helmetItemId != null && !info.helmetItemId.isEmpty()) {
+            player.helmetItem = createItem(info.helmetItemId);
+        } else {
+            player.helmetItem = null;
+        }
+
+        if (info.chestplateItemId != null && !info.chestplateItemId.isEmpty()) {
+            player.chestplateItem = createItem(info.chestplateItemId);
+        } else {
+            player.chestplateItem = null;
+        }
+
+        if (info.leggingsItemId != null && !info.leggingsItemId.isEmpty()) {
+            player.leggingsItem = createItem(info.leggingsItemId);
+        } else {
+            player.leggingsItem = null;
+        }
+
+        this.mushroomDefeated = info.mushroomDefeated;
+        this.froggerDefeated = info.froggerDefeated;
+        this.snowGhostDefeated = info.snowGhostDefeated;
 
         if (info.hasMonsterData) {
             for (int i = 0; i < monster.length; i++) {
@@ -728,9 +912,36 @@ public class GameScreen extends ScreenAdapter {
                 return new BoatPiece2();
             case "BoatPiece3":
                 return new BoatPiece3();
+            case "FrogBellyShield":
+                return new FrogBellyShield();
+            case "SpeedPotion":
+                return new SpeedPotion();
+            case "FrostHelmet":
+                return new FrostHelmet();
+            case "CopperHelmet":
+                return new CopperHelmet();
+            case "CopperChestplate":
+                return new CopperChestplate();
+            case "CopperLeggings":
+                return new CopperLeggings();
             default:
                 return null;
         }
+    }
+
+    private Item getSolitaryItem(int row) {
+        if (row == 0) return player.offsetItem;
+        if (row == 1) return player.helmetItem;
+        if (row == 2) return player.chestplateItem;
+        if (row == 3) return player.leggingsItem;
+        return null;
+    }
+
+    private void setSolitaryItem(int row, Item item) {
+        if (row == 0) player.offsetItem = item;
+        else if (row == 1) player.helmetItem = item;
+        else if (row == 2) player.chestplateItem = item;
+        else if (row == 3) player.leggingsItem = item;
     }
 
     private Entity createMonster(String id) {

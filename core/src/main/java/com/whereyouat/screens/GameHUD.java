@@ -6,6 +6,7 @@ import java.util.List;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
@@ -16,10 +17,20 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.FreeTypeFontParameter;
+import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.whereyouat.WhereYouAtGame;
 import com.whereyouat.audio.AudioManager;
+import com.whereyouat.entity.Entity;
 import com.whereyouat.entity.Player;
 import com.whereyouat.items.Item;
+import com.whereyouat.map.MapGenerator;
+import com.whereyouat.map.TileManager;
+import com.whereyouat.monster.MON_bat;
+import com.whereyouat.monster.MON_frogger;
+import com.whereyouat.monster.MON_Ghost;
+import com.whereyouat.monster.MON_mushroom;
+import com.whereyouat.monster.MON_snowGhost;
+import com.whereyouat.monster.MON_zombie;
 
 public class GameHUD {
     public interface HUDCallback {
@@ -48,6 +59,27 @@ public class GameHUD {
     private Texture healthBarSheet;
     private final TextureRegion[] healthBarFrames = new TextureRegion[9];
 
+    private Texture ironHeartTexture;
+    private TextureRegion ironHeartRegion;
+
+    private static final float MINIMAP_VIEW_TILES = 36f;
+    private Texture minimapFrameTex;
+    private TextureRegion minimapFrameRegion;
+    private FrameBuffer minimapFbo;
+    private TextureRegion minimapFboRegion;
+    private OrthographicCamera minimapCam;
+    private int lastMinimapTileCol = -9999;
+    private int lastMinimapTileRow = -9999;
+    private int lastMinimapWaterFrame = -1;
+
+    private TextureRegion playerIconRegion;
+    private TextureRegion batIconRegion;
+    private TextureRegion froggerIconRegion;
+    private TextureRegion frostIconRegion;
+    private TextureRegion ghostIconRegion;
+    private TextureRegion mushroomIconRegion;
+    private TextureRegion zombIconRegion;
+
     private Texture buttonSlotTex;
     private TextureRegion buttonSlotRegion;
     private Texture backButtonTex;
@@ -56,19 +88,32 @@ public class GameHUD {
     public int slotCol = 0;
     public int slotRow = 0;
 
-    private String notificationMessage = null;
-    private float notificationTimer = 0f;
+    public static class NotificationItem {
+        public String text;
+        public float timer;
+
+        public NotificationItem(String text, float timer) {
+            this.text = text;
+            this.timer = timer;
+        }
+    }
+
+    private final List<NotificationItem> notifications = new ArrayList<>();
 
     public void setNotification(String message, float duration) {
-        this.notificationMessage = message;
-        this.notificationTimer = duration;
+        if (message == null || message.trim().isEmpty()) return;
+        notifications.add(new NotificationItem(message, duration));
+        if (notifications.size() > 5) {
+            notifications.remove(0);
+        }
     }
 
     public void update(float delta) {
-        if (notificationTimer > 0f) {
-            notificationTimer -= delta;
-            if (notificationTimer <= 0f) {
-                notificationMessage = null;
+        for (int i = notifications.size() - 1; i >= 0; i--) {
+            NotificationItem item = notifications.get(i);
+            item.timer -= delta;
+            if (item.timer <= 0f) {
+                notifications.remove(i);
             }
         }
     }
@@ -89,6 +134,7 @@ public class GameHUD {
             FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/PressStart2P-Regular.ttf"));
             FreeTypeFontParameter parameter = new FreeTypeFontParameter();
             parameter.flip = true;
+            parameter.characters = FreeTypeFontGenerator.DEFAULT_CHARS + "áéíóúÁÉÍÓÚñÑ¿¡üÜ";
             parameter.size = 11;
             parameter.shadowOffsetX = 1;
             parameter.shadowOffsetY = 1;
@@ -168,6 +214,48 @@ public class GameHUD {
                 healthBarFrames[i].flip(false, true);
             }
         }
+
+        if (Gdx.files.internal("player/iron_heart.png").exists()) {
+            ironHeartTexture = new Texture(Gdx.files.internal("player/iron_heart.png"));
+            ironHeartTexture.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+            hudTextures.add(ironHeartTexture);
+            ironHeartRegion = new TextureRegion(ironHeartTexture);
+            ironHeartRegion.flip(false, true);
+        }
+
+        if (Gdx.files.internal("player/minimap.png").exists()) {
+            minimapFrameTex = new Texture(Gdx.files.internal("player/minimap.png"));
+            minimapFrameTex.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+            hudTextures.add(minimapFrameTex);
+            minimapFrameRegion = new TextureRegion(minimapFrameTex);
+            minimapFrameRegion.flip(false, true);
+
+            minimapFbo = new FrameBuffer(Pixmap.Format.RGBA8888, 216, 216, false);
+            Texture fboTex = minimapFbo.getColorBufferTexture();
+            fboTex.setFilter(TextureFilter.Linear, TextureFilter.Linear);
+            minimapFboRegion = new TextureRegion(fboTex);
+            minimapCam = new OrthographicCamera();
+        }
+
+        playerIconRegion = loadMapIcon("player/player_mapicon.png");
+        batIconRegion = loadMapIcon("monster/bat_mapicon.png");
+        froggerIconRegion = loadMapIcon("monster/frogger_mapicon.png");
+        frostIconRegion = loadMapIcon("monster/frost_mapicon.png");
+        ghostIconRegion = loadMapIcon("monster/ghost_mapicon.png");
+        mushroomIconRegion = loadMapIcon("monster/mushroom_mapicon.png");
+        zombIconRegion = loadMapIcon("monster/zomb_mapicon.png");
+    }
+
+    private TextureRegion loadMapIcon(String path) {
+        if (Gdx.files.internal(path).exists()) {
+            Texture tex = new Texture(Gdx.files.internal(path));
+            tex.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+            hudTextures.add(tex);
+            TextureRegion tr = new TextureRegion(tex);
+            tr.flip(false, true);
+            return tr;
+        }
+        return null;
     }
 
     public void renderInventory(SpriteBatch batch, Player player, float screenW, float screenH) {
@@ -185,6 +273,28 @@ public class GameHUD {
 
         drawSubWindow(batch, frameX, frameY, frameW, frameH);
 
+        float solitaryBoxW = slotSize + 10f;
+        float solitaryBoxH = slotSize + 10f;
+        float solitaryBoxX = frameX - solitaryBoxW - 10f;
+
+        for (int r = 0; r < 4; r++) {
+            float boxY = frameY + (r * 56f);
+            drawSubWindow(batch, solitaryBoxX, boxY, solitaryBoxW, solitaryBoxH);
+
+            float sSlotX = solitaryBoxX + (solitaryBoxW - slotSize) / 2f;
+            float sSlotY = boxY + (solitaryBoxH - slotSize) / 2f;
+
+            Item itemInSlot = null;
+            if (r == 0) itemInSlot = player.offsetItem;
+            else if (r == 1) itemInSlot = player.helmetItem;
+            else if (r == 2) itemInSlot = player.chestplateItem;
+            else if (r == 3) itemInSlot = player.leggingsItem;
+
+            if (itemInSlot != null && itemInSlot.icon != null) {
+                batch.draw(itemInSlot.icon, sSlotX + 3f, sSlotY + 3f, slotSize - 6f, slotSize - 6f);
+            }
+        }
+
         float startSlotsX = frameX + padding;
         float startSlotsY = frameY + padding;
 
@@ -196,9 +306,9 @@ public class GameHUD {
                 int index = col + (row * 5);
                 if (index < player.inventory.size()) {
                     Item item = player.inventory.get(index);
-                    if (item.icon != null) {
+                    if (item != null && item.icon != null) {
                         batch.draw(item.icon, slotX + 3f, slotY + 3f, slotSize - 6f, slotSize - 6f);
-                    } else {
+                    } else if (item != null) {
                         batch.setColor(0.9f, 0.25f, 0.25f, 0.9f);
                         batch.draw(whitePixel, slotX + 8f, slotY + 8f, slotSize - 16f, slotSize - 16f);
                         batch.setColor(1f, 1f, 1f, 1f);
@@ -207,9 +317,15 @@ public class GameHUD {
             }
         }
 
-        float cursorX = startSlotsX + (slotCol * (slotSize + slotPadding));
-        float cursorY = startSlotsY + (slotRow * (slotSize + slotPadding));
-        drawCursor(batch, cursorX, cursorY, slotSize);
+        if (slotCol == -1) {
+            float sSlotX = solitaryBoxX + (solitaryBoxW - slotSize) / 2f;
+            float sSlotY = frameY + (slotRow * 56f) + (solitaryBoxH - slotSize) / 2f;
+            drawCursor(batch, sSlotX, sSlotY, slotSize);
+        } else {
+            float cursorX = startSlotsX + (slotCol * (slotSize + slotPadding));
+            float cursorY = startSlotsY + (slotRow * (slotSize + slotPadding));
+            drawCursor(batch, cursorX, cursorY, slotSize);
+        }
 
         float descX = frameX;
         float descY = frameY + frameH + 8f;
@@ -217,21 +333,77 @@ public class GameHUD {
         float descH = 120f;
         drawSubWindow(batch, descX, descY, descW, descH);
 
-        int selectedIndex = slotCol + (slotRow * 5);
-        if (selectedIndex < player.inventory.size()) {
-            Item selectedItem = player.inventory.get(selectedIndex);
-
-            if (fontSmall != null) {
-                fontSmall.setColor(Color.GOLD);
-                fontSmall.draw(batch, selectedItem.name, descX + 16f, descY + 24f);
-
-                fontSmall.setColor(Color.WHITE);
-                float lineY = descY + 48f;
-                for (String line : selectedItem.description.split("\n")) {
-                    fontSmall.draw(batch, line, descX + 16f, lineY);
-                    lineY += 18f;
+        Item selectedItem = null;
+        if (slotCol == -1) {
+            if (slotRow == 0) {
+                selectedItem = player.offsetItem;
+                if (selectedItem == null && fontSmall != null) {
+                    fontSmall.setColor(Color.GRAY);
+                    fontSmall.draw(batch, "Offset (vacio)", descX + 16f, descY + 24f);
+                    fontSmall.setColor(Color.WHITE);
+                    fontSmall.draw(batch, "Apreta [F] sobre el", descX + 16f, descY + 48f);
+                    fontSmall.draw(batch, "escudo para equiparlo", descX + 16f, descY + 66f);
+                }
+            } else if (slotRow == 1) {
+                selectedItem = player.helmetItem;
+                if (selectedItem == null && fontSmall != null) {
+                    fontSmall.setColor(Color.GRAY);
+                    fontSmall.draw(batch, "Casco (vacio)", descX + 16f, descY + 24f);
+                    fontSmall.setColor(Color.WHITE);
+                    fontSmall.draw(batch, "Equipa un casco", descX + 16f, descY + 48f);
+                }
+            } else if (slotRow == 2) {
+                selectedItem = player.chestplateItem;
+                if (selectedItem == null && fontSmall != null) {
+                    fontSmall.setColor(Color.GRAY);
+                    fontSmall.draw(batch, "Pechera (vacio)", descX + 16f, descY + 24f);
+                    fontSmall.setColor(Color.WHITE);
+                    fontSmall.draw(batch, "Equipa una pechera", descX + 16f, descY + 48f);
+                }
+            } else if (slotRow == 3) {
+                selectedItem = player.leggingsItem;
+                if (selectedItem == null && fontSmall != null) {
+                    fontSmall.setColor(Color.GRAY);
+                    fontSmall.draw(batch, "Pantalones (vacio)", descX + 16f, descY + 24f);
+                    fontSmall.setColor(Color.WHITE);
+                    fontSmall.draw(batch, "Equipa pantalones", descX + 16f, descY + 48f);
                 }
             }
+        } else {
+            int selectedIndex = slotCol + (slotRow * 5);
+            if (selectedIndex < player.inventory.size()) {
+                selectedItem = player.inventory.get(selectedIndex);
+            }
+        }
+
+        if (selectedItem != null && fontSmall != null) {
+            fontSmall.setColor(Color.GOLD);
+            fontSmall.draw(batch, selectedItem.name, descX + 16f, descY + 24f);
+
+            fontSmall.setColor(Color.WHITE);
+            float lineY = descY + 48f;
+            for (String line : selectedItem.description.split("\n")) {
+                fontSmall.draw(batch, line, descX + 16f, lineY);
+                lineY += 18f;
+            }
+        }
+
+        float guideX = frameX;
+        float guideY = descY + descH + 8f;
+        float guideW = frameW;
+        float guideH = 104f;
+        drawSubWindow(batch, guideX, guideY, guideW, guideH);
+
+        if (fontSmall != null) {
+            float textX = guideX + 14f;
+            fontSmall.setColor(Color.GOLD);
+            fontSmall.draw(batch, "Guía de inventario", textX, guideY + 20f);
+
+            fontSmall.setColor(Color.WHITE);
+            fontSmall.draw(batch, "[Enter] Usar / Equipar", textX, guideY + 38f);
+            fontSmall.draw(batch, "[1-9] Mover ítem", textX, guideY + 54f);
+            fontSmall.draw(batch, "[Q] Tirar ítem", textX, guideY + 70f);
+            fontSmall.draw(batch, "[F] Equipar en slot", textX, guideY + 86f);
         }
     }
 
@@ -290,6 +462,10 @@ public class GameHUD {
     }
 
     public void render(SpriteBatch batch, Player player, boolean isPaused, boolean showDeathScreen, boolean showRespawnScreen, float saveFeedbackTimer, float animTime, boolean showInventory, GameScreen gameScreen) {
+        if (gameScreen != null && gameScreen.showMinimap && minimapFbo != null && player != null && gameScreen.tileM != null && gameScreen.mapGen != null) {
+            renderMinimapFbo(batch, player, gameScreen);
+        }
+
         hudCamera.update();
         batch.setProjectionMatrix(hudCamera.combined);
         batch.begin();
@@ -381,6 +557,46 @@ public class GameHUD {
             batch.draw(healthBarFrames[hbFrame], hbX, hbY, hbW, hbH);
         }
 
+        float ironHeartW = Math.round(11f * hbScale);
+        float ironHeartH = Math.round(9f * hbScale);
+        float ironHeartY = hbY + hbH + gap;
+        float ironSpacing = (maxInnerW - (5 * ironHeartW)) / 4f;
+
+        int filledIronHearts = (player != null) ? player.getIronHearts() : 0;
+        for (int i = 0; i < 5; i++) {
+            float slotX = innerX + i * (ironHeartW + ironSpacing);
+            if (i < filledIronHearts) {
+                batch.setColor(1f, 1f, 1f, 1f);
+            } else {
+                batch.setColor(0.2f, 0.2f, 0.25f, 0.55f);
+            }
+            if (ironHeartRegion != null) {
+                batch.draw(ironHeartRegion, slotX, ironHeartY, ironHeartW, ironHeartH);
+            }
+        }
+        batch.setColor(1f, 1f, 1f, 1f);
+
+        if (gameScreen != null && gameScreen.showMinimap && minimapFrameRegion != null) {
+            float minimapScale = hcScale * 1.4f;
+            float minimapW = Math.round(64f * minimapScale);
+            float minimapH = Math.round(64f * minimapScale);
+            float minimapX = startX;
+            float minimapY = ironHeartY + ironHeartH + gap;
+
+            float innerMapX = minimapX + Math.round(5f * minimapScale);
+            float innerMapY = minimapY + Math.round(5f * minimapScale);
+            float innerMapW = Math.round(54f * minimapScale);
+            float innerMapH = Math.round(54f * minimapScale);
+
+            if (minimapFboRegion != null) {
+                batch.draw(minimapFboRegion, innerMapX, innerMapY, innerMapW, innerMapH);
+            }
+
+            renderMinimapIcons(batch, player, gameScreen, innerMapX, innerMapY, innerMapW, innerMapH, minimapScale);
+
+            batch.draw(minimapFrameRegion, minimapX, minimapY, minimapW, minimapH);
+        }
+
         if (isPaused) {
             renderPauseMenu(batch, screenWidth, screenHeight, saveFeedbackTimer, gameScreen);
         }
@@ -407,23 +623,29 @@ public class GameHUD {
             float hintW = glyphLayout.width + 32f;
             float hintH = glyphLayout.height + 20f;
             float hintX = (screenWidth - hintW) / 2f;
-            float hintY = (notificationMessage != null && notificationTimer > 0f) ? (screenHeight - hintH - 65f) : (screenHeight - hintH - 25f);
+            float totalNotifH = notifications.isEmpty() ? 0f : (notifications.size() * 38f);
+            float hintY = screenHeight - hintH - 25f - totalNotifH;
             drawSubWindow(batch, hintX, hintY, hintW, hintH);
             fontSmall.setColor(Color.CYAN);
             fontSmall.draw(batch, hint, hintX + 16f, hintY + 14f);
             fontSmall.setColor(Color.WHITE);
         }
 
-        if (notificationMessage != null && notificationTimer > 0f && fontSmall != null) {
-            glyphLayout.setText(fontSmall, notificationMessage);
-            float boxW = glyphLayout.width + 32f;
-            float boxH = glyphLayout.height + 20f;
-            float boxX = (screenWidth - boxW) / 2f;
-            float boxY = screenHeight - boxH - 25f;
-            drawSubWindow(batch, boxX, boxY, boxW, boxH);
-            fontSmall.setColor(Color.YELLOW);
-            fontSmall.draw(batch, notificationMessage, boxX + 16f, boxY + 14f);
-            fontSmall.setColor(Color.WHITE);
+        if (!notifications.isEmpty() && fontSmall != null) {
+            float currentBottomY = screenHeight - 25f;
+            for (int i = 0; i < notifications.size(); i++) {
+                NotificationItem n = notifications.get(i);
+                glyphLayout.setText(fontSmall, n.text);
+                float boxW = glyphLayout.width + 32f;
+                float boxH = glyphLayout.height + 20f;
+                float boxX = (screenWidth - boxW) / 2f;
+                float boxY = currentBottomY - boxH;
+                drawSubWindow(batch, boxX, boxY, boxW, boxH);
+                fontSmall.setColor(Color.YELLOW);
+                fontSmall.draw(batch, n.text, boxX + 16f, boxY + 14f);
+                fontSmall.setColor(Color.WHITE);
+                currentBottomY = boxY - 8f;
+            }
         }
 
         batch.end();
@@ -722,10 +944,131 @@ public class GameHUD {
         }
     }
 
+    private void renderMinimapFbo(SpriteBatch batch, Player player, GameScreen gameScreen) {
+        if (minimapFbo == null || gameScreen == null || gameScreen.tileM == null || gameScreen.mapGen == null || player == null) return;
+
+        int centerTileCol = (int) ((player.worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
+        int centerTileRow = (int) ((player.worldY + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
+        int currentWaterFrame = gameScreen.tileM.getWaterFrame();
+
+        if (centerTileCol == lastMinimapTileCol && centerTileRow == lastMinimapTileRow && currentWaterFrame == lastMinimapWaterFrame) {
+            return;
+        }
+
+        lastMinimapTileCol = centerTileCol;
+        lastMinimapTileRow = centerTileRow;
+        lastMinimapWaterFrame = currentWaterFrame;
+
+        float minimapWorldWidth = MINIMAP_VIEW_TILES * TileManager.TILE_SIZE;
+        float minimapWorldHeight = MINIMAP_VIEW_TILES * TileManager.TILE_SIZE;
+
+        float camX = centerTileCol * TileManager.TILE_SIZE + TileManager.TILE_SIZE / 2f;
+        float camY = centerTileRow * TileManager.TILE_SIZE + TileManager.TILE_SIZE / 2f;
+
+        minimapCam.setToOrtho(true, minimapWorldWidth, minimapWorldHeight);
+        minimapCam.position.set(camX, camY, 0);
+        minimapCam.update();
+
+        minimapFbo.begin();
+        Gdx.gl.glClearColor(0.06f, 0.11f, 0.25f, 1f);
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+        batch.setProjectionMatrix(minimapCam.combined);
+        batch.begin();
+
+        float minX = camX - minimapWorldWidth / 2f;
+        float maxX = camX + minimapWorldWidth / 2f;
+        float minY = camY - minimapWorldHeight / 2f;
+        float maxY = camY + minimapWorldHeight / 2f;
+
+        gameScreen.tileM.drawGround(batch, gameScreen.mapGen, minX, minY, maxX, maxY);
+        gameScreen.tileM.drawAllDecorations(batch, gameScreen.mapGen, minX, minY, maxX, maxY);
+
+        batch.end();
+        minimapFbo.end();
+    }
+
+    private TextureRegion getMonsterIcon(Entity m) {
+        if (m instanceof MON_mushroom) return mushroomIconRegion;
+        if (m instanceof MON_frogger) return froggerIconRegion;
+        if (m instanceof MON_snowGhost) return frostIconRegion;
+        if (m instanceof MON_Ghost) return ghostIconRegion;
+        if (m instanceof MON_zombie) return zombIconRegion;
+        if (m instanceof MON_bat) return batIconRegion;
+        return null;
+    }
+
+    private void renderMinimapIcons(SpriteBatch batch, Player player, GameScreen gameScreen,
+                                    float innerMapX, float innerMapY, float innerMapW, float innerMapH,
+                                    float minimapScale) {
+        float minimapWorldWidth = MINIMAP_VIEW_TILES * TileManager.TILE_SIZE;
+        float minimapWorldHeight = MINIMAP_VIEW_TILES * TileManager.TILE_SIZE;
+
+        float mapCenterX = innerMapX + innerMapW / 2f;
+        float mapCenterY = innerMapY + innerMapH / 2f;
+
+        int centerTileCol = (int) ((player.worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
+        int centerTileRow = (int) ((player.worldY + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
+        float camX = centerTileCol * TileManager.TILE_SIZE + TileManager.TILE_SIZE / 2f;
+        float camY = centerTileRow * TileManager.TILE_SIZE + TileManager.TILE_SIZE / 2f;
+
+        if (gameScreen.monster != null) {
+            for (int i = 0; i < gameScreen.monster.length; i++) {
+                Entity m = gameScreen.monster[i];
+                if (m != null && m.life > 0) {
+                    TextureRegion icon = getMonsterIcon(m);
+                    if (icon == null) continue;
+
+                    boolean isBoss = (m instanceof MON_mushroom || m instanceof MON_frogger || m instanceof MON_snowGhost);
+                    float targetSize = isBoss ? Math.round(7.0f * minimapScale) : Math.round(5.5f * minimapScale);
+                    float iconAspect = (float) icon.getRegionWidth() / (float) icon.getRegionHeight();
+                    float drawW = (iconAspect >= 1f) ? targetSize : targetSize * iconAspect;
+                    float drawH = (iconAspect >= 1f) ? targetSize / iconAspect : targetSize;
+
+                    float mWorldCenterX = m.worldX + m.solidArea.x + m.solidArea.width / 2f;
+                    float mWorldCenterY = m.worldY + m.solidArea.y + m.solidArea.height / 2f;
+
+                    float diffX = mWorldCenterX - camX;
+                    float diffY = mWorldCenterY - camY;
+
+                    float iconCenterX = mapCenterX + (diffX / minimapWorldWidth) * innerMapW;
+                    float iconCenterY = mapCenterY + (diffY / minimapWorldHeight) * innerMapH;
+
+                    if (iconCenterX >= innerMapX && iconCenterX <= innerMapX + innerMapW
+                            && iconCenterY >= innerMapY && iconCenterY <= innerMapY + innerMapH) {
+                        batch.draw(icon, iconCenterX - drawW / 2f, iconCenterY - drawH / 2f, drawW, drawH);
+                    }
+                }
+            }
+        }
+
+        if (playerIconRegion != null) {
+            float playerTargetSize = Math.round(5.5f * minimapScale);
+            float playerAspect = (float) playerIconRegion.getRegionWidth() / (float) playerIconRegion.getRegionHeight();
+            float pDrawW = (playerAspect >= 1f) ? playerTargetSize : playerTargetSize * playerAspect;
+            float pDrawH = (playerAspect >= 1f) ? playerTargetSize / playerAspect : playerTargetSize;
+
+            float pWorldCenterX = player.worldX + TileManager.TILE_SIZE / 2f;
+            float pWorldCenterY = player.worldY + TileManager.TILE_SIZE / 2f;
+            float diffX = pWorldCenterX - camX;
+            float diffY = pWorldCenterY - camY;
+
+            float playerIconX = mapCenterX + (diffX / minimapWorldWidth) * innerMapW;
+            float playerIconY = mapCenterY + (diffY / minimapWorldHeight) * innerMapH;
+
+            batch.draw(playerIconRegion, playerIconX - pDrawW / 2f, playerIconY - pDrawH / 2f, pDrawW, pDrawH);
+        }
+    }
+
     public void dispose() {
         if (fontSmall != null) fontSmall.dispose();
         if (fontMedium != null) fontMedium.dispose();
         if (fontLarge != null) fontLarge.dispose();
+
+        if (minimapFbo != null) {
+            minimapFbo.dispose();
+            minimapFbo = null;
+        }
 
         for (Texture tex : hudTextures) {
             tex.dispose();

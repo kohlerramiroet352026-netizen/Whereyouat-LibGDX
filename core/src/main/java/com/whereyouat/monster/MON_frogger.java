@@ -13,6 +13,7 @@ import com.badlogic.gdx.math.Vector3;
 import com.whereyouat.entity.Entity;
 import com.whereyouat.items.BoatPiece2;
 import com.whereyouat.items.DropManager;
+import com.whereyouat.items.FrogBellyShield;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
 
@@ -410,6 +411,11 @@ public class MON_frogger extends Entity {
             return false;
         }
 
+        if (!gp.isMushroomDefeated()) {
+            gp.showNotification("Primero tenes que matar a Rey Hongo!");
+            return false;
+        }
+
         int col = (int) ((gp.player.worldX + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
         int row = (int) ((gp.player.worldY + TileManager.TILE_SIZE / 2f) / TileManager.TILE_SIZE);
 
@@ -503,7 +509,8 @@ public class MON_frogger extends Entity {
     private void deleteFrogger() {
         if (!rewardDelivered && gp != null) {
             rewardDelivered = true;
-            DropManager.deliverBossReward("Rey Frogger", new BoatPiece2(), gp);
+            gp.froggerDefeated = true;
+            DropManager.processBossDrop("Rey Frogger", gp);
         }
 
         if (gp != null && gp.monster != null) {

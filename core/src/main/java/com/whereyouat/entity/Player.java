@@ -12,12 +12,21 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.whereyouat.items.BoatPiece1;
 import com.whereyouat.items.BoatPiece2;
 import com.whereyouat.items.BoatPiece3;
+import com.whereyouat.items.CopperChestplate;
+import com.whereyouat.items.CopperHelmet;
+import com.whereyouat.items.CopperLeggings;
+import com.whereyouat.items.FrogBellyShield;
+import com.whereyouat.items.FrogEggs;
+import com.whereyouat.items.FrostHelmet;
 import com.whereyouat.items.IceGem;
 import com.whereyouat.items.Item;
 import com.whereyouat.items.ItemPotion;
+import com.whereyouat.items.OddMushroom;
+import com.whereyouat.items.SpeedPotion;
 import com.whereyouat.items.Sword;
 import com.whereyouat.items.boat;
 import com.whereyouat.items.devsword;
+import com.whereyouat.items.mushroomblade;
 import com.whereyouat.map.MapGenerator;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.monster.MON_Ghost;
@@ -93,6 +102,30 @@ public class Player extends Entity {
     private TextureRegion attackDown;
     private TextureRegion attackRight;
     private TextureRegion attackLeft;
+    public Item offsetItem = null;
+    public Item helmetItem = null;
+    public Item chestplateItem = null;
+    public Item leggingsItem = null;
+    public boolean isShielding = false;
+    public float shieldTimer = 0f;
+    public float shieldCooldown = 0f;
+    public static final float SHIELD_DURATION = 0.85f;
+    public static final float SHIELD_COOLDOWN = 5.0f;
+    public static final float SHIELD_COOLDOWN_MISS = 1.0f;
+    public float knockbackDx = 0f;
+    public float knockbackDy = 0f;
+    public float knockbackTimer = 0f;
+    public float speedBoostTimer = 0f;
+    public float speedBoostAmount = 0f;
+    private TextureRegion shieldFrontRegion;
+    private TextureRegion shieldSideRegion;
+    private TextureRegion copperHelmetWearRegion;
+    private TextureRegion copperHelmetWearUpRegion;
+    private TextureRegion copperChestplateWearRegion;
+    private TextureRegion copperLeggingsWearRegion;
+    private TextureRegion frostHelmetWearRegion;
+    private TextureRegion frostHelmetWearUpRegion;
+    private TextureRegion frostHelmetWearRightLeftRegion;
 
     public Player() {
         super(0, 0, BASE_SPEED);
@@ -103,21 +136,38 @@ public class Player extends Entity {
 
         loadSprites();
 
-        addItem(new devsword());
+        addItem(new Sword());
         addItem(new ItemPotion());
-        addItem(new boat());
+        addItem(new OddMushroom());
+        addItem(new FrogBellyShield());
+        addItem(new SpeedPotion());
+        addItem(new CopperHelmet());
+        addItem(new CopperChestplate());
+        addItem(new CopperLeggings());
+        addItem(new FrogEggs());
         addItem(new IceGem());
+        addItem(new FrostHelmet());
+
     }
 
     public boolean hasSword() {
         for (Item item : inventory) {
             if (item == null) continue;
-            if (item instanceof Sword || item instanceof devsword) {
+            if (item instanceof Sword || item instanceof devsword || item instanceof mushroomblade) {
                 return true;
             }
             if (item.name != null && (item.name.toLowerCase().contains("espada") || item.name.toLowerCase().contains("sword"))) {
                 return true;
             }
+        }
+        return false;
+    }
+
+    public boolean hasMushroomBlade() {
+        for (Item item : inventory) {
+            if (item == null) continue;
+            if (item instanceof mushroomblade) return true;
+            if (item.name != null && item.name.toLowerCase().contains("esporosa")) return true;
         }
         return false;
     }
@@ -131,9 +181,30 @@ public class Player extends Entity {
         return false;
     }
 
+    public Item getEquippedSword() {
+        for (Item item : inventory) {
+            if (item != null && (item instanceof devsword || (item.name != null && item.name.toLowerCase().contains("developer")))) {
+                return item;
+            }
+        }
+        for (Item item : inventory) {
+            if (item != null && (item instanceof mushroomblade || (item.name != null && item.name.toLowerCase().contains("esporosa")))) {
+                return item;
+            }
+        }
+        for (Item item : inventory) {
+            if (item != null && (item instanceof Sword || (item.name != null && (item.name.toLowerCase().contains("espada") || item.name.toLowerCase().contains("sword"))))) {
+                return item;
+            }
+        }
+        return null;
+    }
+
     public int getAttackDamage() {
         if (hasDevSword()) {
             return 999;
+        } else if (hasMushroomBlade()){
+            return 4;
         }
         return 2;
     }
@@ -239,6 +310,15 @@ public class Player extends Entity {
         attackDown = loadRegion("player/attack_down.png");
         attackLeft = loadRegion("player/attack_left.png");
         attackRight = loadRegion("player/attack_right.png");
+        shieldFrontRegion = loadRegion("items/frog_belly_shield.png");
+        shieldSideRegion = loadRegion("items/frog_belly_sides.png");
+        copperHelmetWearRegion = loadRegion("items/copper_helmet_wear.png");
+        copperHelmetWearUpRegion = loadRegion("items/copper_helmet_wear_up.png");
+        copperChestplateWearRegion = loadRegion("items/copper_chestplate_wear.png");
+        copperLeggingsWearRegion = loadRegion("items/copper_leggings_wear.png");
+        frostHelmetWearRegion = loadRegion("items/frost_helmet_wear.png");
+        frostHelmetWearUpRegion = loadRegion("items/frost_helmet_wear_up.png");
+        frostHelmetWearRightLeftRegion = loadRegion("items/frost_helmet_wear_right_left.png");
     }
 
     public void initSpawn(MapGenerator mapGen) {
@@ -328,10 +408,31 @@ public class Player extends Entity {
             attackCooldown -= delta;
         }
 
+        if (shieldCooldown > 0f) {
+            shieldCooldown -= delta;
+            if (shieldCooldown < 0f) shieldCooldown = 0f;
+        }
+
         if (attacking) {
             attackTimer -= delta;
             if (attackTimer <= 0f) {
                 attacking = false;
+            }
+        }
+
+        if (isShielding) {
+            shieldTimer -= delta;
+            if (shieldTimer <= 0f) {
+                isShielding = false;
+                shieldCooldown = SHIELD_COOLDOWN_MISS;
+            }
+        }
+
+        if (speedBoostTimer > 0f) {
+            speedBoostTimer -= delta;
+            if (speedBoostTimer <= 0f) {
+                speedBoostTimer = 0f;
+                speedBoostAmount = 0f;
             }
         }
 
@@ -343,13 +444,13 @@ public class Player extends Entity {
         isHiddenInBush = inBush;
 
         if (waterLevel == 2) {
-            speed = DEEP_SPEED;
+            speed = DEEP_SPEED + (speedBoostTimer > 0f ? speedBoostAmount * 0.5f : 0f);
         } else if (waterLevel == 1) {
-            speed = SHALLOW_SPEED;
+            speed = SHALLOW_SPEED + (speedBoostTimer > 0f ? speedBoostAmount * 0.75f : 0f);
         } else if (inBush) {
-            speed = BUSH_SPEED;
+            speed = BUSH_SPEED + (speedBoostTimer > 0f ? speedBoostAmount * 0.75f : 0f);
         } else {
-            speed = BASE_SPEED;
+            speed = BASE_SPEED + (speedBoostTimer > 0f ? speedBoostAmount : 0f);
         }
 
         if (waterLevel == 2 && invincibleCounter == 0) {
@@ -387,6 +488,25 @@ public class Player extends Entity {
             contactMonster(monsterIndex);
         }
 
+        if (knockbackTimer > 0f) {
+            knockbackTimer -= delta;
+            float kbSpeed = 340f;
+            float kbX = knockbackDx * kbSpeed * delta;
+            float kbY = knockbackDy * kbSpeed * delta;
+            if (kbX != 0f) {
+                float targetX = worldX + kbX;
+                if (!tileM.collidesWithTree(mapGen, targetX + HIT_OFFSET_X, worldY + HIT_OFFSET_Y, HIT_W, HIT_H)) {
+                    worldX = targetX;
+                }
+            }
+            if (kbY != 0f) {
+                float targetY = worldY + kbY;
+                if (!tileM.collidesWithTree(mapGen, worldX + HIT_OFFSET_X, targetY + HIT_OFFSET_Y, HIT_W, HIT_H)) {
+                    worldY = targetY;
+                }
+            }
+        }
+
         float inputX = 0f;
         float inputY = 0f;
         if (Gdx.input.isKeyPressed(Keys.W))
@@ -398,10 +518,10 @@ public class Player extends Entity {
         if (Gdx.input.isKeyPressed(Keys.D))
             inputX += 1f;
 
-        if (inputX != 0f || inputY != 0f) {
+        if (knockbackTimer <= 0f && (inputX != 0f || inputY != 0f)) {
             moving = true;
 
-            if (!attacking) {
+            if (!attacking && !isShielding) {
                 if (inputY < 0f)
                     direction = "up";
                 else if (inputY > 0f)
@@ -559,19 +679,35 @@ public class Player extends Entity {
 
     public void contactMonster(int i) {
         if (i != 999 && i != -1) {
-            contactMonster();
+            if (currentMonsters != null && i < currentMonsters.length && currentMonsters[i] != null) {
+                contactMonster(currentMonsters[i]);
+            } else {
+                contactMonster();
+            }
         }
     }
 
     public void contactMonster(Entity monster) {
         if (monster != null) {
+            if (isShielding) {
+                triggerShieldBlock(monster);
+                return;
+            }
+            if (knockbackTimer > 0f) {
+                return;
+            }
             contactMonster();
         }
     }
 
     public void contactMonster() {
-        if (invincibleCounter > 0 || dead)
+        if (invincibleCounter > 0 || dead || knockbackTimer > 0f)
             return;
+
+        if (isShielding) {
+            triggerShieldBlock(null);
+            return;
+        }
 
         damage(MONSTER_DAMAGE);
 
@@ -582,14 +718,101 @@ public class Player extends Entity {
     }
 
     public void damage(int amount) {
-        if (invincibleCounter > 0 || dead)
+        if (invincibleCounter > 0 || dead || knockbackTimer > 0f)
             return;
-        health -= amount;
+
+        if (isShielding) {
+            triggerShieldBlock(null);
+            return;
+        }
+
+        int finalAmount = amount;
+        int ironHearts = getIronHearts();
+        if (ironHearts > 0 && amount > 1) {
+            float reduction = ironHearts * 0.15f;
+            finalAmount = Math.max(1, Math.round(amount * (1.0f - reduction)));
+        }
+
+        health -= finalAmount;
         healCooldown = 300;
         if (health <= 0) {
             health = 0;
             loseLife();
         }
+    }
+
+    public int getIronHearts() {
+        int total = 0;
+        int copperPieces = 0;
+        if (helmetItem != null) {
+            if (helmetItem instanceof CopperHelmet) copperPieces++;
+            else total += helmetItem.ironHearts;
+        }
+        if (chestplateItem != null) {
+            if (chestplateItem instanceof CopperChestplate) copperPieces++;
+            else total += chestplateItem.ironHearts;
+        }
+        if (leggingsItem != null) {
+            if (leggingsItem instanceof CopperLeggings) copperPieces++;
+            else total += leggingsItem.ironHearts;
+        }
+
+        if (copperPieces == 3) {
+            total += 2;
+        } else if (copperPieces >= 1) {
+            total += 1;
+        }
+
+        return Math.max(0, Math.min(5, total));
+    }
+
+    public void triggerShieldBlock(Entity source) {
+        if (source != null) {
+            float dx = (worldX + HIT_OFFSET_X + HIT_W / 2f) - (source.worldX + source.solidArea.x + source.solidArea.width / 2f);
+            float dy = (worldY + HIT_OFFSET_Y + HIT_H / 2f) - (source.worldY + source.solidArea.y + source.solidArea.height / 2f);
+            float dist = (float) Math.hypot(dx, dy);
+            if (dist > 0.001f) {
+                knockbackDx = dx / dist;
+                knockbackDy = dy / dist;
+            } else {
+                knockbackDx = "left".equals(direction) ? 1f : -1f;
+                knockbackDy = 0f;
+            }
+        } else {
+            float kx = 0f;
+            float ky = 0f;
+            switch (direction) {
+                case "up": ky = 1f; break;
+                case "down": ky = -1f; break;
+                case "left": kx = 1f; break;
+                case "right": kx = -1f; break;
+            }
+            knockbackDx = kx;
+            knockbackDy = ky;
+        }
+        knockbackTimer = 0.25f;
+        invincible = false;
+        invincibleCounter = 0;
+        isShielding = false;
+        shieldTimer = 0f;
+        shieldCooldown = SHIELD_COOLDOWN;
+    }
+
+    public boolean hasShieldEquipped() {
+        return offsetItem != null && (offsetItem instanceof FrogBellyShield || (offsetItem.name != null && offsetItem.name.toLowerCase().contains("escudo")));
+    }
+
+    public void block(String dir) {
+        if (!hasShieldEquipped() || shieldCooldown > 0f || isShielding)
+            return;
+        this.direction = dir;
+        this.isShielding = true;
+        this.shieldTimer = SHIELD_DURATION;
+    }
+
+    public void applySpeedBoost(float amount, float duration) {
+        this.speedBoostAmount = amount;
+        this.speedBoostTimer = Math.min(60f, this.speedBoostTimer + duration);
     }
 
     public void heal(int amount) {
@@ -664,6 +887,24 @@ public class Player extends Entity {
         }
     }
 
+    public TextureRegion getShadowSprite() {
+        switch (direction) {
+            case "up":
+                return upWalk[Math.max(0, Math.min(12, spriteNum - 1))];
+            case "left":
+                return leftWalk[Math.max(0, Math.min(7, spriteNum - 1))];
+            case "right":
+                return rightWalk[Math.max(0, Math.min(7, spriteNum - 1))];
+            case "down":
+            default:
+                if (!moving) {
+                    return idleAnim[Math.max(0, Math.min(8, spriteNum - 1))];
+                } else {
+                    return downWalk[Math.max(0, Math.min(12, spriteNum - 1))];
+                }
+        }
+    }
+
     @Override
     public void draw(SpriteBatch batch) {
         draw(batch, 0, null);
@@ -696,7 +937,8 @@ public class Player extends Entity {
             batch.setColor(1f, 1f, 1f, 1f);
         }
 
-        float drawY = worldY + getWaterYShift(waterLevel);
+        float baseY = worldY + getWaterYShift(waterLevel);
+        float drawY = baseY;
 
         float drawX = worldX;
         float drawW = current.getRegionWidth() * 3f;
@@ -710,7 +952,25 @@ public class Player extends Entity {
             }
         }
 
+        if ((attacking && "up".equals(direction)) || (isShielding && "up".equals(direction))) {
+            if (attacking && "up".equals(direction)) {
+                drawAttackSword(batch, drawX, drawY);
+            }
+            if (isShielding && "up".equals(direction)) {
+                drawShield(batch, worldX, baseY);
+            }
+        }
+
         batch.draw(current, drawX, drawY, drawW, drawH);
+
+        drawArmor(batch, worldX, baseY);
+
+        if (attacking && !"up".equals(direction)) {
+            drawAttackSword(batch, drawX, drawY);
+        }
+        if (isShielding && !"up".equals(direction)) {
+            drawShield(batch, worldX, baseY);
+        }
 
         if (waterLevel > 0 && foamRegion != null) {
             int cutOff = getWaterCutOff(waterLevel);
@@ -723,10 +983,172 @@ public class Player extends Entity {
         batch.setColor(1f, 1f, 1f, 1f);
     }
 
+    private void drawArmor(SpriteBatch batch, float baseX, float baseY) {
+        float scaleX = "right".equals(direction) ? -1f : 1f;
+
+        if (leggingsItem != null && copperLeggingsWearRegion != null) {
+            float legX = baseX + 12f;
+            float legY = baseY + 39f;
+            float legW = 24f;
+            float legH = 6f;
+            batch.draw(copperLeggingsWearRegion, legX, legY, legW / 2f, legH / 2f, legW, legH, scaleX, 1f, 0f);
+        }
+
+        if (chestplateItem != null && copperChestplateWearRegion != null) {
+            float chestX = baseX + 6f;
+            float chestY = baseY + 27f;
+            float chestW = 36f;
+            float chestH = 15f;
+            batch.draw(copperChestplateWearRegion, chestX, chestY, chestW / 2f, chestH / 2f, chestW, chestH, scaleX, 1f, 0f);
+        }
+
+        if (helmetItem instanceof FrostHelmet) {
+            if ("up".equals(direction) && frostHelmetWearUpRegion != null) {
+                float helmX = baseX + 3f;
+                float helmY = baseY + 3f;
+                float helmW = 42f;
+                float helmH = 30f;
+                batch.draw(frostHelmetWearUpRegion, helmX, helmY, helmW, helmH);
+            } else if (("left".equals(direction) || "right".equals(direction)) && frostHelmetWearRightLeftRegion != null) {
+                float helmX = "left".equals(direction) ? (baseX + 6f) : (baseX + 3f);
+                float helmY = baseY + 3f;
+                float helmW = 39f;
+                float helmH = 30f;
+                float helmScaleX = "left".equals(direction) ? -1f : 1f;
+                batch.draw(frostHelmetWearRightLeftRegion, helmX, helmY, helmW / 2f, helmH / 2f, helmW, helmH, helmScaleX, 1f, 0f);
+            } else if (frostHelmetWearRegion != null) {
+                float helmX = baseX + 3f;
+                float helmY = baseY + 3f;
+                float helmW = 42f;
+                float helmH = 30f;
+                batch.draw(frostHelmetWearRegion, helmX, helmY, helmW, helmH);
+            }
+        } else if (helmetItem != null) {
+            if ("up".equals(direction) && copperHelmetWearUpRegion != null) {
+                float helmX = baseX + 9f;
+                float helmY = baseY + 0f;
+                float helmW = 30f;
+                float helmH = 21f;
+                batch.draw(copperHelmetWearUpRegion, helmX, helmY, helmW, helmH);
+            } else if (copperHelmetWearRegion != null) {
+                float helmX = baseX + 9f;
+                float helmY = baseY + 0f;
+                float helmW = 30f;
+                float helmH = 15f;
+                batch.draw(copperHelmetWearRegion, helmX, helmY, helmW / 2f, helmH / 2f, helmW, helmH, scaleX, 1f, 0f);
+            }
+        }
+    }
+
+    private void drawAttackSword(SpriteBatch batch, float drawX, float drawY) {
+        Item sword = getEquippedSword();
+        if (sword == null || sword.icon == null) return;
+
+        TextureRegion icon = sword.icon;
+        float swordW = icon.getRegionWidth() * 3f;
+        float swordH = icon.getRegionHeight() * 3f;
+
+        if (swordW >= 36f || swordH >= 36f) {
+            float maxDim = Math.max(swordW, swordH);
+            float scale = 26f / maxDim;
+            swordW *= scale;
+            swordH *= scale;
+        }
+
+        float swordX = drawX;
+        float swordY = drawY;
+        float scaleX = 1f;
+        float scaleY = 1f;
+        float rotation = 0f;
+        float halfDiag = 0.7071f * swordW;
+
+        switch (direction) {
+            case "right":
+                scaleX = -1f;
+                scaleY = 1f;
+                rotation = 0f;
+                swordX = drawX + 39f;
+                swordY = drawY + 33f - swordH;
+                break;
+            case "left":
+                scaleX = 1f;
+                scaleY = 1f;
+                rotation = 0f;
+                swordX = drawX + 34f - swordW;
+                swordY = drawY + 33f - swordH;
+                break;
+            case "down":
+                scaleX = 1f;
+                scaleY = 1f;
+                rotation = -135f;
+                float worldOriginXDown = drawX + 9f;
+                float worldOriginYDown = drawY + 38f + halfDiag;
+                swordX = worldOriginXDown - swordW / 2f;
+                swordY = worldOriginYDown - swordH / 2f;
+                break;
+            case "up":
+                scaleX = 1f;
+                scaleY = 1f;
+                rotation = 45f;
+                float worldOriginXUp = drawX + 40f;
+                float worldOriginYUp = drawY + 25f - halfDiag;
+                swordX = worldOriginXUp - swordW / 2f;
+                swordY = worldOriginYUp - swordH / 2f;
+                break;
+        }
+
+        batch.draw(icon, swordX, swordY, swordW / 2f, swordH / 2f, swordW, swordH, scaleX, scaleY, rotation);
+    }
+
+    private void drawShield(SpriteBatch batch, float baseX, float baseY) {
+        if (!hasShieldEquipped()) return;
+
+        float sW = 38f;
+        float sH = 38f;
+
+        switch (direction) {
+            case "down":
+                if (shieldFrontRegion != null) {
+                    float sX = baseX + (TileManager.TILE_SIZE - sW) / 2f;
+                    float sY = baseY + 12f;
+                    batch.draw(shieldFrontRegion, sX, sY, sW, sH);
+                }
+                break;
+            case "up":
+                if (shieldFrontRegion != null) {
+                    float sX = baseX + (TileManager.TILE_SIZE - sW) / 2f;
+                    float sY = baseY + 8f;
+                    batch.draw(shieldFrontRegion, sX, sY, sW, sH);
+                }
+                break;
+            case "left":
+                if (shieldSideRegion != null) {
+                    float sX = baseX - 1f;
+                    float sY = baseY + 10f;
+                    batch.draw(shieldSideRegion, sX, sY, sW, sH);
+                }
+                break;
+            case "right":
+                if (shieldSideRegion != null) {
+                    float sX = baseX + 11f;
+                    float sY = baseY + 10f;
+                    batch.draw(shieldSideRegion, sX, sY, sW / 2f, sH / 2f, sW, sH, -1f, 1f, 0f);
+                }
+                break;
+        }
+    }
+
     public final ArrayList<Item> inventory = new ArrayList<>();
     public final int MAX_INVENTORY_SIZE = 20;
 
     public boolean addItem(Item item) {
+        if (item == null) return false;
+        for (int i = 0; i < inventory.size(); i++) {
+            if (inventory.get(i) == null) {
+                inventory.set(i, item);
+                return true;
+            }
+        }
         if (inventory.size() < MAX_INVENTORY_SIZE) {
             inventory.add(item);
             return true;
@@ -737,13 +1159,14 @@ public class Player extends Entity {
     public boolean tryAssembleBoat() {
         boolean hasPiece1 = false, hasPiece2 = false, hasPiece3 = false;
         for (Item it : inventory) {
+            if (it == null) continue;
             if (it instanceof BoatPiece1) hasPiece1 = true;
             if (it instanceof BoatPiece2) hasPiece2 = true;
-            if (it instanceof BoatPiece3) hasPiece3 =     true;
+            if (it instanceof BoatPiece3) hasPiece3 = true;
         }
-        if (!hasPiece1 || !hasPiece2 || !hasPiece3) return     false;
+        if (!hasPiece1 || !hasPiece2 || !hasPiece3) return false;
 
-        inventory.removeIf(it -> it instanceof BoatPiece1 || it instanceof BoatPiece2 || it instanceof BoatPiece3);
+        inventory.removeIf(it -> it != null && (it instanceof BoatPiece1 || it instanceof BoatPiece2 || it instanceof BoatPiece3));
         addItem(new boat());
         return true;
     }

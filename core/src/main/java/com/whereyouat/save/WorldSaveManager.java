@@ -39,6 +39,13 @@ public class WorldSaveManager {
 
         public boolean hasInventoryData = false;
         public List<String> inventoryItems = new ArrayList<>();
+        public String offsetItemId = null;
+        public String helmetItemId = null;
+        public String chestplateItemId = null;
+        public String leggingsItemId = null;
+        public boolean mushroomDefeated = false;
+        public boolean froggerDefeated = false;
+        public boolean snowGhostDefeated = false;
 
         public static class SavedMonster{
             public String id;
@@ -142,6 +149,29 @@ public class WorldSaveManager {
             }
         }
 
+        if (properties.containsKey("player.offsetItem")) {
+            info.offsetItemId = properties.getProperty("player.offsetItem");
+        }
+        if (properties.containsKey("player.helmetItem")) {
+            info.helmetItemId = properties.getProperty("player.helmetItem");
+        }
+        if (properties.containsKey("player.chestplateItem")) {
+            info.chestplateItemId = properties.getProperty("player.chestplateItem");
+        }
+        if (properties.containsKey("player.leggingsItem")) {
+            info.leggingsItemId = properties.getProperty("player.leggingsItem");
+        }
+
+        if (properties.containsKey("boss.mushroomDefeated")) {
+            info.mushroomDefeated = Boolean.parseBoolean(properties.getProperty("boss.mushroomDefeated", "false"));
+        }
+        if (properties.containsKey("boss.froggerDefeated")) {
+            info.froggerDefeated = Boolean.parseBoolean(properties.getProperty("boss.froggerDefeated", "false"));
+        }
+        if (properties.containsKey("boss.snowGhostDefeated")) {
+            info.snowGhostDefeated = Boolean.parseBoolean(properties.getProperty("boss.snowGhostDefeated", "false"));
+        }
+
         if (properties.containsKey("monster.count")){
             try {
                 int count = Integer.parseInt(properties.getProperty("monster.count" , "0"));
@@ -206,6 +236,12 @@ public class WorldSaveManager {
     public static void saveGameProgress(String fileName, String worldName, long seed, long created,
                                         Player player, DayNightCycle dayNight, Entity[] monsters,
                                         boolean isMultiplayer) {
+        saveGameProgress(fileName, worldName, seed, created, player, dayNight, monsters, isMultiplayer, false, false, false);
+    }
+
+    public static void saveGameProgress(String fileName, String worldName, long seed, long created,
+                                        Player player, DayNightCycle dayNight, Entity[] monsters,
+                                        boolean isMultiplayer, boolean mushroomDefeated, boolean froggerDefeated, boolean snowGhostDefeated) {
         if (fileName == null || fileName.trim().isEmpty()) return;
         File dir = new File(SAVES_DIR);
         if (!dir.exists()) {
@@ -226,6 +262,9 @@ public class WorldSaveManager {
             properties.setProperty("world.created", String.valueOf(created > 0 ? created : System.currentTimeMillis()));
         }
         properties.setProperty("world.lastPlayed", String.valueOf(System.currentTimeMillis()));
+        properties.setProperty("boss.mushroomDefeated", String.valueOf(mushroomDefeated));
+        properties.setProperty("boss.froggerDefeated", String.valueOf(froggerDefeated));
+        properties.setProperty("boss.snowGhostDefeated", String.valueOf(snowGhostDefeated));
 
         if (player != null) {
             properties.setProperty("player.worldX", String.valueOf(player.worldX));
@@ -241,6 +280,27 @@ public class WorldSaveManager {
                     if (item != null) ids.add(item.getClass().getSimpleName());
                 }
                 properties.setProperty("player.inventory", String.join(",", ids));
+            }
+
+            if (player.offsetItem != null) {
+                properties.setProperty("player.offsetItem", player.offsetItem.getClass().getSimpleName());
+            } else {
+                properties.remove("player.offsetItem");
+            }
+            if (player.helmetItem != null) {
+                properties.setProperty("player.helmetItem", player.helmetItem.getClass().getSimpleName());
+            } else {
+                properties.remove("player.helmetItem");
+            }
+            if (player.chestplateItem != null) {
+                properties.setProperty("player.chestplateItem", player.chestplateItem.getClass().getSimpleName());
+            } else {
+                properties.remove("player.chestplateItem");
+            }
+            if (player.leggingsItem != null) {
+                properties.setProperty("player.leggingsItem", player.leggingsItem.getClass().getSimpleName());
+            } else {
+                properties.remove("player.leggingsItem");
             }
         }
 

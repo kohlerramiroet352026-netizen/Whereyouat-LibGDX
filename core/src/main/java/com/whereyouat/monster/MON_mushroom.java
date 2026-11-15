@@ -13,6 +13,7 @@ import com.badlogic.gdx.math.Vector3;
 import com.whereyouat.entity.Entity;
 import com.whereyouat.items.BoatPiece1;
 import com.whereyouat.items.DropManager;
+import com.whereyouat.items.mushroomblade;
 import com.whereyouat.map.TileManager;
 import com.whereyouat.screens.GameScreen;
 
@@ -521,7 +522,8 @@ public class MON_mushroom extends Entity {
     private void deleteBoss() {
         if (!rewardDelivered && gp != null) {
             rewardDelivered = true;
-            DropManager.deliverBossReward("Rey Hongo", new BoatPiece1(), gp);
+            gp.mushroomDefeated = true;
+            DropManager.processBossDrop("Rey Hongo", gp);
         }
 
         if (gp != null && gp.monster != null) {
