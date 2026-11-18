@@ -20,6 +20,7 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.FreeTypeFont
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.whereyouat.WhereYouAtGame;
 import com.whereyouat.audio.AudioManager;
+import com.whereyouat.entity.Bird;
 import com.whereyouat.entity.Entity;
 import com.whereyouat.entity.Player;
 import com.whereyouat.items.Item;
@@ -79,6 +80,7 @@ public class GameHUD {
     private TextureRegion ghostIconRegion;
     private TextureRegion mushroomIconRegion;
     private TextureRegion zombIconRegion;
+    private TextureRegion birdIconRegion;
 
     private Texture buttonSlotTex;
     private TextureRegion buttonSlotRegion;
@@ -244,6 +246,7 @@ public class GameHUD {
         ghostIconRegion = loadMapIcon("monster/ghost_mapicon.png");
         mushroomIconRegion = loadMapIcon("monster/mushroom_mapicon.png");
         zombIconRegion = loadMapIcon("monster/zomb_mapicon.png");
+        birdIconRegion = loadMapIcon("critters/bird_mapicon.png");
     }
 
     private TextureRegion loadMapIcon(String path) {
@@ -1038,6 +1041,30 @@ public class GameHUD {
                             && iconCenterY >= innerMapY && iconCenterY <= innerMapY + innerMapH) {
                         batch.draw(icon, iconCenterX - drawW / 2f, iconCenterY - drawH / 2f, drawW, drawH);
                     }
+                }
+            }
+        }
+
+        if (birdIconRegion != null && gameScreen.birdM != null) {
+            List<Bird> birdList = gameScreen.birdM.getBirds();
+            float birdTargetSize = Math.round(5.0f * minimapScale);
+            float iconAspect = (float) birdIconRegion.getRegionWidth() / (float) birdIconRegion.getRegionHeight();
+            float drawW = (iconAspect >= 1f) ? birdTargetSize : birdTargetSize * iconAspect;
+            float drawH = (iconAspect >= 1f) ? birdTargetSize / iconAspect : birdTargetSize;
+
+            for (int i = 0; i < birdList.size(); i++) {
+                Bird b = birdList.get(i);
+                if (b == null) continue;
+
+                float diffX = b.worldX - camX;
+                float diffY = b.worldY - camY;
+
+                float iconCenterX = mapCenterX + (diffX / minimapWorldWidth) * innerMapW;
+                float iconCenterY = mapCenterY + (diffY / minimapWorldHeight) * innerMapH;
+
+                if (iconCenterX >= innerMapX && iconCenterX <= innerMapX + innerMapW
+                        && iconCenterY >= innerMapY && iconCenterY <= innerMapY + innerMapH) {
+                    batch.draw(birdIconRegion, iconCenterX - drawW / 2f, iconCenterY - drawH / 2f, drawW, drawH);
                 }
             }
         }

@@ -19,6 +19,7 @@ import com.whereyouat.WhereYouAtGame;
 import com.whereyouat.audio.AudioManager;
 import com.whereyouat.effects.FootprintManager;
 import com.whereyouat.effects.SnowParticleSystem;
+import com.whereyouat.entity.BirdManager;
 import com.whereyouat.entity.Entity;
 import com.whereyouat.entity.Player;
 import com.whereyouat.items.BoatPiece1;
@@ -66,6 +67,7 @@ public class GameScreen extends ScreenAdapter {
     public final DayNightCycle dayNight;
     public final FootprintManager footprintM;
     public final SnowParticleSystem snowPS;
+    public final BirdManager birdM;
     public final LightingEngine lighting;
     public final AudioManager audio;
     public final NetworkManager netManager;
@@ -173,10 +175,14 @@ public class GameScreen extends ScreenAdapter {
         player = new Player();
         player.gp = this;
         player.initSpawn(mapGen);
+        camera.position.set(player.worldX + TileManager.TILE_SIZE / 2f, player.worldY + TileManager.TILE_SIZE / 2f, 0);
+        camera.update();
 
         dayNight = new DayNightCycle();
         footprintM = new FootprintManager();
         snowPS = new SnowParticleSystem(seed);
+        birdM = new BirdManager(seed);
+        birdM.initForWorld(seed, mapGen, player, camera);
         tileM.setSnowPS(snowPS);
 
         assetSetter = new AssetSetter(this);
@@ -580,6 +586,7 @@ public class GameScreen extends ScreenAdapter {
         boolean inSnow = (playerCol >= 0 && playerCol < mapGen.mapCols && playerRow >= 0 && playerRow < mapGen.mapRows)
                 && mapGen.isSnowBiome[playerCol][playerRow];
         snowPS.update(delta, inSnow, 1.0f, hudCamera.viewportWidth, hudCamera.viewportHeight);
+        birdM.update(delta, mapGen, tileM, player, camera);
 
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] instanceof MON_Ghost && monster[i].distanceTo(player) > 35 * tileSize) {
@@ -675,6 +682,8 @@ public class GameScreen extends ScreenAdapter {
 
         snowPS.drawWorldLeaves(game.batch, minX, minY, maxX, maxY);
 
+        birdM.drawBehindPlayer(game.batch, minX, minY, maxX, maxY);
+
         entityList.add(player);
         for (int i = 0; i < monster.length; i++) {
             if (monster[i] != null) {
@@ -721,6 +730,8 @@ public class GameScreen extends ScreenAdapter {
         }
 
         entityList.clear();
+
+        birdM.drawInFrontOfPlayer(game.batch, minX, minY, maxX, maxY);
 
         game.batch.end();
 
@@ -1041,6 +1052,11 @@ public class GameScreen extends ScreenAdapter {
             snowPS.dispose();
         } catch (Throwable t) {
             Gdx.app.error("GameScreen", "snowPS.dispose falló", t);
+        }
+        try {
+            if (birdM != null) birdM.dispose();
+        } catch (Throwable t) {
+            Gdx.app.error("GameScreen", "birdM.dispose falló", t);
         }
         try {
             lighting.dispose();
