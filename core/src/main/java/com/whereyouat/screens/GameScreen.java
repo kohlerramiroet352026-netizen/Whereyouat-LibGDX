@@ -1096,7 +1096,7 @@ public class GameScreen extends ScreenAdapter {
         float halfW = (camera.viewportWidth * camera.zoom) / 2f;
         float halfH = (camera.viewportHeight * camera.zoom) / 2f;
         int minRadius = (int) (Math.max(halfW, halfH) / tileSize) + 2;
-        int maxRadius = minRadius + 4;
+        int maxRadius = minRadius + 20;
 
         java.util.Random rand = new java.util.Random();
         int spawned = 0;
@@ -1155,7 +1155,7 @@ public class GameScreen extends ScreenAdapter {
         float halfW = (camera.viewportWidth * camera.zoom) / 2f;
         float halfH = (camera.viewportHeight * camera.zoom) / 2f;
         int minRadius = (int) (Math.max(halfW, halfH) / tileSize) + 2;
-        int maxRadius = minRadius + 4;
+        int maxRadius = minRadius + 20;
 
         java.util.Random rand = new java.util.Random();
         int spawned = 0;
@@ -1230,7 +1230,7 @@ public class GameScreen extends ScreenAdapter {
         float halfW = (camera.viewportWidth * camera.zoom) / 2f;
         float halfH = (camera.viewportHeight * camera.zoom) / 2f;
         int minRadius = (int) (Math.max(halfW, halfH) / tileSize) + 2;
-        int maxRadius = minRadius + 4;
+        int maxRadius = minRadius + 20;
 
         java.util.Random rand = new java.util.Random();
         int spawned = 0;

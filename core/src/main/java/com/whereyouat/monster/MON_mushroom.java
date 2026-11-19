@@ -497,8 +497,23 @@ public class MON_mushroom extends Entity {
 
             if (spawnCol >= 10 && spawnCol < gp.mapGen.mapCols - 10 && spawnRow >= 10 && spawnRow < gp.mapGen.mapRows - 10) {
                 if (!gp.mapGen.isDeepWater[spawnCol][spawnRow]) {
-                    positionFound = true;
-                    break;
+                    boolean blockedByTree = false;
+                    int[] neighborDx = {0, 1, -1, 0, 0, 2};
+                    int[] neighborDy = {0, 0, 0, 1, -1, 0};
+                    for (int n = 0; n < 6; n++) {
+                        int nc = spawnCol + neighborDx[n];
+                        int nr = spawnRow + neighborDy[n];
+                        if (nc >= 0 && nc < gp.mapGen.mapCols && nr >= 0 && nr < gp.mapGen.mapRows) {
+                            if (gp.mapGen.mapTreeNum[nc][nr] != 0) {
+                                blockedByTree = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!blockedByTree) {
+                        positionFound = true;
+                        break;
+                    }
                 }
             }
         }

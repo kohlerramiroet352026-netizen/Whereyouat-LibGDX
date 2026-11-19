@@ -152,11 +152,13 @@ public class Player extends Entity {
 
     public boolean hasSword() {
         for (Item item : inventory) {
-            if (item == null) continue;
+            if (item == null)
+                continue;
             if (item instanceof Sword || item instanceof devsword || item instanceof mushroomblade) {
                 return true;
             }
-            if (item.name != null && (item.name.toLowerCase().contains("espada") || item.name.toLowerCase().contains("sword"))) {
+            if (item.name != null
+                    && (item.name.toLowerCase().contains("espada") || item.name.toLowerCase().contains("sword"))) {
                 return true;
             }
         }
@@ -165,35 +167,44 @@ public class Player extends Entity {
 
     public boolean hasMushroomBlade() {
         for (Item item : inventory) {
-            if (item == null) continue;
-            if (item instanceof mushroomblade) return true;
-            if (item.name != null && item.name.toLowerCase().contains("esporosa")) return true;
+            if (item == null)
+                continue;
+            if (item instanceof mushroomblade)
+                return true;
+            if (item.name != null && item.name.toLowerCase().contains("esporosa"))
+                return true;
         }
         return false;
     }
 
     public boolean hasDevSword() {
         for (Item item : inventory) {
-            if (item == null) continue;
-            if (item instanceof devsword) return true;
-            if (item.name != null && item.name.toLowerCase().contains("developer")) return true;
+            if (item == null)
+                continue;
+            if (item instanceof devsword)
+                return true;
+            if (item.name != null && item.name.toLowerCase().contains("developer"))
+                return true;
         }
         return false;
     }
 
     public Item getEquippedSword() {
         for (Item item : inventory) {
-            if (item != null && (item instanceof devsword || (item.name != null && item.name.toLowerCase().contains("developer")))) {
+            if (item != null && (item instanceof devsword
+                    || (item.name != null && item.name.toLowerCase().contains("developer")))) {
                 return item;
             }
         }
         for (Item item : inventory) {
-            if (item != null && (item instanceof mushroomblade || (item.name != null && item.name.toLowerCase().contains("esporosa")))) {
+            if (item != null && (item instanceof mushroomblade
+                    || (item.name != null && item.name.toLowerCase().contains("esporosa")))) {
                 return item;
             }
         }
         for (Item item : inventory) {
-            if (item != null && (item instanceof Sword || (item.name != null && (item.name.toLowerCase().contains("espada") || item.name.toLowerCase().contains("sword"))))) {
+            if (item != null && (item instanceof Sword || (item.name != null
+                    && (item.name.toLowerCase().contains("espada") || item.name.toLowerCase().contains("sword"))))) {
                 return item;
             }
         }
@@ -203,7 +214,7 @@ public class Player extends Entity {
     public int getAttackDamage() {
         if (hasDevSword()) {
             return 999;
-        } else if (hasMushroomBlade()){
+        } else if (hasMushroomBlade()) {
             return 4;
         }
         return 2;
@@ -410,7 +421,8 @@ public class Player extends Entity {
 
         if (shieldCooldown > 0f) {
             shieldCooldown -= delta;
-            if (shieldCooldown < 0f) shieldCooldown = 0f;
+            if (shieldCooldown < 0f)
+                shieldCooldown = 0f;
         }
 
         if (attacking) {
@@ -745,16 +757,22 @@ public class Player extends Entity {
         int total = 0;
         int copperPieces = 0;
         if (helmetItem != null) {
-            if (helmetItem instanceof CopperHelmet) copperPieces++;
-            else total += helmetItem.ironHearts;
+            if (helmetItem instanceof CopperHelmet)
+                copperPieces++;
+            else
+                total += helmetItem.ironHearts;
         }
         if (chestplateItem != null) {
-            if (chestplateItem instanceof CopperChestplate) copperPieces++;
-            else total += chestplateItem.ironHearts;
+            if (chestplateItem instanceof CopperChestplate)
+                copperPieces++;
+            else
+                total += chestplateItem.ironHearts;
         }
         if (leggingsItem != null) {
-            if (leggingsItem instanceof CopperLeggings) copperPieces++;
-            else total += leggingsItem.ironHearts;
+            if (leggingsItem instanceof CopperLeggings)
+                copperPieces++;
+            else
+                total += leggingsItem.ironHearts;
         }
 
         if (copperPieces == 3) {
@@ -768,8 +786,10 @@ public class Player extends Entity {
 
     public void triggerShieldBlock(Entity source) {
         if (source != null) {
-            float dx = (worldX + HIT_OFFSET_X + HIT_W / 2f) - (source.worldX + source.solidArea.x + source.solidArea.width / 2f);
-            float dy = (worldY + HIT_OFFSET_Y + HIT_H / 2f) - (source.worldY + source.solidArea.y + source.solidArea.height / 2f);
+            float dx = (worldX + HIT_OFFSET_X + HIT_W / 2f)
+                    - (source.worldX + source.solidArea.x + source.solidArea.width / 2f);
+            float dy = (worldY + HIT_OFFSET_Y + HIT_H / 2f)
+                    - (source.worldY + source.solidArea.y + source.solidArea.height / 2f);
             float dist = (float) Math.hypot(dx, dy);
             if (dist > 0.001f) {
                 knockbackDx = dx / dist;
@@ -782,10 +802,18 @@ public class Player extends Entity {
             float kx = 0f;
             float ky = 0f;
             switch (direction) {
-                case "up": ky = 1f; break;
-                case "down": ky = -1f; break;
-                case "left": kx = 1f; break;
-                case "right": kx = -1f; break;
+                case "up":
+                    ky = 1f;
+                    break;
+                case "down":
+                    ky = -1f;
+                    break;
+                case "left":
+                    kx = 1f;
+                    break;
+                case "right":
+                    kx = -1f;
+                    break;
             }
             knockbackDx = kx;
             knockbackDy = ky;
@@ -799,7 +827,8 @@ public class Player extends Entity {
     }
 
     public boolean hasShieldEquipped() {
-        return offsetItem != null && (offsetItem instanceof FrogBellyShield || (offsetItem.name != null && offsetItem.name.toLowerCase().contains("escudo")));
+        return offsetItem != null && (offsetItem instanceof FrogBellyShield
+                || (offsetItem.name != null && offsetItem.name.toLowerCase().contains("escudo")));
     }
 
     public void block(String dir) {
@@ -999,7 +1028,8 @@ public class Player extends Entity {
             float chestY = baseY + 27f;
             float chestW = 36f;
             float chestH = 15f;
-            batch.draw(copperChestplateWearRegion, chestX, chestY, chestW / 2f, chestH / 2f, chestW, chestH, scaleX, 1f, 0f);
+            batch.draw(copperChestplateWearRegion, chestX, chestY, chestW / 2f, chestH / 2f, chestW, chestH, scaleX, 1f,
+                    0f);
         }
 
         if (helmetItem instanceof FrostHelmet) {
@@ -1009,13 +1039,15 @@ public class Player extends Entity {
                 float helmW = 42f;
                 float helmH = 30f;
                 batch.draw(frostHelmetWearUpRegion, helmX, helmY, helmW, helmH);
-            } else if (("left".equals(direction) || "right".equals(direction)) && frostHelmetWearRightLeftRegion != null) {
+            } else if (("left".equals(direction) || "right".equals(direction))
+                    && frostHelmetWearRightLeftRegion != null) {
                 float helmX = "left".equals(direction) ? (baseX + 6f) : (baseX + 3f);
                 float helmY = baseY + 3f;
                 float helmW = 39f;
                 float helmH = 30f;
                 float helmScaleX = "left".equals(direction) ? -1f : 1f;
-                batch.draw(frostHelmetWearRightLeftRegion, helmX, helmY, helmW / 2f, helmH / 2f, helmW, helmH, helmScaleX, 1f, 0f);
+                batch.draw(frostHelmetWearRightLeftRegion, helmX, helmY, helmW / 2f, helmH / 2f, helmW, helmH,
+                        helmScaleX, 1f, 0f);
             } else if (frostHelmetWearRegion != null) {
                 float helmX = baseX + 3f;
                 float helmY = baseY + 3f;
@@ -1042,7 +1074,8 @@ public class Player extends Entity {
 
     private void drawAttackSword(SpriteBatch batch, float drawX, float drawY) {
         Item sword = getEquippedSword();
-        if (sword == null || sword.icon == null) return;
+        if (sword == null || sword.icon == null)
+            return;
 
         TextureRegion icon = sword.icon;
         float swordW = icon.getRegionWidth() * 3f;
@@ -1101,7 +1134,8 @@ public class Player extends Entity {
     }
 
     private void drawShield(SpriteBatch batch, float baseX, float baseY) {
-        if (!hasShieldEquipped()) return;
+        if (!hasShieldEquipped())
+            return;
 
         float sW = 38f;
         float sH = 38f;
@@ -1142,7 +1176,8 @@ public class Player extends Entity {
     public final int MAX_INVENTORY_SIZE = 20;
 
     public boolean addItem(Item item) {
-        if (item == null) return false;
+        if (item == null)
+            return false;
         for (int i = 0; i < inventory.size(); i++) {
             if (inventory.get(i) == null) {
                 inventory.set(i, item);
@@ -1159,23 +1194,32 @@ public class Player extends Entity {
     public boolean tryAssembleBoat() {
         boolean hasPiece1 = false, hasPiece2 = false, hasPiece3 = false;
         for (Item it : inventory) {
-            if (it == null) continue;
-            if (it instanceof BoatPiece1) hasPiece1 = true;
-            if (it instanceof BoatPiece2) hasPiece2 = true;
-            if (it instanceof BoatPiece3) hasPiece3 = true;
+            if (it == null)
+                continue;
+            if (it instanceof BoatPiece1)
+                hasPiece1 = true;
+            if (it instanceof BoatPiece2)
+                hasPiece2 = true;
+            if (it instanceof BoatPiece3)
+                hasPiece3 = true;
         }
-        if (!hasPiece1 || !hasPiece2 || !hasPiece3) return false;
+        if (!hasPiece1 || !hasPiece2 || !hasPiece3)
+            return false;
 
-        inventory.removeIf(it -> it != null && (it instanceof BoatPiece1 || it instanceof BoatPiece2 || it instanceof BoatPiece3));
+        inventory.removeIf(
+                it -> it != null && (it instanceof BoatPiece1 || it instanceof BoatPiece2 || it instanceof BoatPiece3));
         addItem(new boat());
         return true;
     }
 
     public boolean hasBoat() {
         for (Item it : inventory) {
-            if (it == null) continue;
-            if (it instanceof boat) return true;
-            if (it.name != null && (it.name.equalsIgnoreCase("Barco") || it.name.equalsIgnoreCase("Bote") || it.name.equalsIgnoreCase("boat"))) {
+            if (it == null)
+                continue;
+            if (it instanceof boat)
+                return true;
+            if (it.name != null && (it.name.equalsIgnoreCase("Barco") || it.name.equalsIgnoreCase("Bote")
+                    || it.name.equalsIgnoreCase("boat"))) {
                 return true;
             }
         }
